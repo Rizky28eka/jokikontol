@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
 import '../constants/api_config.dart';
 import '../services/logger_service.dart';
+import '../controllers/auth_controller.dart';
 
 class ApiService {
   static String get baseUrl => ApiConfig.currentBaseUrl;
@@ -11,13 +11,15 @@ class ApiService {
   // Helper method to get token with error handling
   static Future<String?> _getToken() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('token');
-      return token;
+      if (!AuthController.to.isTokenValid()) {
+        return null;
+      }
+      return AuthController.to.token;
     } catch (e, stackTrace) {
-      _logger.error('Failed to get token from SharedPreferences',
+      _logger.error(
+        'Failed to get token from AuthController',
         error: e,
-        stackTrace: stackTrace
+        stackTrace: stackTrace,
       );
       return null;
     }
@@ -29,15 +31,17 @@ class ApiService {
       final token = await _getToken();
 
       if (token == null || token.isEmpty) {
-        _logger.warning('No token found for API request',
-          context: {'endpoint': endpoint, 'method': 'GET'}
+        _logger.warning(
+          'No token found for API request',
+          context: {'endpoint': endpoint, 'method': 'GET'},
         );
         return http.Response('{"message": "Unauthenticated"}', 401);
       }
 
       final uri = Uri.parse('$baseUrl/$endpoint');
-      _logger.info('Making GET request',
-        context: {'uri': uri.toString(), 'method': 'GET'}
+      _logger.info(
+        'Making GET request',
+        context: {'uri': uri.toString(), 'method': 'GET'},
       );
 
       final response = await http.get(
@@ -54,17 +58,23 @@ class ApiService {
         method: 'GET',
         statusCode: response.statusCode,
         durationMs: null,
-        responseData: response.body.length > 500 ? response.body.substring(0, 500) + '...' : response.body
+        responseData: response.body.length > 500
+            ? response.body.substring(0, 500) + '...'
+            : response.body,
       );
 
       return response;
     } catch (e, stackTrace) {
-      _logger.error('Network error in GET request',
+      _logger.error(
+        'Network error in GET request',
         error: e,
         stackTrace: stackTrace,
-        context: {'endpoint': endpoint}
+        context: {'endpoint': endpoint},
       );
-      return http.Response(jsonEncode({"message": "Network error", "error": e.toString()}), 500);
+      return http.Response(
+        jsonEncode({"message": "Network error", "error": e.toString()}),
+        500,
+      );
     }
   }
 
@@ -74,15 +84,17 @@ class ApiService {
       final token = await _getToken();
 
       if (token == null || token.isEmpty) {
-        _logger.warning('No token found for API request',
-          context: {'endpoint': endpoint, 'method': 'POST'}
+        _logger.warning(
+          'No token found for API request',
+          context: {'endpoint': endpoint, 'method': 'POST'},
         );
         return http.Response('{"message": "Unauthenticated"}', 401);
       }
 
       final uri = Uri.parse('$baseUrl/$endpoint');
-      _logger.info('Making POST request',
-        context: {'uri': uri.toString(), 'method': 'POST', 'body': body}
+      _logger.info(
+        'Making POST request',
+        context: {'uri': uri.toString(), 'method': 'POST', 'body': body},
       );
 
       final response = await http.post(
@@ -101,17 +113,23 @@ class ApiService {
         statusCode: response.statusCode,
         durationMs: null,
         requestBody: body,
-        responseData: response.body.length > 500 ? response.body.substring(0, 500) + '...' : response.body
+        responseData: response.body.length > 500
+            ? response.body.substring(0, 500) + '...'
+            : response.body,
       );
 
       return response;
     } catch (e, stackTrace) {
-      _logger.error('Network error in POST request',
+      _logger.error(
+        'Network error in POST request',
         error: e,
         stackTrace: stackTrace,
-        context: {'endpoint': endpoint, 'body': body}
+        context: {'endpoint': endpoint, 'body': body},
       );
-      return http.Response(jsonEncode({"message": "Network error", "error": e.toString()}), 500);
+      return http.Response(
+        jsonEncode({"message": "Network error", "error": e.toString()}),
+        500,
+      );
     }
   }
 
@@ -121,15 +139,17 @@ class ApiService {
       final token = await _getToken();
 
       if (token == null || token.isEmpty) {
-        _logger.warning('No token found for API request',
-          context: {'endpoint': endpoint, 'method': 'PUT'}
+        _logger.warning(
+          'No token found for API request',
+          context: {'endpoint': endpoint, 'method': 'PUT'},
         );
         return http.Response('{"message": "Unauthenticated"}', 401);
       }
 
       final uri = Uri.parse('$baseUrl/$endpoint');
-      _logger.info('Making PUT request',
-        context: {'uri': uri.toString(), 'method': 'PUT', 'body': body}
+      _logger.info(
+        'Making PUT request',
+        context: {'uri': uri.toString(), 'method': 'PUT', 'body': body},
       );
 
       final response = await http.put(
@@ -148,17 +168,23 @@ class ApiService {
         statusCode: response.statusCode,
         durationMs: null,
         requestBody: body,
-        responseData: response.body.length > 500 ? response.body.substring(0, 500) + '...' : response.body
+        responseData: response.body.length > 500
+            ? response.body.substring(0, 500) + '...'
+            : response.body,
       );
 
       return response;
     } catch (e, stackTrace) {
-      _logger.error('Network error in PUT request',
+      _logger.error(
+        'Network error in PUT request',
         error: e,
         stackTrace: stackTrace,
-        context: {'endpoint': endpoint, 'body': body}
+        context: {'endpoint': endpoint, 'body': body},
       );
-      return http.Response(jsonEncode({"message": "Network error", "error": e.toString()}), 500);
+      return http.Response(
+        jsonEncode({"message": "Network error", "error": e.toString()}),
+        500,
+      );
     }
   }
 
@@ -168,15 +194,17 @@ class ApiService {
       final token = await _getToken();
 
       if (token == null || token.isEmpty) {
-        _logger.warning('No token found for API request',
-          context: {'endpoint': endpoint, 'method': 'DELETE'}
+        _logger.warning(
+          'No token found for API request',
+          context: {'endpoint': endpoint, 'method': 'DELETE'},
         );
         return http.Response('{"message": "Unauthenticated"}', 401);
       }
 
       final uri = Uri.parse('$baseUrl/$endpoint');
-      _logger.info('Making DELETE request',
-        context: {'uri': uri.toString(), 'method': 'DELETE'}
+      _logger.info(
+        'Making DELETE request',
+        context: {'uri': uri.toString(), 'method': 'DELETE'},
       );
 
       final response = await http.delete(
@@ -193,26 +221,36 @@ class ApiService {
         method: 'DELETE',
         statusCode: response.statusCode,
         durationMs: null,
-        responseData: response.body.length > 500 ? response.body.substring(0, 500) + '...' : response.body
+        responseData: response.body.length > 500
+            ? response.body.substring(0, 500) + '...'
+            : response.body,
       );
 
       return response;
     } catch (e, stackTrace) {
-      _logger.error('Network error in DELETE request',
+      _logger.error(
+        'Network error in DELETE request',
         error: e,
         stackTrace: stackTrace,
-        context: {'endpoint': endpoint}
+        context: {'endpoint': endpoint},
       );
-      return http.Response(jsonEncode({"message": "Network error", "error": e.toString()}), 500);
+      return http.Response(
+        jsonEncode({"message": "Network error", "error": e.toString()}),
+        500,
+      );
     }
   }
 
   // Public POST request (no authorization needed)
-  static Future<http.Response> postPublic(String endpoint, {dynamic body}) async {
+  static Future<http.Response> postPublic(
+    String endpoint, {
+    dynamic body,
+  }) async {
     try {
       final uri = Uri.parse('$baseUrl/$endpoint');
-      _logger.info('Making public POST request',
-        context: {'uri': uri.toString(), 'method': 'POST'}
+      _logger.info(
+        'Making public POST request',
+        context: {'uri': uri.toString(), 'method': 'POST'},
       );
 
       final response = await http.post(
@@ -230,17 +268,23 @@ class ApiService {
         statusCode: response.statusCode,
         durationMs: null,
         requestBody: body,
-        responseData: response.body.length > 500 ? response.body.substring(0, 500) + '...' : response.body
+        responseData: response.body.length > 500
+            ? response.body.substring(0, 500) + '...'
+            : response.body,
       );
 
       return response;
     } catch (e, stackTrace) {
-      _logger.error('Network error in public POST request',
+      _logger.error(
+        'Network error in public POST request',
         error: e,
         stackTrace: stackTrace,
-        context: {'endpoint': endpoint, 'body': body}
+        context: {'endpoint': endpoint, 'body': body},
       );
-      return http.Response(jsonEncode({"message": "Network error", "error": e.toString()}), 500);
+      return http.Response(
+        jsonEncode({"message": "Network error", "error": e.toString()}),
+        500,
+      );
     }
   }
 
@@ -248,8 +292,9 @@ class ApiService {
   static Future<http.Response> getPublic(String endpoint) async {
     try {
       final uri = Uri.parse('$baseUrl/$endpoint');
-      _logger.info('Making public GET request',
-        context: {'uri': uri.toString(), 'method': 'GET'}
+      _logger.info(
+        'Making public GET request',
+        context: {'uri': uri.toString(), 'method': 'GET'},
       );
 
       final response = await http.get(
@@ -265,17 +310,23 @@ class ApiService {
         method: 'GET',
         statusCode: response.statusCode,
         durationMs: null,
-        responseData: response.body.length > 500 ? response.body.substring(0, 500) + '...' : response.body
+        responseData: response.body.length > 500
+            ? response.body.substring(0, 500) + '...'
+            : response.body,
       );
 
       return response;
     } catch (e, stackTrace) {
-      _logger.error('Network error in public GET request',
+      _logger.error(
+        'Network error in public GET request',
         error: e,
         stackTrace: stackTrace,
-        context: {'endpoint': endpoint}
+        context: {'endpoint': endpoint},
       );
-      return http.Response(jsonEncode({"message": "Network error", "error": e.toString()}), 500);
+      return http.Response(
+        jsonEncode({"message": "Network error", "error": e.toString()}),
+        500,
+      );
     }
   }
 }

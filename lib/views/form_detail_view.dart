@@ -46,6 +46,24 @@ class _FormDetailViewState extends State<FormDetailView> {
     super.dispose();
   }
 
+  Future<void> _refreshFormData() async {
+    _logger.info('Refreshing form detail data');
+
+    // Fetch updated form data
+    await formController.fetchForms(patientId: form.patientId);
+
+    // Find the updated form in the list
+    final updatedForm = formController.forms.firstWhere(
+      (f) => f.id == form.id,
+      orElse: () => form,
+    );
+
+    setState(() {
+      form = updatedForm;
+      _commentController.text = form.comments ?? '';
+    });
+  }
+
   Color _getStatusColor(String status) {
     switch (status) {
       case 'draft':
@@ -125,164 +143,174 @@ class _FormDetailViewState extends State<FormDetailView> {
         title: const Text('Detail Form'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header Section
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _getFormTitle(form.type),
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        const Text('Status: ', style: TextStyle(fontSize: 16)),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: _getStatusColor(
-                              form.status,
-                            ).withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(4),
-                            border: Border.all(
-                              color: _getStatusColor(form.status),
-                            ),
-                          ),
-                          child: Text(
-                            _getStatusText(form.status),
-                            style: TextStyle(
-                              color: _getStatusColor(form.status),
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+      body: RefreshIndicator(
+        onRefresh: _refreshFormData,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header Section
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _getFormTitle(form.type),
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Tanggal Dibuat: ${form.createdAt.toString().substring(0, 16)}',
-                    ),
-                    Text(
-                      'Terakhir Diupdate: ${form.updatedAt.toString().substring(0, 16)}',
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // Form Data Preview (Simplified)
-            const Text(
-              'Data Form',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Card(
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16.0),
-                child: form.data != null && form.data!.isNotEmpty
-                    ? Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: form.data!.entries.map((entry) {
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 8.0),
-                            child: Text('${entry.key}: ${entry.value}'),
-                          );
-                        }).toList(),
-                      )
-                    : const Text('Tidak ada data form'),
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // Lecturer Feedback Section
-            const Text(
-              'Komentar & Persetujuan',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            if (isLecturer) ...[
-              TextField(
-                controller: _commentController,
-                decoration: const InputDecoration(
-                  labelText: 'Komentar Dosen',
-                  border: OutlineInputBorder(),
-                  hintText: 'Tambahkan catatan atau revisi disini...',
-                ),
-                maxLines: 3,
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: () => _updateStatus('revised'),
-                      icon: const Icon(Icons.warning, color: Colors.white),
-                      label: const Text('Minta Revisi'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.orange,
-                        foregroundColor: Colors.white,
                       ),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: () => _updateStatus('approved'),
-                      icon: const Icon(Icons.check_circle, color: Colors.white),
-                      label: const Text('Setujui'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        foregroundColor: Colors.white,
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          const Text(
+                            'Status: ',
+                            style: TextStyle(fontSize: 16),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: _getStatusColor(
+                                form.status,
+                              ).withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(
+                                color: _getStatusColor(form.status),
+                              ),
+                            ),
+                            child: Text(
+                              _getStatusText(form.status),
+                              style: TextStyle(
+                                color: _getStatusColor(form.status),
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Tanggal Dibuat: ${form.createdAt.toString().substring(0, 16)}',
+                      ),
+                      Text(
+                        'Terakhir Diupdate: ${form.updatedAt.toString().substring(0, 16)}',
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            ] else ...[
-              // Student View of Comments
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16.0),
-                decoration: BoxDecoration(
-                  color: Colors.grey[100],
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.grey[300]!),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              ),
+              const SizedBox(height: 24),
+
+              // Form Data Preview (Simplified)
+              const Text(
+                'Data Form',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Card(
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16.0),
+                  child: form.data != null && form.data!.isNotEmpty
+                      ? Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: form.data!.entries.map((entry) {
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 8.0),
+                              child: Text('${entry.key}: ${entry.value}'),
+                            );
+                          }).toList(),
+                        )
+                      : const Text('Tidak ada data form'),
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // Lecturer Feedback Section
+              const Text(
+                'Komentar & Persetujuan',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              if (isLecturer) ...[
+                TextField(
+                  controller: _commentController,
+                  decoration: const InputDecoration(
+                    labelText: 'Komentar Dosen',
+                    border: OutlineInputBorder(),
+                    hintText: 'Tambahkan catatan atau revisi disini...',
+                  ),
+                  maxLines: 3,
+                ),
+                const SizedBox(height: 16),
+                Row(
                   children: [
-                    const Text(
-                      'Catatan Dosen:',
-                      style: TextStyle(fontWeight: FontWeight.bold),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () => _updateStatus('revised'),
+                        icon: const Icon(Icons.warning, color: Colors.white),
+                        label: const Text('Minta Revisi'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.orange,
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      form.comments != null && form.comments!.isNotEmpty
-                          ? form.comments!
-                          : 'Belum ada komentar.',
-                      style: const TextStyle(fontStyle: FontStyle.italic),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () => _updateStatus('approved'),
+                        icon: const Icon(
+                          Icons.check_circle,
+                          color: Colors.white,
+                        ),
+                        label: const Text('Setujui'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
                     ),
                   ],
                 ),
-              ),
+              ] else ...[
+                // Student View of Comments
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16.0),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.grey[300]!),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Catatan Dosen:',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        form.comments != null && form.comments!.isNotEmpty
+                            ? form.comments!
+                            : 'Belum ada komentar.',
+                        style: const TextStyle(fontStyle: FontStyle.italic),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );

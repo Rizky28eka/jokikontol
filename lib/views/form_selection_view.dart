@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:tamajiwa/controllers/patient_controller.dart';
-import '../controllers/form_controller.dart';
-import '../models/patient_model.dart';
+import '../controllers/form_selection_controller.dart';
 import '../models/form_model.dart';
 import '../services/logger_service.dart';
 import 'form_detail_view.dart';
 
-class FormSelectionView extends StatelessWidget {
+class FormSelectionView extends GetView<FormSelectionController> {
   final LoggerService _logger = LoggerService();
 
   FormSelectionView({super.key});
@@ -45,118 +43,640 @@ class FormSelectionView extends StatelessWidget {
     ),
   ];
 
-  Future<void> _createForm(String formType) async {
-    final int patientId =
-        int.tryParse(Get.arguments?['patientId']?.toString() ?? '0') ?? 0;
-    final String patientName =
-        Get.arguments?['patientName']?.toString() ?? 'Unknown Patient';
+  @override
+  Widget build(BuildContext context) {
+    Get.put(FormSelectionController());
 
-    final formController = Get.find<FormController>();
-    final patientController = Get.find<PatientController>();
-    _logger.form(
-      operation: 'Creating new form',
-      formType: formType,
-      patientId: patientId.toString(),
-      metadata: {'patientName': patientName, 'formType': formType},
+    return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      body: SafeArea(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final isWide = constraints.maxWidth > 600;
+            final horizontalPadding = isWide ? 32.0 : 20.0;
+            final maxWidth = isWide ? 900.0 : double.infinity;
+
+            return RefreshIndicator(
+              onRefresh: controller.fetchForms,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: maxWidth),
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: horizontalPadding,
+                        vertical: 24.0,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildHeader(context),
+                          const SizedBox(height: 32),
+                          Obx(() => _buildContent(context, isWide)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
     );
+  }
 
-    try {
-      final patient = await patientController.getPatientById(patientId);
+  Widget _buildHeader(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
 
-      // If patient is not found, create a placeholder with minimal required data
-      final Patient selectedPatient =
-          patient ??
-          Patient(
-            id: patientId,
-            name: patientName,
-            gender: 'N/A',
-            age: 0,
-            address: 'N/A',
-            rmNumber: 'N/A',
-            createdById: 0, // Default to 0 if not available
-            createdAt: DateTime.now(), // Use current time as default
-            updatedAt: DateTime.now(), // Use current time as default
-          );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: colorScheme.primaryContainer.withOpacity(0.5),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Icon(
+                Icons.folder_open_rounded,
+                color: colorScheme.primary,
+                size: 28,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Formulir Pasien',
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: colorScheme.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    controller.patientName,
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
 
-      await formController.createForm(
-        type: formType,
-        patientId: patientId,
-        status: 'draft',
-      );
+  Widget _buildContent(BuildContext context, bool isWide) {
+    if (controller.isLoading) {
+      return _buildLoadingState(context);
+    }
 
-      String route = _getFormRoute(formType);
-      if (route.isNotEmpty) {
-        final forms = formController.forms
-            .where(
-              (form) => form.type == formType && form.patientId == patientId,
-            )
-            .toList();
+    if (controller.errorMessage.isNotEmpty) {
+      return _buildErrorState(context);
+    }
 
-        if (forms.isNotEmpty) {
-          Get.toNamed(
-            route,
-            arguments: {
-              'formId': forms.last.id,
-              'patient': selectedPatient,
-              'formType': formType,
-            },
-          );
-        } else {
-          Get.toNamed(
-            route,
-            arguments: {'patient': selectedPatient, 'formType': formType},
-          );
-        }
-      } else {
-        _logger.warning(
-          'Unknown form type selected',
-          context: {'formType': formType},
-        );
-      }
-    } catch (e) {
-      _logger.error(
-        'Failed to create form',
-        error: e,
-        context: {
-          'formType': formType,
-          'patientId': patientId,
-          'patientName': patientName,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (controller.forms.isNotEmpty) ...[
+          _buildSectionHeader(
+            context,
+            'Form yang Sudah Dibuat',
+            Icons.history_rounded,
+          ),
+          const SizedBox(height: 16),
+          _buildExistingFormsList(context, isWide),
+          const SizedBox(height: 40),
+        ],
+        _buildSectionHeader(
+          context,
+          'Buat Form Baru',
+          Icons.add_circle_outline_rounded,
+        ),
+        const SizedBox(height: 16),
+        _buildNewFormsList(context, isWide),
+      ],
+    );
+  }
+
+  Widget _buildSectionHeader(
+    BuildContext context,
+    String title,
+    IconData icon,
+  ) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Row(
+      children: [
+        Icon(icon, size: 22, color: colorScheme.primary),
+        const SizedBox(width: 10),
+        Text(
+          title,
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.w600,
+            color: colorScheme.onSurface,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLoadingState(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 60),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(
+              strokeWidth: 3,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Memuat formulir...',
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorState(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 60, horizontal: 24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: colorScheme.errorContainer.withOpacity(0.3),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.error_outline_rounded,
+                size: 48,
+                color: colorScheme.error,
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Terjadi Kesalahan',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: colorScheme.onSurface,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              controller.errorMessage,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 24),
+            FilledButton.icon(
+              onPressed: controller.fetchForms,
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Coba Lagi'),
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildExistingFormsList(BuildContext context, bool isWide) {
+    if (isWide) {
+      return GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          childAspectRatio: 3.5,
+          crossAxisSpacing: 16,
+          mainAxisSpacing: 16,
+        ),
+        itemCount: controller.forms.length,
+        itemBuilder: (context, index) {
+          return _buildExistingFormCard(context, controller.forms[index]);
         },
       );
-      Get.snackbar('Error', 'Gagal membuat form: ${e.toString()}');
     }
+
+    return ListView.separated(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: controller.forms.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      itemBuilder: (context, index) {
+        return _buildExistingFormCard(context, controller.forms[index]);
+      },
+    );
   }
 
-  String _getFormRoute(String formType) {
-    switch (formType) {
-      case 'pengkajian':
-        return '/mental-health-assessment-form';
-      case 'resume_kegawatdaruratan':
-        return '/resume-kegawatdaruratan-form';
-      case 'resume_poliklinik':
-        return '/resume-poliklinik-form';
-      case 'sap':
-        return '/sap-form';
-      case 'catatan_tambahan':
-        return '/catatan-tambahan-form';
-      default:
-        return '';
+  Widget _buildNewFormsList(BuildContext context, bool isWide) {
+    if (isWide) {
+      return GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          childAspectRatio: 3.5,
+          crossAxisSpacing: 16,
+          mainAxisSpacing: 16,
+        ),
+        itemCount: _formTypes.length,
+        itemBuilder: (context, index) {
+          return _buildFormTypeCard(context, _formTypes[index]);
+        },
+      );
     }
+
+    return ListView.separated(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: _formTypes.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      itemBuilder: (context, index) {
+        return _buildFormTypeCard(context, _formTypes[index]);
+      },
+    );
   }
 
-  Future<List<FormModel>> _getExistingForms() async {
-    final int patientId =
-        int.tryParse(Get.arguments?['patientId']?.toString() ?? '0') ?? 0;
+  Widget _buildExistingFormCard(BuildContext context, FormModel form) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final statusColor = _getStatusColor(form.status, colorScheme);
 
-    final formController = Get.find<FormController>();
-
-    // Fetch forms specifically for this patient
-    await formController.fetchForms(patientId: patientId);
-
-    return formController.forms;
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: colorScheme.outlineVariant.withOpacity(0.5),
+          width: 1,
+        ),
+      ),
+      child: InkWell(
+        onTap: () => _showFormOptions(form),
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      statusColor.withOpacity(0.2),
+                      statusColor.withOpacity(0.1),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(
+                  _getFormIcon(form.type),
+                  color: statusColor,
+                  size: 26,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      controller.getFormTitle(form.type),
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: colorScheme.onSurface,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: statusColor.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                _getStatusIcon(form.status),
+                                size: 14,
+                                color: statusColor,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                _getStatusText(form.status),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: statusColor,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Icon(
+                          Icons.calendar_today_rounded,
+                          size: 13,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          form.createdAt.toString().substring(0, 10),
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: colorScheme.onSurfaceVariant),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Icon(
+                Icons.more_vert_rounded,
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
-  Color _getStatusColor(String status) {
+  Widget _buildFormTypeCard(BuildContext context, FormType formType) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: colorScheme.outlineVariant.withOpacity(0.5),
+          width: 1,
+        ),
+      ),
+      child: InkWell(
+        onTap: () => controller.createForm(formType.type),
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      colorScheme.primaryContainer,
+                      colorScheme.primaryContainer.withOpacity(0.7),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(
+                  formType.icon,
+                  color: colorScheme.onPrimaryContainer,
+                  size: 26,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      formType.title,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: colorScheme.onSurface,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      formType.description,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Icon(
+                Icons.add_circle_rounded,
+                color: colorScheme.primary,
+                size: 28,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showFormOptions(FormModel form) {
+    final colorScheme = Get.theme.colorScheme;
+
+    Get.bottomSheet(
+      Container(
+        padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
+        decoration: BoxDecoration(
+          color: colorScheme.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: colorScheme.onSurfaceVariant.withOpacity(0.4),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Opsi Formulir',
+              style: Get.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: colorScheme.onSurface,
+              ),
+            ),
+            const SizedBox(height: 24),
+            _buildOptionTile(
+              icon: Icons.edit_rounded,
+              title: 'Edit Formulir',
+              iconColor: colorScheme.primary,
+              onTap: () {
+                Get.back();
+                controller.openExistingForm(form);
+              },
+            ),
+            if (form.status != 'approved')
+              _buildOptionTile(
+                icon: Icons.delete_rounded,
+                title: 'Hapus Formulir',
+                iconColor: colorScheme.error,
+                onTap: () {
+                  Get.back();
+                  _confirmDeleteForm(form);
+                },
+              ),
+            _buildOptionTile(
+              icon: Icons.info_rounded,
+              title: 'Detail Formulir',
+              subtitle:
+                  'Status: ${_getStatusText(form.status)} • ${form.createdAt.toString().substring(0, 16)}',
+              iconColor: colorScheme.tertiary,
+              onTap: () {
+                Get.back();
+                _showFormDetails(form);
+              },
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.tonal(
+                onPressed: () => Get.back(),
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text('Tutup'),
+              ),
+            ),
+          ],
+        ),
+      ),
+      isScrollControlled: true,
+    );
+  }
+
+  Widget _buildOptionTile({
+    required IconData icon,
+    required String title,
+    String? subtitle,
+    required Color iconColor,
+    required VoidCallback onTap,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: ListTile(
+        onTap: onTap,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        leading: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: iconColor.withOpacity(0.12),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, color: iconColor, size: 22),
+        ),
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+        subtitle: subtitle != null
+            ? Text(
+                subtitle,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Get.theme.colorScheme.onSurfaceVariant,
+                ),
+              )
+            : null,
+        trailing: Icon(
+          Icons.chevron_right_rounded,
+          color: Get.theme.colorScheme.onSurfaceVariant,
+        ),
+      ),
+    );
+  }
+
+  void _confirmDeleteForm(FormModel form) {
+    final colorScheme = Get.theme.colorScheme;
+
+    Get.defaultDialog(
+      title: "Konfirmasi Hapus",
+      titleStyle: TextStyle(
+        fontWeight: FontWeight.bold,
+        color: colorScheme.onSurface,
+      ),
+      middleText:
+          "Apakah Anda yakin ingin menghapus formulir ${controller.getFormTitle(form.type)}?\n\nTindakan ini tidak dapat dibatalkan.",
+      middleTextStyle: TextStyle(color: colorScheme.onSurfaceVariant),
+      backgroundColor: colorScheme.surface,
+      radius: 20,
+      textCancel: "Batal",
+      cancelTextColor: colorScheme.onSurface,
+      textConfirm: "Hapus",
+      confirmTextColor: colorScheme.onError,
+      buttonColor: colorScheme.error,
+      onCancel: () {
+        _logger.userAction(
+          action: 'Delete form cancelled',
+          metadata: {'formId': form.id.toString(), 'formType': form.type},
+        );
+      },
+      onConfirm: () {
+        controller.deleteForm(form);
+      },
+    );
+  }
+
+  void _showFormDetails(FormModel form) {
+    Get.to(() => const FormDetailView(), arguments: form);
+  }
+
+  Color _getStatusColor(String status, ColorScheme colorScheme) {
     switch (status) {
       case 'draft':
         return Colors.orange;
@@ -165,24 +685,24 @@ class FormSelectionView extends StatelessWidget {
       case 'approved':
         return Colors.green;
       case 'revised':
-        return Colors.red;
+        return colorScheme.error;
       default:
-        return Colors.grey;
+        return colorScheme.onSurfaceVariant;
     }
   }
 
   IconData _getStatusIcon(String status) {
     switch (status) {
       case 'draft':
-        return Icons.drafts;
+        return Icons.edit_document;
       case 'submitted':
-        return Icons.send;
+        return Icons.send_rounded;
       case 'approved':
-        return Icons.check_circle;
+        return Icons.check_circle_rounded;
       case 'revised':
-        return Icons.warning;
+        return Icons.warning_rounded;
       default:
-        return Icons.info;
+        return Icons.info_rounded;
     }
   }
 
@@ -204,395 +724,18 @@ class FormSelectionView extends StatelessWidget {
   IconData _getFormIcon(String type) {
     switch (type) {
       case 'pengkajian':
-        return Icons.medical_information;
+        return Icons.medical_information_rounded;
       case 'resume_kegawatdaruratan':
-        return Icons.emergency;
+        return Icons.emergency_rounded;
       case 'resume_poliklinik':
-        return Icons.local_hospital;
+        return Icons.local_hospital_rounded;
       case 'sap':
-        return Icons.school;
+        return Icons.school_rounded;
       case 'catatan_tambahan':
-        return Icons.note_add;
+        return Icons.note_add_rounded;
       default:
-        return Icons.description;
+        return Icons.description_rounded;
     }
-  }
-
-  String _getFormTitle(String type) {
-    switch (type) {
-      case 'pengkajian':
-        return 'Pengkajian Kesehatan Jiwa';
-      case 'resume_kegawatdaruratan':
-        return 'Resume Kegawatdaruratan Psikiatri';
-      case 'resume_poliklinik':
-        return 'Resume Poliklinik';
-      case 'sap':
-        return 'SAP (Satuan Acara Penyuluhan)';
-      case 'catatan_tambahan':
-        return 'Catatan Tambahan';
-      default:
-        return type;
-    }
-  }
-
-  void _openExistingForm(FormModel form) {
-    final int patientId =
-        int.tryParse(Get.arguments?['patientId']?.toString() ?? '0') ?? 0;
-    final String patientName =
-        Get.arguments?['patientName']?.toString() ?? 'Unknown Patient';
-
-    // Get the route based on form type
-    String route = _getFormRoute(form.type);
-    if (route.isNotEmpty) {
-      // Navigate to the form with the existing form data
-      Get.toNamed(
-        route,
-        arguments: {
-          'formId': form.id,
-          'patientId': patientId,
-          'patientName': patientName,
-          'formType': form.type,
-        },
-      );
-    } else {
-      _logger.warning(
-        'Unknown form type for existing form',
-        context: {'formType': form.type, 'formId': form.id},
-      );
-      Get.snackbar('Error', 'Tipe form tidak dikenali');
-    }
-  }
-
-  void _showFormOptions(FormModel form) {
-    Get.bottomSheet(
-      Container(
-        padding: const EdgeInsets.all(16.0),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(16.0)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Opsi Form',
-              style: Theme.of(
-                Get.context!,
-              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            ListTile(
-              leading: const Icon(Icons.edit, color: Colors.blue),
-              title: const Text('Edit Form'),
-              onTap: () {
-                Get.back(); // Close bottom sheet
-                _openExistingForm(form);
-              },
-            ),
-            if (form.status !=
-                'approved') // Only show delete option if form is not approved
-              ListTile(
-                leading: const Icon(Icons.delete, color: Colors.red),
-                title: const Text('Hapus Form'),
-                onTap: () {
-                  Get.back(); // Close bottom sheet
-                  _confirmDeleteForm(form);
-                },
-              ),
-            ListTile(
-              leading: const Icon(Icons.info, color: Colors.grey),
-              title: Text('Status: ${_getStatusText(form.status)}'),
-              subtitle: Text(
-                'Dibuat: ${form.createdAt.toString().substring(0, 19)}',
-              ),
-              onTap: () {
-                Get.back(); // Close bottom sheet
-                _showFormDetails(form);
-              },
-            ),
-            const SizedBox(height: 8),
-            ElevatedButton(
-              onPressed: () => Get.back(), // Close bottom sheet
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.grey[300],
-                foregroundColor: Colors.black,
-              ),
-              child: const Text('Batal'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _confirmDeleteForm(FormModel form) {
-    Get.defaultDialog(
-      title: "Konfirmasi Hapus",
-      middleText:
-          "Apakah Anda yakin ingin menghapus form ${_getFormTitle(form.type)}?\n\nTindakan ini tidak dapat dibatalkan.",
-      textCancel: "Batal",
-      cancelTextColor: Colors.black54,
-      textConfirm: "Hapus",
-      confirmTextColor: Colors.white,
-      backgroundColor: Colors.white,
-      buttonColor: Colors.red,
-      onCancel: () {
-        _logger.userAction(
-          action: 'Delete form cancelled',
-          metadata: {'formId': form.id.toString(), 'formType': form.type},
-        );
-      },
-      onConfirm: () {
-        _deleteForm(form);
-      },
-    );
-  }
-
-  Future<void> _deleteForm(FormModel form) async {
-    final formController = Get.find<FormController>();
-
-    _logger.form(
-      operation: 'Deleting form',
-      formType: form.type,
-      formId: form.id.toString(),
-      metadata: {
-        'status': form.status,
-        'patientId': Get.arguments?['patientId']?.toString(),
-      },
-    );
-
-    try {
-      final success = await formController.deleteForm(form.id);
-
-      if (success) {
-        _logger.form(
-          operation: 'Form deleted successfully',
-          formType: form.type,
-          formId: form.id.toString(),
-        );
-
-        Get.snackbar(
-          'Berhasil',
-          'Form berhasil dihapus',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.green,
-          colorText: Colors.white,
-        );
-      } else {
-        _logger.error(
-          'Failed to delete form',
-          context: {'formId': form.id.toString(), 'formType': form.type},
-        );
-
-        Get.snackbar(
-          'Gagal',
-          'Gagal menghapus form',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
-        );
-      }
-    } catch (e) {
-      _logger.error(
-        'Error deleting form',
-        error: e,
-        stackTrace: StackTrace.current,
-        context: {'formId': form.id.toString(), 'formType': form.type},
-      );
-
-      Get.snackbar(
-        'Error',
-        'Terjadi kesalahan saat menghapus form: $e',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
-    }
-  }
-
-  void _showFormDetails(FormModel form) {
-    Get.to(() => const FormDetailView(), arguments: form);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final String patientName =
-        Get.arguments?['patientName']?.toString() ?? 'Unknown Patient';
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Pilih Jenis Form'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Pasien: $patientName',
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 24),
-            Expanded(
-              child: FutureBuilder<List<FormModel>>(
-                future: _getExistingForms(),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            'Memuat Form...',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          SizedBox(height: 12),
-                          CircularProgressIndicator(),
-                        ],
-                      ),
-                    );
-                  }
-
-                  final existingForms = snapshot.data ?? [];
-
-                  return SingleChildScrollView(
-                    child: Column(
-                      children: [
-                        // Daftar form baru
-                        ..._formTypes.map((formType) {
-                          return Card(
-                            margin: const EdgeInsets.only(bottom: 12),
-                            child: ListTile(
-                              leading: Container(
-                                width: 48,
-                                height: 48,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: Theme.of(
-                                    context,
-                                  ).primaryColor.withOpacity(0.1),
-                                ),
-                                child: Icon(
-                                  formType.icon,
-                                  color: Theme.of(context).primaryColor,
-                                ),
-                              ),
-                              title: Text(formType.title),
-                              subtitle: Text(formType.description),
-                              trailing: const Icon(Icons.chevron_right),
-                              onTap: () {
-                                _logger.userAction(
-                                  action: 'Form type selected',
-                                  metadata: {
-                                    'formType': formType.type,
-                                    'patientId': Get.arguments?['patientId']
-                                        ?.toString(),
-                                    'patientName': patientName,
-                                  },
-                                );
-                                _createForm(formType.type);
-                              },
-                            ),
-                          );
-                        }),
-                        const SizedBox(height: 24),
-                        // Section untuk form yang pernah dibuat
-                        if (existingForms.isNotEmpty) ...[
-                          const Text(
-                            'Form yang Pernah Dibuat',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          ...existingForms.map((form) {
-                            return Card(
-                              margin: const EdgeInsets.only(bottom: 8),
-                              child: ListTile(
-                                leading: Container(
-                                  width: 40,
-                                  height: 40,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: _getStatusColor(
-                                      form.status,
-                                    ).withOpacity(0.1),
-                                  ),
-                                  child: Icon(
-                                    _getFormIcon(form.type),
-                                    color: _getStatusColor(form.status),
-                                  ),
-                                ),
-                                title: Text(
-                                  _getFormTitle(form.type),
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                subtitle: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Status: ${_getStatusText(form.status)}',
-                                      style: TextStyle(
-                                        color: _getStatusColor(form.status),
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                    Text(
-                                      'Dibuat: ${form.createdAt.toString().substring(0, 19)}',
-                                      style: const TextStyle(fontSize: 12),
-                                    ),
-                                  ],
-                                ),
-                                trailing: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      _getStatusIcon(form.status),
-                                      color: _getStatusColor(form.status),
-                                    ),
-                                    IconButton(
-                                      icon: const Icon(Icons.more_vert),
-                                      onPressed: () => _showFormOptions(form),
-                                    ),
-                                  ],
-                                ),
-                                onTap: () {
-                                  _showFormDetails(form);
-                                },
-                              ),
-                            );
-                          }),
-                        ] else
-                          const Padding(
-                            padding: EdgeInsets.only(top: 16.0),
-                            child: Text(
-                              'Belum ada form yang pernah dibuat untuk pasien ini',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }
 
