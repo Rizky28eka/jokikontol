@@ -1,0 +1,72 @@
+# Endpoint: /api/forms/{form}/upload-photo (POST)
+
+**Method:** `POST`
+
+**Description:**
+Uploads a photo file for a specific form. The authenticated user must be the creator of the form.
+
+**Headers:**
+
+| Header        | Value               | Description                               |
+|---------------|---------------------|-------------------------------------------|
+| `Authorization` | `Bearer {token}`    | **Required.** The user's authentication token. |
+| `Content-Type`  | `multipart/form-data`| **Required.** Specifies the content type of the request body for file uploads. |
+| `Accept`        | `application/json`  | **Required.** Specifies the expected response format. |
+
+**URL Parameters:**
+
+| Parameter | Type    | Description              |
+|-----------|---------|--------------------------|
+| `form`    | integer | **Required.** The ID of the form. |
+
+**Request Body (multipart/form-data):**
+
+| Field      | Type     | Description                  |
+|------------|----------|------------------------------|
+| `photo`    | `file`   | **Required.** The photo file to upload. |
+
+**Example Request:**
+```bash
+curl -X POST -H "Authorization: Bearer {token}" -H "Accept: application/json" -F "photo=@/path/to/your/image.jpg" http://127.0.0.1:8000/api/forms/1/upload-photo
+```
+
+**Success Response (200 OK):**
+Returns a success message and the URL of the uploaded photo.
+```json
+{
+  "message": "Photo uploaded successfully",
+  "url": "http://127.0.0.1:8000/storage/photos/form_1_photo_1678886400.jpg"
+}
+```
+
+**Error Response (422 Unprocessable Entity):**
+If validation fails (e.g., no file provided, invalid file type).
+```json
+{
+    "message": "The given data was invalid.",
+    "errors": {
+        "photo": [
+            "The photo field is required."
+        ]
+    }
+}
+```
+
+**Error Response (403 Forbidden):**
+If the authenticated user is not the creator of the form.
+```json
+{
+  "message": "Unauthorized"
+}
+```
+
+**Error Response (404 Not Found):**
+If the form with the specified ID does not exist.
+
+**Error Response (401 Unauthorized):**
+If the token is invalid or not provided.
+```json
+{
+  "message": "Unauthenticated."
+}
+```
