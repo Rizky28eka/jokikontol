@@ -4,6 +4,8 @@ import '../controllers/form_controller.dart';
 import '../controllers/auth_controller.dart';
 import '../models/form_model.dart';
 import '../services/logger_service.dart';
+import 'genogram_builder_view.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class FormDetailView extends StatefulWidget {
   const FormDetailView({super.key});
@@ -20,6 +22,7 @@ class _FormDetailViewState extends State<FormDetailView> {
 
   late FormModel form;
   bool isLecturer = false;
+  bool _genogramAvailable = false;
 
   @override
   void initState() {
@@ -38,6 +41,7 @@ class _FormDetailViewState extends State<FormDetailView> {
 
     _commentController.text = form.comments ?? '';
     isLecturer = authController.user?.role == 'dosen';
+    _genogramAvailable = form.genogram != null || (form.data != null && (form.data!['section_9']?['structure'] != null || form.data!['genogram']?['structure'] != null));
   }
 
   @override
@@ -46,22 +50,30 @@ class _FormDetailViewState extends State<FormDetailView> {
     super.dispose();
   }
 
+  int _genogramMemberCount() {
+    if (form.genogram?.structure != null) return (form.genogram!.structure!['members'] as List?)?.length ?? 0;
+    if (form.data?['section_9']?['structure'] != null) return (form.data!['section_9']['structure']['members'] as List?)?.length ?? 0;
+    if (form.data?['genogram']?['structure'] != null) return (form.data!['genogram']['structure']['members'] as List?)?.length ?? 0;
+    return 0;
+  }
+
+  int _genogramConnectionCount() {
+    if (form.genogram?.structure != null) return (form.genogram!.structure!['connections'] as List?)?.length ?? 0;
+    if (form.data?['section_9']?['structure'] != null) return (form.data!['section_9']['structure']['connections'] as List?)?.length ?? 0;
+    if (form.data?['genogram']?['structure'] != null) return (form.data!['genogram']['structure']['connections'] as List?)?.length ?? 0;
+    return 0;
+  }
+
   Future<void> _refreshFormData() async {
     _logger.info('Refreshing form detail data');
-
-    // Fetch updated form data
-    await formController.fetchForms(patientId: form.patientId);
-
-    // Find the updated form in the list
-    final updatedForm = formController.forms.firstWhere(
-      (f) => f.id == form.id,
-      orElse: () => form,
-    );
-
-    setState(() {
-      form = updatedForm;
-      _commentController.text = form.comments ?? '';
-    });
+    // Fetch the specific form by id to ensure we get the full payload (data included)
+    final fetchedForm = await formController.getFormById(form.id);
+    if (fetchedForm != null) {
+      setState(() {
+        form = fetchedForm;
+        _commentController.text = form.comments ?? '';
+      });
+    }
   }
 
   Color _getStatusColor(String status) {
@@ -109,6 +121,93 @@ class _FormDetailViewState extends State<FormDetailView> {
       default:
         return type;
     }
+  }
+
+  List<Widget> _buildFormDataCards() {
+    final cards = <Widget>[];
+    form.data!.forEach((key, value) {
+      if (value == null) return;
+      
+      String title = _formatSectionTitle(key);
+      Widget content;
+
+      if (value is Map) {
+        content = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: value.entries.map((e) {
+            if (e.value == null || e.value.toString().isEmpty) return const SizedBox.shrink();
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8.0),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    flex: 2,
+                    child: Text(
+                      _formatFieldName(e.key),
+                      style: const TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    flex: 3,
+                    child: Text(
+                      e.value.toString(),
+                      style: TextStyle(color: Colors.grey[700]),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }).toList(),
+        );
+      } else {
+        content = Text(
+          value.toString(),
+          style: TextStyle(color: Colors.grey[700]),
+        );
+      }
+
+      cards.add(
+        Card(
+          margin: const EdgeInsets.only(bottom: 12),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const Divider(height: 16),
+                content,
+              ],
+            ),
+          ),
+        ),
+      );
+    });
+    return cards;
+  }
+
+  String _formatSectionTitle(String key) {
+    return key
+        .replaceAll('_', ' ')
+        .split(' ')
+        .map((word) => word.isEmpty ? '' : word[0].toUpperCase() + word.substring(1))
+        .join(' ');
+  }
+
+  String _formatFieldName(String key) {
+    return key
+        .replaceAll('_', ' ')
+        .split(' ')
+        .map((word) => word.isEmpty ? '' : word[0].toUpperCase() + word.substring(1))
+        .join(' ');
   }
 
   Future<void> _updateStatus(String status) async {
@@ -209,30 +308,83 @@ class _FormDetailViewState extends State<FormDetailView> {
               ),
               const SizedBox(height: 24),
 
-              // Form Data Preview (Simplified)
+              // Form Data Preview
               const Text(
                 'Data Form',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
-              Card(
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16.0),
-                  child: form.data != null && form.data!.isNotEmpty
-                      ? Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: form.data!.entries.map((entry) {
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: 8.0),
-                              child: Text('${entry.key}: ${entry.value}'),
-                            );
-                          }).toList(),
-                        )
-                      : const Text('Tidak ada data form'),
+              if (form.data != null && form.data!.isNotEmpty)
+                ..._buildFormDataCards()
+              else
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Center(
+                      child: Text(
+                        'Tidak ada data form',
+                        style: TextStyle(color: Colors.grey[600]),
+                      ),
+                    ),
+                  ),
                 ),
-              ),
               const SizedBox(height: 24),
+              if (_genogramAvailable) ...[
+                const Text(
+                  'Genogram',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Anggota: ${_genogramMemberCount()}'),
+                              const SizedBox(height: 6),
+                              Text('Hubungan: ${_genogramConnectionCount()}'),
+                            ],
+                          ),
+                        ),
+                        FilledButton.tonal(
+                          onPressed: () {
+                            // open builder in read-only mode
+                            final struct = form.genogram?.structure ?? (form.data?['genogram']?['structure'] ?? form.data?['section_9']?['structure']);
+                            final notes = form.genogram?.notes ?? (form.data?['genogram']?['notes'] ?? form.data?['section_9']?['notes']) ?? '';
+                            Get.to(() => GenogramBuilderView(initialData: {'structure': struct, 'notes': notes}), arguments: {'readOnly': true});
+                          },
+                          child: const Text('View Genogram'),
+                        ),
+                        const SizedBox(width: 12),
+                        FilledButton.tonal(
+                          onPressed: () async {
+                            // fetch svg and show preview modal
+                            final svg = await formController.fetchGenogramSvg(form.id);
+                            if (svg == null) {
+                              Get.snackbar('Not available', 'Genogram preview not available');
+                              return;
+                            }
+                            Get.dialog(AlertDialog(
+                              title: const Text('Genogram Preview'),
+                              content: SizedBox(width: 400, height: 200, child: SvgPicture.string(svg, fit: BoxFit.contain)),
+                              actions: [
+                                TextButton(onPressed: () => Get.back(), child: const Text('Close')),
+                              ],
+                            ));
+                          },
+                          child: const Text('Preview SVG'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
 
               // Lecturer Feedback Section
               const Text(

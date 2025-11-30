@@ -5,7 +5,7 @@ import '../controllers/auth_controller.dart';
 class SplashBinding extends Bindings {
   @override
   void dependencies() {
-    Get.put<AuthController>(AuthController(), permanent: true);
+    // AuthController already initialized in main.dart
     Get.put<SplashController>(SplashController());
   }
 }

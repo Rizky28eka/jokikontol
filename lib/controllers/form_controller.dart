@@ -40,14 +40,16 @@ class FormController extends GetxController {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        final List<dynamic> formList = data['data'] as List<dynamic>;
+        final List<dynamic> formList = (data['data'] is List) 
+            ? data['data'] as List<dynamic>
+            : (data['data']['data'] as List<dynamic>);
 
         _forms.value = formList
             .map((json) => FormModel.fromJson(json as Map<String, dynamic>))
             .toList();
         _logger.info(
           'Successfully fetched forms',
-          context: {'count': formList.length},
+          context: {'count': formList.length, 'patientId': patientId},
         );
       } else {
         _errorMessage.value = 'Failed to fetch forms';
@@ -65,7 +67,7 @@ class FormController extends GetxController {
     }
   }
 
-  Future<void> createForm({
+  Future<FormModel?> createForm({
     required String type,
     required int patientId,
     Map<String, dynamic>? data,
@@ -93,9 +95,12 @@ class FormController extends GetxController {
       );
 
       if (response.statusCode == 201) {
+        final data = json.decode(response.body);
+        final newForm = FormModel.fromJson(data['form']);
         await fetchForms(type: type); // Refresh the list
         Get.snackbar('Success', 'Form created successfully');
         _logger.info('Form created successfully', context: {'type': type});
+        return newForm;
       } else {
         final errorData = json.decode(response.body);
         _errorMessage.value = errorData['message'] ?? 'Failed to create form';
@@ -113,9 +118,10 @@ class FormController extends GetxController {
     } finally {
       _isLoading.value = false;
     }
+    return null;
   }
 
-  Future<void> updateForm({
+  Future<FormModel?> updateForm({
     required int id,
     String? type,
     int? patientId,
@@ -146,9 +152,12 @@ class FormController extends GetxController {
       final response = await ApiService.put('forms/$id', body: body);
 
       if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final updatedForm = FormModel.fromJson(data['form']);
         await fetchForms(); // Refresh the list
         Get.snackbar('Success', 'Form updated successfully');
         _logger.info('Form updated successfully', context: {'formId': id});
+        return updatedForm;
       } else {
         final errorData = json.decode(response.body);
         _errorMessage.value = errorData['message'] ?? 'Failed to update form';
@@ -166,6 +175,7 @@ class FormController extends GetxController {
     } finally {
       _isLoading.value = false;
     }
+    return null;
   }
 
   Future<FormModel?> getFormById(int id) async {
@@ -195,6 +205,19 @@ class FormController extends GetxController {
         error: e,
         stackTrace: stackTrace,
       );
+    }
+    return null;
+  }
+
+  /// Fetch SVG preview for a form's genogram as raw string
+  Future<String?> fetchGenogramSvg(int formId) async {
+    try {
+      final response = await ApiService.get('forms/$formId/genogram/svg');
+      if (response.statusCode == 200) {
+        return response.body;
+      }
+    } catch (e) {
+      _logger.error('Error fetching genogram svg', error: e);
     }
     return null;
   }

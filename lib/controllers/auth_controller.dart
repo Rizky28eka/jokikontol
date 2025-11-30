@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_model.dart';
 import '../constants/app_routes.dart';
 import '../constants/api_config.dart';
@@ -17,15 +18,64 @@ class AuthController extends GetxController {
   UserModel? get user => _user.value;
   String get token => _token.value;
 
+  Future<void> initAuth() async {
+    await _loadStoredAuth();
+  }
+
+  Future<void> _loadStoredAuth() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final storedToken = prefs.getString('auth_token');
+      final storedLoginTime = prefs.getString('login_time');
+      final storedUser = prefs.getString('user_data');
+
+      if (storedToken != null && storedLoginTime != null && storedUser != null) {
+        _token.value = storedToken;
+        _loginTime = DateTime.parse(storedLoginTime);
+        _user.value = UserModel.fromJson(json.decode(storedUser));
+        _logger.info('Loaded stored authentication', context: {
+          'hasToken': _token.value.isNotEmpty,
+          'user': _user.value?.email
+        });
+      } else {
+        _logger.warning('No stored authentication found');
+      }
+    } catch (e, stackTrace) {
+      _logger.error('Failed to load stored auth', error: e, stackTrace: stackTrace);
+    }
+  }
+
+  Future<void> _saveAuth() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('auth_token', _token.value);
+    await prefs.setString('login_time', _loginTime!.toIso8601String());
+    await prefs.setString('user_data', json.encode(_user.value!.toJson()));
+  }
+
+  Future<void> _clearAuth() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('auth_token');
+    await prefs.remove('login_time');
+    await prefs.remove('user_data');
+  }
+
   bool isTokenValid() {
-    if (_token.value.isEmpty || _loginTime == null) return false;
+    if (_token.value.isEmpty) {
+      _logger.warning('Token is empty');
+      return false;
+    }
+    
+    if (_loginTime == null) {
+      _logger.warning('Login time is null, but token exists - assuming valid');
+      return true; // Token exists but no login time, assume valid
+    }
 
     final difference = DateTime.now().difference(_loginTime!);
-    if (difference.inHours >= 1) {
+    // Extend to 24 hours instead of 1 hour
+    if (difference.inHours >= 24) {
       _logger.info(
         'Token expired. Session duration: ${difference.inMinutes} minutes.',
       );
-      logout(reason: 'Session expired');
       return false;
     }
     return true;
@@ -142,6 +192,9 @@ class AuthController extends GetxController {
         _loginTime = DateTime.now();
         _user.value = user;
 
+        // Save to persistent storage
+        await _saveAuth();
+
         _logger.auth(
           event: 'Login success',
           userId: user.id.toString(),
@@ -208,6 +261,9 @@ class AuthController extends GetxController {
       _loginTime = null;
       _user.value = null;
 
+      // Clear persistent storage
+      await _clearAuth();
+
       _logger.auth(
         event: 'Logout success',
         userId: _user.value?.id.toString(),
@@ -234,6 +290,7 @@ class AuthController extends GetxController {
       _token.value = '';
       _loginTime = null;
       _user.value = null;
+      await _clearAuth();
       Get.offAllNamed(AppRoutes.login);
     }
   }
@@ -323,7 +380,7 @@ class AuthController extends GetxController {
     return null;
   }
 
-  Future<void> updateProfile({String? name, String? password}) async {
+  Future<void> updateProfile({String? name, String? password, String? username, String? phoneNumber, String? profilePhotoPath}) async {
     _logger.info(
       'Attempting to update profile...',
       context: {'userId': _user.value?.id},
@@ -342,19 +399,41 @@ class AuthController extends GetxController {
       if (name != null && name.isNotEmpty) {
         body['name'] = name;
       }
+      if (username != null && username.isNotEmpty) {
+        body['username'] = username;
+      }
+      if (phoneNumber != null && phoneNumber.isNotEmpty) {
+        body['phone_number'] = phoneNumber;
+      }
       if (password != null && password.isNotEmpty) {
         body['password'] = password;
         body['password_confirmation'] = password;
       }
 
-      final response = await http.put(
-        Uri.parse('${ApiConfig.currentBaseUrl}${ApiConfig.userProfile}'),
-        headers: <String, String>{
-          'Authorization': 'Bearer ${_token.value}',
-          'Content-Type': 'application/json; charset=UTF-8',
-        },
-        body: jsonEncode(body),
-      );
+      http.Response response;
+      if (profilePhotoPath != null && profilePhotoPath.isNotEmpty) {
+        final uri = Uri.parse('${ApiConfig.currentBaseUrl}${ApiConfig.userProfile}');
+        final request = http.MultipartRequest('PUT', uri);
+        request.headers['Authorization'] = 'Bearer ${_token.value}';
+        // Add text fields
+        body.forEach((key, value) {
+          request.fields[key] = value.toString();
+        });
+        // Add file
+        final file = await http.MultipartFile.fromPath('profile_photo', profilePhotoPath);
+        request.files.add(file);
+        final streamedResponse = await request.send();
+        response = await http.Response.fromStream(streamedResponse);
+      } else {
+        response = await http.put(
+          Uri.parse('${ApiConfig.currentBaseUrl}${ApiConfig.userProfile}'),
+          headers: <String, String>{
+            'Authorization': 'Bearer ${_token.value}',
+            'Content-Type': 'application/json; charset=UTF-8',
+          },
+          body: jsonEncode(body),
+        );
+      }
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);

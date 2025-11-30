@@ -9,7 +9,7 @@ class ReviewService {
   // GET all submitted forms
   static Future<http.Response> getSubmittedForms() async {
     final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token');
+    final token = prefs.getString('auth_token');
 
     final response = await http.get(
       Uri.parse('$baseUrl/forms/submitted'),
@@ -25,7 +25,7 @@ class ReviewService {
   // POST review for a form
   static Future<http.Response> reviewForm(int formId, String status, String? comment) async {
     final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token');
+    final token = prefs.getString('auth_token');
 
     final response = await http.post(
       Uri.parse('$baseUrl/forms/$formId/review'),

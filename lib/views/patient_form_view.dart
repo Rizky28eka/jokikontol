@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'genogram_builder_view.dart';
 import '../controllers/patient_controller.dart';
+import '../controllers/dashboard_controller.dart';
+import '../controllers/form_controller.dart';
 import '../models/patient_model.dart';
 import '../services/logger_service.dart';
 
@@ -17,6 +20,7 @@ class PatientFormView extends StatefulWidget {
 
 class _PatientFormViewState extends State<PatientFormView> {
   final PatientController patientController = Get.find();
+  final FormController formController = Get.find();
   final LoggerService _logger = LoggerService();
   final _formKey = GlobalKey<FormState>();
 
@@ -26,6 +30,8 @@ class _PatientFormViewState extends State<PatientFormView> {
   late final TextEditingController _rmNumberController;
 
   String _selectedGender = 'L';
+  Map<String, dynamic>? _lastGenogramStructure;
+  String _lastGenogramNotes = '';
   bool _isSubmitting = false;
 
   @override
@@ -49,6 +55,10 @@ class _PatientFormViewState extends State<PatientFormView> {
     );
 
     _populateFormData();
+    // Load the latest genogram for this patient if available
+    Future.microtask(() async {
+      await _loadLatestGenogram();
+    });
   }
 
   void _populateFormData() {
@@ -79,6 +89,26 @@ class _PatientFormViewState extends State<PatientFormView> {
         patientId: null,
         metadata: {'formType': widget.formType ?? 'PatientForm'},
       );
+    }
+  }
+
+  Future<void> _loadLatestGenogram() async {
+    final patientId = widget.patient?.id;
+    if (patientId == null) return;
+    try {
+      await formController.fetchForms(patientId: patientId);
+      final formsWithGenogram = formController.forms.where((f) => f.patientId == patientId && f.genogram != null).toList();
+      if (formsWithGenogram.isNotEmpty) {
+        final latest = formsWithGenogram.first;
+        if (latest.genogram?.structure != null) {
+          setState(() {
+            _lastGenogramStructure = Map<String, dynamic>.from(latest.genogram!.structure!);
+            _lastGenogramNotes = latest.genogram!.notes ?? '';
+          });
+        }
+      }
+    } catch (e) {
+      // ignore
     }
   }
 
@@ -161,7 +191,7 @@ class _PatientFormViewState extends State<PatientFormView> {
           },
         );
 
-        await patientController.createPatient(
+        final createdPatient = await patientController.createPatient(
           name: name,
           gender: _selectedGender,
           age: age,
@@ -182,7 +212,13 @@ class _PatientFormViewState extends State<PatientFormView> {
         );
 
         if (mounted) {
-          Get.back(result: true);
+          // If the dashboard controller is active, update its data as well (handles direct navigation case)
+          if (Get.isRegistered<DashboardController>()) {
+            await Get.find<DashboardController>().fetchLatestPatients();
+            await Get.find<DashboardController>().fetchMahasiswaStats();
+          }
+          // Return the created patient to the previous screen so it can refresh or use the new record
+          Get.back(result: createdPatient ?? true);
           Get.snackbar(
             'Berhasil',
             'Pasien berhasil ditambahkan',
@@ -207,7 +243,7 @@ class _PatientFormViewState extends State<PatientFormView> {
           },
         );
 
-        await patientController.updatePatient(
+        final updatedPatient = await patientController.updatePatient(
           id: widget.patient!.id,
           name: name,
           gender: _selectedGender,
@@ -230,7 +266,11 @@ class _PatientFormViewState extends State<PatientFormView> {
         );
 
         if (mounted) {
-          Get.back(result: true);
+          if (Get.isRegistered<DashboardController>()) {
+            await Get.find<DashboardController>().fetchLatestPatients();
+            await Get.find<DashboardController>().fetchMahasiswaStats();
+          }
+          Get.back(result: updatedPatient ?? true);
           Get.snackbar(
             'Berhasil',
             'Data pasien berhasil diperbarui',
@@ -386,6 +426,50 @@ class _PatientFormViewState extends State<PatientFormView> {
                   const SizedBox(height: 16),
                   _buildRmNumberField(),
                   const SizedBox(height: 24),
+                  // If there is a genogram saved for this patient (from forms), show a small preview
+                  if (_lastGenogramStructure != null) ...[
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(12.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Genogram Terakhir', style: Theme.of(context).textTheme.titleMedium),
+                            const SizedBox(height: 8),
+                            if ((_lastGenogramStructure?['members'] as List?)?.isEmpty ?? true)
+                              const Text('Tidak ada anggota genogram.'),
+                            if ((_lastGenogramStructure?['members'] as List?)?.isNotEmpty ?? false)
+                              ListView.builder(
+                                shrinkWrap: true,
+                                physics: const NeverScrollableScrollPhysics(),
+                                itemCount: (_lastGenogramStructure?['members'] as List).length,
+                                itemBuilder: (context, index) {
+                                  final m = (_lastGenogramStructure?['members'] as List)[index] as Map<String, dynamic>;
+                                  return ListTile(
+                                    title: Text(m['name'] ?? 'Unknown'),
+                                    subtitle: Text('${m['relationship'] ?? ''} • ${m['age'] ?? ''}'),
+                                  );
+                                },
+                              ),
+                            const SizedBox(height: 8),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                FilledButton.tonal(
+                                  onPressed: () {
+                                    final struct = _lastGenogramStructure ?? {'members': [], 'connections': []};
+                                    Get.to(() => GenogramBuilderView(initialData: {'structure': struct, 'notes': _lastGenogramNotes}), arguments: {'readOnly': true});
+                                  },
+                                  child: const Text('View Genogram'),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                  ],
                   Obx(() {
                     final isLoading =
                         patientController.isLoading.value || _isSubmitting;

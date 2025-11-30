@@ -19,8 +19,12 @@ use App\Http\Controllers\DashboardController;
 |
 */
 
-    Route::post('/register', [AuthController::class, 'register']);
-    Route::post('/login', [AuthController::class, 'login']);
+Route::post('/register', [AuthController::class, 'register']);
+Route::post('/login', [AuthController::class, 'login']);
+
+Route::get('/health-check', function () {
+    return response()->json(['status' => 'OK', 'timestamp' => now(), 'database' => DB::connection()->getPdo() ? 'Connected' : 'Disconnected'], 200);
+});
 // Patient routes - protected
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
@@ -45,13 +49,14 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // PDF generation routes
     Route::post('forms/{form}/generate-pdf', [PdfController::class, 'generate']);
+    // Render genogram SVG for preview or embedding in PDFs
+    Route::get('forms/{form}/genogram/svg', [\App\Http\Controllers\GenogramController::class, 'render']);
 
     // Dashboard statistics routes
     Route::get('dashboard/mahasiswa', [DashboardController::class, 'mahasiswaDashboard']);
     Route::get('dashboard/dosen', [DashboardController::class, 'dosenDashboard']);
 
-    });
+});
 
-    
 
-    
+

@@ -6,7 +6,9 @@ import '../constants/api_config.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../controllers/form_controller.dart';
+import '../controllers/nursing_intervention_controller.dart';
 import '../controllers/patient_controller.dart';
+import '../services/nursing_data_global_service.dart';
 import '../models/patient_model.dart';
 import '../models/form_model.dart';
 import '../services/hive_service.dart';
@@ -23,6 +25,7 @@ class SapFormView extends StatefulWidget {
 
 class _SapFormViewState extends State<SapFormView> {
   final FormController formController = Get.put(FormController());
+  final NursingInterventionController _interventionController = Get.put(NursingInterventionController());
   final PatientController patientController = Get.find();
 
   int _currentSection = 0;
@@ -40,10 +43,12 @@ class _SapFormViewState extends State<SapFormView> {
     'feedback': {}, // Pertanyaan & saran peserta
     'renpra': {}, // Renpra opsional di akhir
   };
+  Patient? _currentPatient;
+  int? _currentPatientId;
 
   // Lists for file uploads
-  List<String> _materiFiles = [];
-  List<String> _fotoFiles = [];
+  final List<String> _materiFiles = [];
+  final List<String> _fotoFiles = [];
 
   @override
   void initState() {
@@ -53,16 +58,24 @@ class _SapFormViewState extends State<SapFormView> {
     HiveService.init();
 
     // If editing existing form, load the data
-    if (widget.formId != null) {
-      _loadFormData();
+    final effectiveFormId = widget.formId ?? Get.arguments?['formId'] as int?;
+    if (effectiveFormId != null) {
+      _loadFormData(effectiveFormId);
     } else {
+      // set current patient for fallback
+      _currentPatient = widget.patient ?? Get.arguments?['patient'] as Patient?;
+      _currentPatientId = _currentPatient?.id ?? Get.arguments?['patientId'] as int?;
       // Check for any existing draft forms to continue
       _checkForDrafts();
+      _currentPatient = widget.patient ?? Get.arguments?['patient'] as Patient?;
+      _currentPatientId = _currentPatient?.id ?? Get.arguments?['patientId'] as int?;
     }
   }
 
   Future<void> _checkForDrafts() async {
-    if (widget.patient == null) return;
+    final patient = _currentPatient ?? widget.patient ?? Get.arguments?['patient'] as Patient?;
+    final patientId = _currentPatientId ?? patient?.id ?? Get.arguments?['patientId'] as int?;
+    if (patientId == null) return;
 
     final draft = await HiveService.getDraftForm('sap', widget.patient!.id);
     if (draft != null) {
@@ -76,8 +89,8 @@ class _SapFormViewState extends State<SapFormView> {
         onConfirm: () {
           Get.back();
           setState(() {
-            _formData.addAll(draft.data ?? {});
-          });
+              _formData.addAll(draft.data ?? {});
+            });
         },
         onCancel: () {
           // Optional: Delete draft if user chooses not to restore
@@ -86,12 +99,17 @@ class _SapFormViewState extends State<SapFormView> {
     }
   }
 
-  Future<void> _loadFormData() async {
-    if (widget.formId == null) return;
+  Future<void> _loadFormData([int? id]) async {
+    final formIdToLoad = id ?? widget.formId ?? Get.arguments?['formId'] as int?;
+    if (formIdToLoad == null) return;
 
-    final form = await formController.getFormById(widget.formId!);
+    final form = await formController.getFormById(formIdToLoad);
     if (form != null && form.data != null) {
       setState(() {
+        if (form.patient != null) {
+          _currentPatient = form.patient as Patient;
+          _currentPatientId = form.patient!.id;
+        }
         _formData.addAll(form.data!);
       });
     }
@@ -121,7 +139,10 @@ class _SapFormViewState extends State<SapFormView> {
   }
 
   Future<void> _saveDraft() async {
-    if (widget.patient == null) {
+    final patient = _currentPatient ?? widget.patient ?? Get.arguments?['patient'] as Patient?;
+    final patientId = _currentPatientId ?? patient?.id ?? Get.arguments?['patientId'] as int?;
+
+    if (patient == null || patientId == null) {
       Get.snackbar('Error', 'Patient information is required to save draft');
       return;
     }
@@ -131,7 +152,7 @@ class _SapFormViewState extends State<SapFormView> {
         id: widget.formId ?? DateTime.now().millisecondsSinceEpoch,
         type: 'sap',
         userId: 0,
-        patientId: widget.patient!.id,
+        patientId: patientId,
         status: 'draft',
         data: _formData,
         createdAt: DateTime.now(),
@@ -141,6 +162,8 @@ class _SapFormViewState extends State<SapFormView> {
 
       await HiveService.saveDraftForm(form);
       Get.snackbar('Success', 'Draft saved locally');
+      // Return to previous route and provide the saved draft as result
+      Get.back(result: form);
     } catch (e) {
       Get.snackbar('Error', 'Failed to save draft: $e');
     }
@@ -149,25 +172,29 @@ class _SapFormViewState extends State<SapFormView> {
   Future<void> _submitForm() async {
     try {
       // Check if patient is available
-      if (widget.patient == null) {
+      final patient = _currentPatient ?? widget.patient ?? Get.arguments?['patient'] as Patient?;
+      final patientId = _currentPatientId ?? patient?.id ?? Get.arguments?['patientId'] as int?;
+
+      if (patient == null || patientId == null) {
         Get.snackbar('Error', 'Patient information is required to submit form');
         return;
       }
 
+      FormModel? resultForm;
       if (widget.formId != null) {
         // If editing existing form, update it
-        await formController.updateForm(
+        resultForm = await formController.updateForm(
           id: widget.formId!,
           type: 'sap',
-          patientId: widget.patient!.id,
+          patientId: patientId,
           data: _formData,
           status: 'submitted',
         );
       } else {
         // If creating new form, create it
-        await formController.createForm(
+        resultForm = await formController.createForm(
           type: 'sap',
-          patientId: widget.patient!.id,
+          patientId: patientId,
           data: _formData,
           status: 'submitted',
         );
@@ -177,7 +204,7 @@ class _SapFormViewState extends State<SapFormView> {
       await HiveService.deleteDraftForm('sap', widget.patient!.id);
 
       Get.snackbar('Success', 'Form submitted successfully');
-      Get.back(); // Navigate back
+      Get.back(result: resultForm);
     } catch (e) {
       // If submission fails, save as draft locally and notify user
       Get.snackbar('Error', 'Submission failed. Form saved as draft locally.');
@@ -784,65 +811,52 @@ class _SapFormViewState extends State<SapFormView> {
         // Diagnosis dropdown
         const Text('Diagnosis'),
         const SizedBox(height: 8),
-        DropdownButtonFormField<String>(
-          value: _formData['renpra']['diagnosis'],
-          decoration: const InputDecoration(border: OutlineInputBorder()),
-          items: const [
-            DropdownMenuItem(value: 'Depresi', child: Text('Depresi')),
-            DropdownMenuItem(value: 'Anxiety', child: Text('Anxiety')),
-            DropdownMenuItem(value: 'Skizofrenia', child: Text('Skizofrenia')),
-            DropdownMenuItem(value: 'Bipolar', child: Text('Gangguan Bipolar')),
-            DropdownMenuItem(value: 'Tidak Ada', child: Text('Tidak Ada')),
-          ],
-          onChanged: (value) {
-            if (value == 'Tidak Ada') {
-              _formData['renpra']['diagnosis'] = null;
-            } else {
+        Obx(() {
+          final nursingService = Get.find<NursingDataGlobalService>();
+          final diagnoses = nursingService.diagnoses;
+          if (diagnoses.isEmpty) return const Text('Tidak ada diagnosis tersedia');
+          final items = diagnoses.map((diag) => DropdownMenuItem(value: diag.id, child: Text(diag.name))).toList();
+          return DropdownButtonFormField<int?>(
+            value: _formData['renpra']['diagnosis'] as int?,
+            decoration: const InputDecoration(border: OutlineInputBorder()),
+            items: items,
+            onChanged: (value) {
               _formData['renpra']['diagnosis'] = value;
-            }
-          },
-          hint: const Text('Pilih Diagnosis atau Tidak Ada'),
-        ),
+            },
+            hint: const Text('Pilih Diagnosis'),
+          );
+        }),
         const SizedBox(height: 16),
         // Intervensi checkboxes
         const Text('Intervensi'),
         const SizedBox(height: 8),
-        CheckboxListTile(
-          title: const Text('Terapi Individu'),
-          value:
-              (_formData['renpra']['intervensi'] as List?)?.contains(
-                'Terapi Individu',
-              ) ??
-              false,
-          onChanged: (bool? value) {
-            final intervensi =
-                _formData['renpra']['intervensi'] as List? ?? <String>[];
-            if (value == true) {
-              intervensi.add('Terapi Individu');
-            } else {
-              intervensi.remove('Terapi Individu');
-            }
-            _formData['renpra']['intervensi'] = intervensi;
-          },
-        ),
-        CheckboxListTile(
-          title: const Text('Terapi Keluarga'),
-          value:
-              (_formData['renpra']['intervensi'] as List?)?.contains(
-                'Terapi Keluarga',
-              ) ??
-              false,
-          onChanged: (bool? value) {
-            final intervensi =
-                _formData['renpra']['intervensi'] as List? ?? <String>[];
-            if (value == true) {
-              intervensi.add('Terapi Keluarga');
-            } else {
-              intervensi.remove('Terapi Keluarga');
-            }
-            _formData['renpra']['intervensi'] = intervensi;
-          },
-        ),
+        Obx(() {
+          final interventions = _interventionController.interventions;
+          if (interventions.isEmpty) {
+            return const Text('Tidak ada intervensi tersedia');
+          }
+          return Column(
+            children: interventions.map((iv) {
+              final currentInterventions =
+                  (_formData['renpra']['intervensi'] as List?) ?? <int>[];
+              final isChecked = currentInterventions.contains(iv.id);
+              return CheckboxListTile(
+                title: Text(iv.name),
+                value: isChecked,
+                onChanged: (bool? value) {
+                  final intervensi = List<int>.from(currentInterventions);
+                  if (value == true) {
+                    if (!intervensi.contains(iv.id)) intervensi.add(iv.id);
+                  } else {
+                    intervensi.remove(iv.id);
+                  }
+                  _formData['renpra']['intervensi'] = intervensi;
+                  setState(() {});
+                },
+              );
+            }).toList(),
+          );
+        }),
         const SizedBox(height: 16),
         TextFormField(
           initialValue: _formData['renpra']['tujuan'],
@@ -995,7 +1009,7 @@ class _SapFormViewState extends State<SapFormView> {
 
       // Add auth token
       final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('token');
+      final token = prefs.getString('auth_token');
       request.headers['Authorization'] = 'Bearer $token';
       request.headers['Content-Type'] = 'multipart/form-data';
 

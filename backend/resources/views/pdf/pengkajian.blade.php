@@ -121,7 +121,14 @@
 @if($form->genogram)
 <div class="section">
     <div class="section-title">Genogram</div>
-    <img src="data:image/svg+xml;base64,{{ base64_encode($form->genogram->structure) }}" alt="Genogram" style="width: 100%; height: auto;">
+    @if(isset($genogram_svg) && $genogram_svg)
+        <img src="data:image/svg+xml;base64,{{ base64_encode($genogram_svg) }}" alt="Genogram" style="width: 100%; height: auto;">
+    @else
+        {{-- If genogram_svg is not provided, show basic text representation --}}
+        <div>
+            <pre>{{ json_encode($form->genogram->structure) }}</pre>
+        </div>
+    @endif
 </div>
 @endif
 --}}

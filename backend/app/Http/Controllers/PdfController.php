@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf as PDF;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
+use App\Services\GenogramRenderer;
 
 class PdfController extends Controller
 {
@@ -59,11 +60,11 @@ class PdfController extends Controller
         Storage::disk('public')->put($path, $pdf->output());
 
         // Return the public URL
-        $url = Storage::disk('public')->url($path);
+        $url = asset('storage/' . $path);
 
         return response()->json([
             'message' => 'PDF generated successfully',
-            'url' => url($url)
+            'url' => $url
         ]);
     }
 
@@ -76,12 +77,17 @@ class PdfController extends Controller
         $patient = $form->patient;
         $user = $form->user;
         $genogram = $form->genogram;
+        $genogramSvg = null;
+        if ($genogram && $genogram->structure) {
+            $genogramSvg = GenogramRenderer::renderSvgFromStructure($genogram->structure);
+        }
 
         $pdf = PDF::loadView('pdf.pengkajian', [
             'form' => $form,
             'patient' => $patient,
             'user' => $user,
             'genogram' => $genogram,
+            'genogram_svg' => $genogramSvg,
             'data' => $data
         ]);
 

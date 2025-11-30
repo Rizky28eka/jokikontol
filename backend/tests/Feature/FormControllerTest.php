@@ -109,10 +109,86 @@ class FormControllerTest extends TestCase
         ]);
     }
 
+    public function test_can_store_pengkajian_form_with_genogram()
+    {
+        $user = User::factory()->create();
+        $patient = Patient::factory()->create();
+
+        $structure = [
+            [
+                'id' => 1,
+                'name' => 'Father',
+                'age' => 60,
+                'gender' => 'L',
+            ],
+            [
+                'id' => 2,
+                'name' => 'Mother',
+                'age' => 58,
+                'gender' => 'P',
+            ],
+        ];
+        $connections = [
+            ['id' => 10, 'from' => 1, 'to' => 2, 'type' => 'marriage'],
+        ];
+
+        $response = $this->actingAs($user, 'sanctum')
+            ->postJson('/api/forms', [
+                'type' => 'pengkajian',
+                'patient_id' => $patient->id,
+                'data' => [
+                    'genogram' => [
+                        'structure' => ['members' => $structure, 'connections' => $connections],
+                        'notes' => 'Test Genogram',
+                    ],
+                ],
+            ]);
+
+        $response->assertStatus(201);
+        $this->assertDatabaseHas('genograms', ['notes' => 'Test Genogram']);
+    }
+
+    public function test_cannot_store_pengkajian_with_invalid_genogram()
+    {
+        $user = User::factory()->create();
+        $patient = Patient::factory()->create();
+
+        // invalid structure: connection references non-existing member id (99)
+        $structure = [
+            [
+                'id' => 1,
+                'name' => 'Father',
+                'age' => 60,
+                'gender' => 'L',
+            ],
+        ];
+        $connections = [
+            ['id' => 11, 'from' => 1, 'to' => 99, 'type' => 'marriage'],
+        ];
+
+        $response = $this->actingAs($user, 'sanctum')
+            ->postJson('/api/forms', [
+                'type' => 'pengkajian',
+                'patient_id' => $patient->id,
+                'data' => [
+                    'genogram' => [
+                        'structure' => ['members' => $structure, 'connections' => $connections],
+                        'notes' => 'Invalid Genogram Test',
+                    ],
+                ],
+            ]);
+
+        $response->assertStatus(422);
+    }
+
     public function test_can_store_complete_resume_kegawatdaruratan_form_with_complex_data()
     {
         $user = User::factory()->create();
         $patient = Patient::factory()->create();
+
+        // create sample interventions for ids used in complex data
+        $interv1 = \App\Models\NursingIntervention::factory()->create();
+        $interv2 = \App\Models\NursingIntervention::factory()->create();
 
         $complexFormData = [
             'identitas' => [
@@ -170,9 +246,9 @@ class FormControllerTest extends TestCase
                 'edukasi_keluarga' => 'Edukasi tanda bahaya dan cara menangani krisis',
                 'dukungan_keluarga' => 'Keluarga siap memberikan dukungan emosional'
             ],
-            'renpra' => [
-                'diagnosis' => 'Gangguan pola tidur',
-                'intervensi' => ['Terapi Individu', 'Manajemen Agresi'],
+                    'renpra' => [
+                        'diagnosis' => 'Gangguan pola tidur',
+                        'intervensi' => [$interv1->id, $interv2->id],
                 'tujuan' => 'Pasien mampu tidur dengan baik',
                 'kriteria' => 'Tidur 6-8 jam/hari',
                 'rasional' => 'Terapi relaksasi efektif untuk gangguan tidur',
@@ -244,7 +320,8 @@ class FormControllerTest extends TestCase
                     ],
                     'section_9' => [
                         'diagnosis' => 'Depresi',
-                        'intervensi' => ['Terapi Individu', 'Terapi Keluarga'],
+                        // create sample interventions for the poliklinik test
+                        'intervensi' => [\App\Models\NursingIntervention::factory()->create()->id, \App\Models\NursingIntervention::factory()->create()->id],
                         'tujuan' => 'Mood membaik',
                         'kriteria' => 'Pasien mampu mengungkapkan perasaan dengan baik',
                         'rasional' => 'Terapi membantu mengatasi depresi'

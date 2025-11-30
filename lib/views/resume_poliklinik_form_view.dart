@@ -6,6 +6,7 @@ import '../models/patient_model.dart';
 import '../models/form_model.dart';
 import '../services/hive_service.dart';
 import '../services/nursing_data_global_service.dart';
+import '../controllers/nursing_intervention_controller.dart';
 
 class ResumePoliklinikFormView extends StatefulWidget {
   final Patient? patient;
@@ -21,6 +22,7 @@ class ResumePoliklinikFormView extends StatefulWidget {
 class _ResumePoliklinikFormViewState extends State<ResumePoliklinikFormView> {
   final FormController formController = Get.put(FormController());
   final PatientController patientController = Get.find();
+  final NursingInterventionController _interventionController = Get.put(NursingInterventionController());
 
   int _currentSection = 0;
 
@@ -43,6 +45,8 @@ class _ResumePoliklinikFormViewState extends State<ResumePoliklinikFormView> {
     'section_9': {}, // Renpra (Rencana Perawatan) - moved from section 10 to 9
     'section_10': {}, // Penutup - moved from section 11 to 10
   };
+  Patient? _currentPatient;
+  int? _currentPatientId;
 
   @override
   void initState() {
@@ -52,16 +56,24 @@ class _ResumePoliklinikFormViewState extends State<ResumePoliklinikFormView> {
     HiveService.init();
 
     // If editing existing form, load the data
-    if (widget.formId != null) {
-      _loadFormData();
+    final effectiveFormId = widget.formId ?? Get.arguments?['formId'] as int?;
+    if (effectiveFormId != null) {
+      _loadFormData(effectiveFormId);
     } else {
+      // set current patient for fallback
+      _currentPatient = widget.patient ?? Get.arguments?['patient'] as Patient?;
+      _currentPatientId = _currentPatient?.id ?? Get.arguments?['patientId'] as int?;
       // Check for any existing draft forms to continue
       _checkForDrafts();
+      _currentPatient = widget.patient ?? Get.arguments?['patient'] as Patient?;
+      _currentPatientId = _currentPatient?.id ?? Get.arguments?['patientId'] as int?;
     }
   }
 
   Future<void> _checkForDrafts() async {
-    if (widget.patient == null) return;
+    final patient = _currentPatient ?? widget.patient ?? Get.arguments?['patient'] as Patient?;
+    final patientId = _currentPatientId ?? patient?.id ?? Get.arguments?['patientId'] as int?;
+    if (patientId == null) return;
 
     final draft = await HiveService.getDraftForm(
       'resume_poliklinik',
@@ -89,12 +101,17 @@ class _ResumePoliklinikFormViewState extends State<ResumePoliklinikFormView> {
     }
   }
 
-  Future<void> _loadFormData() async {
-    if (widget.formId == null) return;
+  Future<void> _loadFormData([int? id]) async {
+    final formIdToLoad = id ?? widget.formId ?? Get.arguments?['formId'] as int?;
+    if (formIdToLoad == null) return;
 
-    final form = await formController.getFormById(widget.formId!);
+    final form = await formController.getFormById(formIdToLoad);
     if (form != null && form.data != null) {
       setState(() {
+        if (form.patient != null) {
+          _currentPatient = form.patient as Patient;
+          _currentPatientId = form.patient!.id;
+        }
         _formData.addAll(form.data!);
         _populateControllers();
       });
@@ -190,7 +207,10 @@ class _ResumePoliklinikFormViewState extends State<ResumePoliklinikFormView> {
   }
 
   Future<void> _saveDraft() async {
-    if (widget.patient == null) {
+    final patient = _currentPatient ?? widget.patient ?? Get.arguments?['patient'] as Patient?;
+    final patientId = _currentPatientId ?? patient?.id ?? Get.arguments?['patientId'] as int?;
+
+    if (patient == null || patientId == null) {
       Get.snackbar('Error', 'Patient information is required to save draft');
       return;
     }
@@ -200,7 +220,7 @@ class _ResumePoliklinikFormViewState extends State<ResumePoliklinikFormView> {
         id: widget.formId ?? DateTime.now().millisecondsSinceEpoch,
         type: 'resume_poliklinik',
         userId: 0,
-        patientId: widget.patient!.id,
+        patientId: patientId,
         status: 'draft',
         data: _formData,
         createdAt: DateTime.now(),
@@ -210,26 +230,38 @@ class _ResumePoliklinikFormViewState extends State<ResumePoliklinikFormView> {
 
       await HiveService.saveDraftForm(form);
       Get.snackbar('Success', 'Draft saved locally');
+      // Return to previous route and provide the saved draft as result
+      Get.back(result: form);
     } catch (e) {
       Get.snackbar('Error', 'Failed to save draft: $e');
     }
   }
 
   Future<void> _submitForm() async {
+    final patient = _currentPatient ?? widget.patient ?? Get.arguments?['patient'] as Patient?;
+    final patientId = _currentPatientId ?? patient?.id ?? Get.arguments?['patientId'] as int?;
+
     // Check if patient is available
-    if (widget.patient == null) {
+    if (patient == null || patientId == null) {
       Get.snackbar('Error', 'Patient information is required to submit form');
       return;
     }
 
     try {
-      // Try to submit to server
-      await formController.createForm(
-        type: 'resume_poliklinik',
-        patientId: widget.patient!.id,
-        data: _formData,
-        status: 'submitted',
-      );
+      final resultForm = widget.formId != null
+          ? await formController.updateForm(
+              id: widget.formId!,
+              type: 'resume_poliklinik',
+              patientId: patientId,
+              data: _formData,
+              status: 'submitted',
+            )
+          : await formController.createForm(
+              type: 'resume_poliklinik',
+              patientId: patientId,
+              data: _formData,
+              status: 'submitted',
+            );
 
       // If submission successful, remove any local draft
       await HiveService.deleteDraftForm(
@@ -238,7 +270,7 @@ class _ResumePoliklinikFormViewState extends State<ResumePoliklinikFormView> {
       );
 
       Get.snackbar('Success', 'Form submitted successfully');
-      Get.back(); // Navigate back
+      Get.back(result: resultForm);
     } catch (e) {
       // If submission fails, save as draft locally and notify user
       Get.snackbar('Error', 'Submission failed. Form saved as draft locally.');
@@ -655,24 +687,24 @@ class _ResumePoliklinikFormViewState extends State<ResumePoliklinikFormView> {
           final items = diagnoses
               .map(
                 (diag) =>
-                    DropdownMenuItem(value: diag.name, child: Text(diag.name)),
+                    DropdownMenuItem(value: diag.id, child: Text(diag.name)),
               )
               .toList();
 
           // Add a default option if no diagnoses available
           if (items.isEmpty) {
             items.add(
-              const DropdownMenuItem(
-                value: '',
-                child: Text('Tidak ada diagnosis tersedia'),
+              DropdownMenuItem<int>(
+                value: null,
+                child: const Text('Tidak ada diagnosis tersedia'),
               ),
             );
           }
 
-          return DropdownButtonFormField<String>(
+          return DropdownButtonFormField<int?>(
             decoration: const InputDecoration(border: OutlineInputBorder()),
-            items: items,
-            value: _formData['section_9']['diagnosis'],
+            items: items.cast<DropdownMenuItem<int?>>(),
+            value: _formData['section_9']['diagnosis'] as int?,
             onChanged: (value) {
               _formData['section_9']['diagnosis'] = value;
             },
@@ -680,45 +712,35 @@ class _ResumePoliklinikFormViewState extends State<ResumePoliklinikFormView> {
           );
         }),
         const SizedBox(height: 16),
-        // Intervensi checkboxes
         const Text('Intervensi'),
         const SizedBox(height: 8),
-        CheckboxListTile(
-          title: const Text('Terapi Individu'),
-          value:
-              (_formData['section_9']['intervensi'] as List?)?.contains(
-                'Terapi Individu',
-              ) ??
-              false,
-          onChanged: (bool? value) {
-            final intervensi =
-                _formData['section_9']['intervensi'] as List? ?? <String>[];
-            if (value == true) {
-              intervensi.add('Terapi Individu');
-            } else {
-              intervensi.remove('Terapi Individu');
-            }
-            _formData['section_9']['intervensi'] = intervensi;
-          },
-        ),
-        CheckboxListTile(
-          title: const Text('Terapi Keluarga'),
-          value:
-              (_formData['section_9']['intervensi'] as List?)?.contains(
-                'Terapi Keluarga',
-              ) ??
-              false,
-          onChanged: (bool? value) {
-            final intervensi =
-                _formData['section_9']['intervensi'] as List? ?? <String>[];
-            if (value == true) {
-              intervensi.add('Terapi Keluarga');
-            } else {
-              intervensi.remove('Terapi Keluarga');
-            }
-            _formData['section_9']['intervensi'] = intervensi;
-          },
-        ),
+        Obx(() {
+          final interventions = _interventionController.interventions;
+          if (interventions.isEmpty) {
+            return const Text('Tidak ada intervensi tersedia');
+          }
+          return Column(
+            children: interventions.map((iv) {
+              final currentInterventions =
+                  (_formData['section_9']['intervensi'] as List?) ?? <int>[];
+              final isChecked = currentInterventions.contains(iv.id);
+              return CheckboxListTile(
+                title: Text(iv.name),
+                value: isChecked,
+                onChanged: (bool? value) {
+                  final intervensi = List<int>.from(currentInterventions);
+                  if (value == true) {
+                    if (!intervensi.contains(iv.id)) intervensi.add(iv.id);
+                  } else {
+                    intervensi.remove(iv.id);
+                  }
+                  _formData['section_9']['intervensi'] = intervensi;
+                  setState(() {});
+                },
+              );
+            }).toList(),
+          );
+        }),
         const SizedBox(height: 16),
         TextFormField(
           controller: _controllers[22],

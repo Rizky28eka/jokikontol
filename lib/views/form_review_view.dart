@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../controllers/form_controller.dart';
+import '../controllers/nursing_diagnosis_controller.dart';
+import '../controllers/nursing_intervention_controller.dart';
 import '../controllers/review_controller.dart';
 import '../models/form_model.dart';
 
@@ -13,6 +15,8 @@ class FormReviewView extends StatefulWidget {
 
 class _FormReviewViewState extends State<FormReviewView> {
   final FormController formController = Get.put(FormController());
+  final NursingDiagnosisController _diagnosisController = Get.put(NursingDiagnosisController());
+  final NursingInterventionController _interventionController = Get.put(NursingInterventionController());
   final TextEditingController _commentController = TextEditingController();
   final RxString _status = 'submitted'.obs;
   late int formId;
@@ -259,11 +263,151 @@ class _FormReviewViewState extends State<FormReviewView> {
               border: Border.all(color: Colors.grey),
               borderRadius: BorderRadius.circular(4),
             ),
-            child: Text(value?.toString() ?? '-'),
+            child: Text(_formatFieldValue(label, value) ?? '-'),
           ),
         ],
       ),
     );
+  }
+
+  String? _formatFieldValue(String label, dynamic value) {
+    if (value == null) return null;
+    final lower = label.toLowerCase();
+    // Friendly display mapping for common select fields
+      if (lower.contains('jenis kelamin')) {
+      if (value is String) {
+        switch (value.toLowerCase()) {
+          case 'l':
+          case 'laki-laki':
+            return 'Laki-laki';
+          case 'p':
+          case 'perempuan':
+            return 'Perempuan';
+          case 'o':
+          case 'lainnya':
+            return 'Lainnya';
+          default:
+            return value.toString();
+        }
+      }
+    }
+      if (lower.contains('status perkawinan')) {
+      if (value is String) {
+        switch (value.toLowerCase()) {
+          case 'belum_kawin':
+          case 'belum kawin':
+            return 'Belum Kawin';
+          case 'menikah':
+            return 'Menikah';
+          case 'cerai_hidup':
+          case 'cerai hidup':
+            return 'Cerai Hidup';
+          case 'cerai_mati':
+          case 'cerai mati':
+            return 'Cerai Mati';
+          case 'duda':
+            return 'Duda';
+          case 'janda':
+            return 'Janda';
+          default:
+            return value.toString();
+        }
+      }
+    }
+      if (lower.contains('kesadaran')) {
+        if (value is String) {
+          switch (value.toLowerCase()) {
+            case 'sadar_penuh':
+            case 'sadar penuh':
+              return 'Sadar Penuh';
+            case 'somnolent':
+              return 'Somnolent';
+            case 'stupor':
+              return 'Stupor';
+            case 'coma':
+              return 'Coma';
+            default:
+              return value.toString();
+          }
+        }
+      }
+      if (lower.contains('orientasi')) {
+        if (value is String) {
+          switch (value.toLowerCase()) {
+            case 'utuh':
+              return 'Utuh';
+            case 'gangguan':
+              return 'Gangguan';
+            default:
+              return value.toString();
+          }
+        }
+      }
+      if (lower.contains('mood')) {
+        if (value is String) {
+          switch (value.toLowerCase()) {
+            case 'normal':
+              return 'Normal';
+            case 'depresi':
+              return 'Depresi';
+            case 'ansietas':
+              return 'Ansietas';
+            case 'iritabel':
+              return 'Iritabel';
+            case 'labil':
+              return 'Labil';
+            default:
+              return value.toString();
+          }
+        }
+      }
+      if (lower.contains('afect') || lower.contains('affect')) {
+        if (value is String) {
+          switch (value.toLowerCase()) {
+            case 'normal':
+              return 'Normal';
+            case 'flat':
+              return 'Flat';
+            case 'terhambat':
+              return 'Terhambat';
+            case 'labil':
+              return 'Labil';
+            case 'iritabel':
+              return 'Iritabel';
+            default:
+              return value.toString();
+          }
+        }
+      }
+    if (lower.contains('intervensi') || lower.contains('intervention')) {
+      if (value is List) {
+        final names = value.map((id) {
+          final found = _interventionController.interventions.where((it) => it.id == id).toList();
+          final item = found.isNotEmpty ? found.first : null;
+          return item != null ? item.name : id.toString();
+        }).toList();
+        return names.join(', ');
+      }
+    }
+
+    if (lower.contains('diagnosis')) {
+      if (value is int) {
+        final found = _diagnosisController.diagnoses.where((d) => d.id == value).toList();
+        final item = found.isNotEmpty ? found.first : null;
+        return item != null ? item.name : value.toString();
+      }
+      // If it's a list (maybe multiple diagnoses), map names
+      if (value is List) {
+        final names = value.map((id) {
+          final found = _diagnosisController.diagnoses.where((d) => d.id == id).toList();
+          final item = found.isNotEmpty ? found.first : null;
+          return item != null ? item.name : id.toString();
+        }).toList();
+        return names.join(', ');
+      }
+    }
+
+    return value.toString();
   }
 
   @override

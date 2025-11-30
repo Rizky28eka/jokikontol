@@ -188,7 +188,7 @@ class SplashController extends GetxController {
   Future<bool> _checkTokenExists() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('token');
+      final token = prefs.getString('auth_token');
       _logger.debug('Token existence verification performed',
         context: {
           'token_found': token != null,

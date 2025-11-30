@@ -1,10 +1,10 @@
 class ApiConfig {
   // Base URL for the API - can be changed based on environment
   static const String baseUrl =
-      'http://127.0.0.1:8000/api'; // Update this with your backend URL
+      'http://10.100.184.125:8000/api'; // Update this with your backend URL
 
   // Environment-based configurations
-  static const String developmentBaseUrl = 'http://127.0.0.1:8000/api';
+  static const String developmentBaseUrl = 'http://10.100.184.125:8000/api';
   static const String productionBaseUrl = 'https://your-production-api.com/api';
   static const String stagingBaseUrl = 'https://staging.your-api.com/api';
 

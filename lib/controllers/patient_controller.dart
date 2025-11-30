@@ -60,7 +60,7 @@ class PatientController extends GetxController {
     }
   }
 
-  Future<void> createPatient({
+  Future<Patient?> createPatient({
     required String name,
     required String gender,
     required int age,
@@ -88,8 +88,13 @@ class PatientController extends GetxController {
       );
 
       if (response.statusCode == 201) {
+        final data = json.decode(response.body);
+        // Expecting the API to return the created patient
+        final patientJson = data['data'] ?? data['patient'] ?? data;
+        final createdPatient = Patient.fromJson(patientJson as Map<String, dynamic>);
         await fetchPatients(); // Refresh the list
-        _logger.info('Patient created successfully', context: {'name': name});
+        _logger.info('Patient created successfully', context: {'name': name, 'patientId': createdPatient.id});
+        return createdPatient;
       } else {
         final errorData = json.decode(response.body);
         _errorMessage.value =
@@ -106,9 +111,10 @@ class PatientController extends GetxController {
     } finally {
       _isLoading.value = false;
     }
+    return null;
   }
 
-  Future<void> updatePatient({
+  Future<Patient?> updatePatient({
     required int id,
     required String name,
     required String gender,
@@ -138,11 +144,15 @@ class PatientController extends GetxController {
       );
 
       if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final patientJson = data['data'] ?? data['patient'] ?? data;
+        final updatedPatient = Patient.fromJson(patientJson as Map<String, dynamic>);
         await fetchPatients(); // Refresh the list
         _logger.info(
           'Patient updated successfully',
           context: {'patientId': id},
         );
+        return updatedPatient;
       } else {
         final errorData = json.decode(response.body);
         _errorMessage.value =
@@ -159,6 +169,7 @@ class PatientController extends GetxController {
     } finally {
       _isLoading.value = false;
     }
+    return null;
   }
 
   Future<void> deletePatient(int id) async {

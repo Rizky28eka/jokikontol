@@ -6,6 +6,7 @@ import '../models/patient_model.dart';
 import '../models/form_model.dart';
 import '../services/hive_service.dart';
 import '../services/nursing_data_global_service.dart';
+import '../controllers/nursing_intervention_controller.dart';
 
 class CatatanTambahanFormView extends StatefulWidget {
   final Patient? patient;
@@ -21,11 +22,14 @@ class CatatanTambahanFormView extends StatefulWidget {
 class _CatatanTambahanFormViewState extends State<CatatanTambahanFormView> {
   final FormController formController = Get.put(FormController());
   final PatientController patientController = Get.find();
+  final NursingInterventionController _interventionController = Get.put(NursingInterventionController());
 
   // Data structure for the catatan tambahan form
   final Map<String, dynamic> _formData = {
     'catatan': {}, // Contains the free text area content and optional renpra
   };
+  Patient? _currentPatient;
+  int? _currentPatientId;
 
   @override
   void initState() {
@@ -35,16 +39,24 @@ class _CatatanTambahanFormViewState extends State<CatatanTambahanFormView> {
     HiveService.init();
 
     // If editing existing form, load the data
-    if (widget.formId != null) {
-      _loadFormData();
+    final effectiveFormId = widget.formId ?? Get.arguments?['formId'] as int?;
+    if (effectiveFormId != null) {
+      _loadFormData(effectiveFormId);
     } else {
+      // set current patient fallback
+      _currentPatient = widget.patient ?? Get.arguments?['patient'] as Patient?;
+      _currentPatientId = _currentPatient?.id ?? Get.arguments?['patientId'] as int?;
       // Check for any existing draft forms to continue
       _checkForDrafts();
+      _currentPatient = widget.patient ?? Get.arguments?['patient'] as Patient?;
+      _currentPatientId = _currentPatient?.id ?? Get.arguments?['patientId'] as int?;
     }
   }
 
   Future<void> _checkForDrafts() async {
-    if (widget.patient == null) return;
+    final patient = _currentPatient ?? widget.patient ?? Get.arguments?['patient'] as Patient?;
+    final patientId = _currentPatientId ?? patient?.id ?? Get.arguments?['patientId'] as int?;
+    if (patientId == null) return;
 
     final draft = await HiveService.getDraftForm(
       'catatan_tambahan',
@@ -71,12 +83,17 @@ class _CatatanTambahanFormViewState extends State<CatatanTambahanFormView> {
     }
   }
 
-  Future<void> _loadFormData() async {
-    if (widget.formId == null) return;
+  Future<void> _loadFormData([int? id]) async {
+    final formIdToLoad = id ?? widget.formId ?? Get.arguments?['formId'] as int?;
+    if (formIdToLoad == null) return;
 
-    final form = await formController.getFormById(widget.formId!);
+    final form = await formController.getFormById(formIdToLoad);
     if (form != null && form.data != null) {
       setState(() {
+        if (form.patient != null) {
+          _currentPatient = form.patient as Patient;
+          _currentPatientId = form.patient!.id;
+        }
         _formData.addAll(form.data!);
       });
     }
@@ -88,7 +105,10 @@ class _CatatanTambahanFormViewState extends State<CatatanTambahanFormView> {
   }
 
   Future<void> _saveDraft() async {
-    if (widget.patient == null) {
+    final patient = _currentPatient ?? widget.patient ?? Get.arguments?['patient'] as Patient?;
+    final patientId = _currentPatientId ?? patient?.id ?? Get.arguments?['patientId'] as int?;
+
+    if (patient == null || patientId == null) {
       Get.snackbar('Error', 'Patient information is required to save draft');
       return;
     }
@@ -98,7 +118,7 @@ class _CatatanTambahanFormViewState extends State<CatatanTambahanFormView> {
         id: widget.formId ?? DateTime.now().millisecondsSinceEpoch,
         type: 'catatan_tambahan',
         userId: 0,
-        patientId: widget.patient!.id,
+        patientId: patientId,
         status: 'draft',
         data: _formData,
         createdAt: DateTime.now(),
@@ -108,32 +128,43 @@ class _CatatanTambahanFormViewState extends State<CatatanTambahanFormView> {
 
       await HiveService.saveDraftForm(form);
       Get.snackbar('Success', 'Draft saved locally');
+      // Return to previous route and provide the saved draft as result
+      Get.back(result: form);
     } catch (e) {
       Get.snackbar('Error', 'Failed to save draft: $e');
     }
   }
 
   Future<void> _submitForm() async {
-    // Check if patient is available
-    if (widget.patient == null) {
+    final patient = _currentPatient ?? widget.patient ?? Get.arguments?['patient'] as Patient?;
+    final patientId = _currentPatientId ?? patient?.id ?? Get.arguments?['patientId'] as int?;
+
+    if (patient == null || patientId == null) {
       Get.snackbar('Error', 'Patient information is required to submit form');
       return;
     }
 
     try {
-      // Try to submit to server
-      await formController.createForm(
-        type: 'catatan_tambahan',
-        patientId: widget.patient!.id,
-        data: _formData,
-        status: 'submitted',
-      );
+      final resultForm = widget.formId != null
+          ? await formController.updateForm(
+              id: widget.formId!,
+              type: 'catatan_tambahan',
+              patientId: patientId,
+              data: _formData,
+              status: 'submitted',
+            )
+          : await formController.createForm(
+              type: 'catatan_tambahan',
+              patientId: widget.patient!.id,
+              data: _formData,
+              status: 'submitted',
+            );
 
       // If submission successful, remove any local draft
       await HiveService.deleteDraftForm('catatan_tambahan', widget.patient!.id);
 
       Get.snackbar('Success', 'Form submitted successfully');
-      Get.back(); // Navigate back
+      Get.back(result: resultForm);
     } catch (e) {
       // If submission fails, save as draft locally and notify user
       Get.snackbar('Error', 'Submission failed. Form saved as draft locally.');
@@ -229,42 +260,28 @@ class _CatatanTambahanFormViewState extends State<CatatanTambahanFormView> {
                       // Create dropdown items from dynamic diagnoses
                       final items = diagnoses
                           .map(
-                            (diag) => DropdownMenuItem(
-                              value: diag.name,
+                            (diag) => DropdownMenuItem<int?>(
+                              value: diag.id,
                               child: Text(diag.name),
                             ),
                           )
                           .toList();
 
-                      // Add 'Tidak Ada' option at the beginning
-                      items.insert(
-                        0,
-                        const DropdownMenuItem(
-                          value: 'Tidak Ada',
-                          child: Text('Tidak Ada'),
-                        ),
-                      );
+                      // Provide a default 'Tidak Ada' option (null value)
+                      items.insert(0, DropdownMenuItem<int?>(value: null, child: const Text('Tidak Ada')));
 
-                      // Add a default option if no diagnoses available
-                      if (items.length == 1) {
-                        items.add(
-                          const DropdownMenuItem(
-                            value: '',
-                            child: Text('Tidak ada diagnosis tersedia'),
-                          ),
-                        );
+                      if (items.isEmpty) {
+                        return const Text('Tidak ada diagnosis tersedia');
                       }
 
-                      return DropdownButtonFormField<String>(
+                      return DropdownButtonFormField<int?>(
                         decoration: const InputDecoration(
                           border: OutlineInputBorder(),
                         ),
-                        items: items,
-                        value:
-                            _formData['catatan']['renpra']?['diagnosis'] ??
-                            'Tidak Ada',
+                        items: items.cast<DropdownMenuItem<int?>>(),
+                        value: _formData['catatan']['renpra']?['diagnosis'] as int?,
                         onChanged: (value) {
-                          if (value == 'Tidak Ada') {
+                          if (value == null) {
                             _formData['catatan']['renpra'] = null;
                           } else {
                             _formData['catatan']['renpra'] =
@@ -283,52 +300,32 @@ class _CatatanTambahanFormViewState extends State<CatatanTambahanFormView> {
                             'Tidak Ada') ...[
                       const Text('Intervensi'),
                       const SizedBox(height: 8),
-                      CheckboxListTile(
-                        title: const Text('Terapi Individu'),
-                        value:
-                            (_formData['catatan']['renpra']?['intervensi']
-                                    as List?)
-                                ?.contains('Terapi Individu') ??
-                            false,
-                        onChanged: (bool? value) {
-                          _formData['catatan']['renpra'] =
-                              _formData['catatan']['renpra'] ?? {};
-                          final intervensi =
-                              _formData['catatan']['renpra']['intervensi']
-                                  as List? ??
-                              <String>[];
-                          if (value == true) {
-                            intervensi.add('Terapi Individu');
-                          } else {
-                            intervensi.remove('Terapi Individu');
-                          }
-                          _formData['catatan']['renpra']['intervensi'] =
-                              intervensi;
-                        },
-                      ),
-                      CheckboxListTile(
-                        title: const Text('Terapi Keluarga'),
-                        value:
-                            (_formData['catatan']['renpra']?['intervensi']
-                                    as List?)
-                                ?.contains('Terapi Keluarga') ??
-                            false,
-                        onChanged: (bool? value) {
-                          _formData['catatan']['renpra'] =
-                              _formData['catatan']['renpra'] ?? {};
-                          final intervensi =
-                              _formData['catatan']['renpra']['intervensi']
-                                  as List? ??
-                              <String>[];
-                          if (value == true) {
-                            intervensi.add('Terapi Keluarga');
-                          } else {
-                            intervensi.remove('Terapi Keluarga');
-                          }
-                          _formData['catatan']['renpra']['intervensi'] =
-                              intervensi;
-                        },
-                      ),
+                      Obx(() {
+                        final interventions = _interventionController.interventions;
+                        if (interventions.isEmpty) return const Text('Tidak ada intervensi tersedia');
+                        return Column(
+                          children: interventions.map((iv) {
+                            _formData['catatan']['renpra'] = _formData['catatan']['renpra'] ?? {};
+                            final currentInterventions =
+                                (_formData['catatan']['renpra']?['intervensi'] as List?) ?? <int>[];
+                            final isChecked = currentInterventions.contains(iv.id);
+                            return CheckboxListTile(
+                              title: Text(iv.name),
+                              value: isChecked,
+                              onChanged: (bool? value) {
+                                final intervensi = List<int>.from(currentInterventions);
+                                if (value == true) {
+                                  if (!intervensi.contains(iv.id)) intervensi.add(iv.id);
+                                } else {
+                                  intervensi.remove(iv.id);
+                                }
+                                _formData['catatan']['renpra']?['intervensi'] = intervensi;
+                                setState(() {});
+                              },
+                            );
+                          }).toList(),
+                        );
+                      }),
                       const SizedBox(height: 16),
                       TextFormField(
                         initialValue: _formData['catatan']['renpra']?['tujuan'],

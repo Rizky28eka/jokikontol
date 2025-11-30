@@ -95,6 +95,14 @@ class FormSelectionView extends GetView<FormSelectionController> {
       children: [
         Row(
           children: [
+            IconButton(
+              onPressed: () => Get.back(),
+              icon: Icon(
+                Icons.arrow_back_rounded,
+                color: colorScheme.onSurface,
+              ),
+            ),
+            const SizedBox(width: 8),
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
@@ -148,7 +156,7 @@ class FormSelectionView extends GetView<FormSelectionController> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (controller.forms.isNotEmpty) ...[
+        if (controller.combinedForms.isNotEmpty) ...[
           _buildSectionHeader(
             context,
             'Form yang Sudah Dibuat',
@@ -273,7 +281,7 @@ class FormSelectionView extends GetView<FormSelectionController> {
 
   Widget _buildExistingFormsList(BuildContext context, bool isWide) {
     if (isWide) {
-      return GridView.builder(
+            return GridView.builder(
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -282,9 +290,9 @@ class FormSelectionView extends GetView<FormSelectionController> {
           crossAxisSpacing: 16,
           mainAxisSpacing: 16,
         ),
-        itemCount: controller.forms.length,
+        itemCount: controller.combinedForms.length,
         itemBuilder: (context, index) {
-          return _buildExistingFormCard(context, controller.forms[index]);
+          return _buildExistingFormCard(context, controller.combinedForms[index]);
         },
       );
     }
@@ -292,10 +300,10 @@ class FormSelectionView extends GetView<FormSelectionController> {
     return ListView.separated(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      itemCount: controller.forms.length,
+      itemCount: controller.combinedForms.length,
       separatorBuilder: (_, __) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
-        return _buildExistingFormCard(context, controller.forms[index]);
+        return _buildExistingFormCard(context, controller.combinedForms[index]);
       },
     );
   }
@@ -374,58 +382,89 @@ class FormSelectionView extends GetView<FormSelectionController> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      controller.getFormTitle(form.type),
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: colorScheme.onSurface,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            controller.getFormTitle(form.type),
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: colorScheme.onSurface,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (controller.isFormLocal(form))
+                          Container(
+                            margin: const EdgeInsets.only(left: 8),
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.orange.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Text(
+                              'Draft (Lokal)',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Colors.orange,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                     const SizedBox(height: 6),
                     Row(
                       children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: statusColor.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                _getStatusIcon(form.status),
-                                size: 14,
-                                color: statusColor,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                _getStatusText(form.status),
-                                style: TextStyle(
-                                  fontSize: 12,
+                        Flexible(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: statusColor.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  _getStatusIcon(form.status),
+                                  size: 14,
                                   color: statusColor,
-                                  fontWeight: FontWeight.w600,
                                 ),
-                              ),
-                            ],
+                                const SizedBox(width: 4),
+                                Flexible(
+                                  child: Text(
+                                    _getStatusText(form.status),
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: statusColor,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                        const SizedBox(width: 10),
+                        const SizedBox(width: 8),
                         Icon(
                           Icons.calendar_today_rounded,
                           size: 13,
                           color: colorScheme.onSurfaceVariant,
                         ),
                         const SizedBox(width: 4),
-                        Text(
-                          form.createdAt.toString().substring(0, 10),
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(color: colorScheme.onSurfaceVariant),
+                        Flexible(
+                          child: Text(
+                            form.createdAt.toString().substring(0, 10),
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(color: colorScheme.onSurfaceVariant),
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                       ],
                     ),
@@ -446,18 +485,24 @@ class FormSelectionView extends GetView<FormSelectionController> {
 
   Widget _buildFormTypeCard(BuildContext context, FormType formType) {
     final colorScheme = Theme.of(context).colorScheme;
+    final hasDraft = controller.hasDraft(formType.type);
+    final draft = controller.getDraft(formType.type);
 
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(
-          color: colorScheme.outlineVariant.withOpacity(0.5),
-          width: 1,
+          color: hasDraft 
+              ? Colors.orange.withOpacity(0.5)
+              : colorScheme.outlineVariant.withOpacity(0.5),
+          width: hasDraft ? 2 : 1,
         ),
       ),
       child: InkWell(
-        onTap: () => controller.createForm(formType.type),
+        onTap: () => hasDraft && draft != null
+            ? controller.openExistingForm(draft)
+            : controller.createForm(formType.type),
         borderRadius: BorderRadius.circular(16),
         child: Padding(
           padding: const EdgeInsets.all(16.0),
@@ -468,10 +513,15 @@ class FormSelectionView extends GetView<FormSelectionController> {
                 height: 52,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [
-                      colorScheme.primaryContainer,
-                      colorScheme.primaryContainer.withOpacity(0.7),
-                    ],
+                    colors: hasDraft
+                        ? [
+                            Colors.orange.withOpacity(0.3),
+                            Colors.orange.withOpacity(0.1),
+                          ]
+                        : [
+                            colorScheme.primaryContainer,
+                            colorScheme.primaryContainer.withOpacity(0.7),
+                          ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
@@ -479,7 +529,7 @@ class FormSelectionView extends GetView<FormSelectionController> {
                 ),
                 child: Icon(
                   formType.icon,
-                  color: colorScheme.onPrimaryContainer,
+                  color: hasDraft ? Colors.orange : colorScheme.onPrimaryContainer,
                   size: 26,
                 ),
               ),
@@ -488,20 +538,48 @@ class FormSelectionView extends GetView<FormSelectionController> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      formType.title,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: colorScheme.onSurface,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            formType.title,
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: colorScheme.onSurface,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (hasDraft)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.orange.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Text(
+                              'Draft',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Colors.orange,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      formType.description,
+                      hasDraft
+                          ? 'Lanjutkan draft yang tersimpan'
+                          : formType.description,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
+                        color: hasDraft ? Colors.orange : colorScheme.onSurfaceVariant,
+                        fontStyle: hasDraft ? FontStyle.italic : FontStyle.normal,
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
@@ -510,9 +588,16 @@ class FormSelectionView extends GetView<FormSelectionController> {
                 ),
               ),
               const SizedBox(width: 8),
+              // If draft is local, show a small delete button next to the action icon
+              if (controller.isLocalDraft(formType.type))
+                IconButton(
+                  onPressed: () => _confirmDeleteLocalDraft(formType.type),
+                  icon: Icon(Icons.delete_outline, color: Colors.red.shade400, size: 20),
+                  tooltip: 'Hapus Draft Lokal',
+                ),
               Icon(
-                Icons.add_circle_rounded,
-                color: colorScheme.primary,
+                hasDraft ? Icons.edit_rounded : Icons.add_circle_rounded,
+                color: hasDraft ? Colors.orange : colorScheme.primary,
                 size: 28,
               ),
             ],
@@ -569,6 +654,17 @@ class FormSelectionView extends GetView<FormSelectionController> {
                 onTap: () {
                   Get.back();
                   _confirmDeleteForm(form);
+                },
+              ),
+            // If this form is a local draft (not server-backed), show explicit delete draft option
+            if (controller.isFormLocal(form))
+              _buildOptionTile(
+                icon: Icons.delete_outline,
+                title: 'Hapus Draft Lokal',
+                iconColor: Colors.red.shade400,
+                onTap: () {
+                  Get.back();
+                  _confirmDeleteLocalDraft(form.type);
                 },
               ),
             _buildOptionTile(
@@ -644,31 +740,62 @@ class FormSelectionView extends GetView<FormSelectionController> {
   void _confirmDeleteForm(FormModel form) {
     final colorScheme = Get.theme.colorScheme;
 
-    Get.defaultDialog(
-      title: "Konfirmasi Hapus",
-      titleStyle: TextStyle(
-        fontWeight: FontWeight.bold,
-        color: colorScheme.onSurface,
-      ),
-      middleText:
+    Get.dialog(
+      AlertDialog(
+        title: const Text("Konfirmasi Hapus"),
+        content: Text(
           "Apakah Anda yakin ingin menghapus formulir ${controller.getFormTitle(form.type)}?\n\nTindakan ini tidak dapat dibatalkan.",
-      middleTextStyle: TextStyle(color: colorScheme.onSurfaceVariant),
-      backgroundColor: colorScheme.surface,
-      radius: 20,
-      textCancel: "Batal",
-      cancelTextColor: colorScheme.onSurface,
-      textConfirm: "Hapus",
-      confirmTextColor: colorScheme.onError,
-      buttonColor: colorScheme.error,
-      onCancel: () {
-        _logger.userAction(
-          action: 'Delete form cancelled',
-          metadata: {'formId': form.id.toString(), 'formType': form.type},
-        );
-      },
-      onConfirm: () {
-        controller.deleteForm(form);
-      },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Get.back();
+              _logger.userAction(
+                action: 'Delete form cancelled',
+                metadata: {'formId': form.id.toString(), 'formType': form.type},
+              );
+            },
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Get.back();
+              controller.deleteForm(form);
+            },
+            style: FilledButton.styleFrom(backgroundColor: colorScheme.error),
+            child: const Text('Hapus'),
+          ),
+        ],
+      ),
+      barrierDismissible: false,
+    );
+  }
+
+  void _confirmDeleteLocalDraft(String formType) {
+    final colorScheme = Get.theme.colorScheme;
+
+    Get.dialog(
+      AlertDialog(
+        title: const Text('Konfirmasi Hapus Draft'),
+        content: const Text(
+          'Apakah Anda yakin ingin menghapus draft lokal untuk formulir ini?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Get.back();
+              controller.deleteLocalDraft(formType);
+            },
+            style: FilledButton.styleFrom(backgroundColor: colorScheme.error),
+            child: const Text('Hapus'),
+          ),
+        ],
+      ),
+      barrierDismissible: false,
     );
   }
 

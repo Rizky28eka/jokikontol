@@ -8,7 +8,7 @@ class PdfService {
   // Generate PDF for a form
   static Future<http.Response> generatePdf(int formId) async {
     final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token');
+    final token = prefs.getString('auth_token');
 
     final response = await http.post(
       Uri.parse('$baseUrl/forms/$formId/generate-pdf'),

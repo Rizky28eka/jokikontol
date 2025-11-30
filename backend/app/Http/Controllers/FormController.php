@@ -3,8 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Form;
+use App\Models\NursingDiagnosis;
+use App\Models\NursingIntervention;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class FormController extends Controller
 {
@@ -28,7 +31,7 @@ class FormController extends Controller
             $query->where('patient_id', $request->patient_id);
         }
 
-        $forms = $query->orderBy('created_at', 'desc')->paginate(10);
+        $forms = $query->with('genogram')->orderBy('created_at', 'desc')->paginate(10);
 
         return response()->json($forms);
     }
@@ -48,13 +51,23 @@ class FormController extends Controller
         $validated['user_id'] = $request->user()->id;
         $validated['status'] = $validated['status'] ?? 'draft';
 
+        // Validate nursing ids found in the data payload
+        if (isset($validated['data']) && is_array($validated['data'])) {
+            $this->validateNursingIds($validated['data']);
+        }
+
         $form = Form::create($validated);
 
-        // If the form type is pengkajian and it includes genogram data, create the genogram
+        // If the form type is pengkajian and it includes genogram data, validate and create the genogram
         if ($validated['type'] === 'pengkajian' && isset($validated['data']['genogram'])) {
+            $genogram = $validated['data']['genogram'];
+            // Validate structure before creating
+            if (!$this->validateGenogramStructure($genogram['structure'] ?? null)) {
+                return response()->json(['message' => 'Invalid genogram structure provided'], 422);
+            }
             $form->genogram()->create([
-                'structure' => $validated['data']['genogram']['structure'] ?? null,
-                'notes' => $validated['data']['genogram']['notes'] ?? null,
+                'structure' => $genogram['structure'] ?? null,
+                'notes' => $genogram['notes'] ?? null,
             ]);
         }
 
@@ -69,8 +82,8 @@ class FormController extends Controller
      */
     public function show(Request $request, Form $form)
     {
-        // Ensure the form belongs to the authenticated user
-        if ($form->user_id !== $request->user()->id) {
+        // Ensure the form belongs to the authenticated user or allow 'dosen' to view submitted forms for review
+        if ($form->user_id !== $request->user()->id && $request->user()->role !== 'dosen') {
             return response()->json([
                 'message' => 'Unauthorized'
             ], 403);
@@ -98,19 +111,27 @@ class FormController extends Controller
             'status' => 'sometimes|in:draft,submitted,revised,approved',
         ]);
 
+        if (isset($validated['data']) && is_array($validated['data'])) {
+            $this->validateNursingIds($validated['data']);
+        }
+
         $form->update($validated);
 
         // If the form type is pengkajian and it includes genogram data, update or create the genogram
         if (($validated['type'] ?? $form->type) === 'pengkajian' && isset($validated['data']['genogram'])) {
+            $genogram = $validated['data']['genogram'];
+            if (!$this->validateGenogramStructure($genogram['structure'] ?? null)) {
+                return response()->json(['message' => 'Invalid genogram structure provided'], 422);
+            }
             if ($form->genogram) {
                 $form->genogram()->update([
-                    'structure' => $validated['data']['genogram']['structure'] ?? null,
-                    'notes' => $validated['data']['genogram']['notes'] ?? null,
+                    'structure' => $genogram['structure'] ?? null,
+                    'notes' => $genogram['notes'] ?? null,
                 ]);
             } else {
                 $form->genogram()->create([
-                    'structure' => $validated['data']['genogram']['structure'] ?? null,
-                    'notes' => $validated['data']['genogram']['notes'] ?? null,
+                    'structure' => $genogram['structure'] ?? null,
+                    'notes' => $genogram['notes'] ?? null,
                 ]);
             }
         }
@@ -283,5 +304,85 @@ class FormController extends Controller
             'message' => 'Form reviewed successfully',
             'form' => $form->load('revisions.reviewer')
         ]);
+    }
+
+    /**
+     * Recursively validate nursing diagnosis and intervention ids inside the data payload
+     */
+    private function validateNursingIds(array $data)
+    {
+        foreach ($data as $key => $value) {
+            if ($key === 'diagnosis') {
+                if (is_numeric($value) && !NursingDiagnosis::where('id', $value)->exists()) {
+                    throw ValidationException::withMessages(['data' => ['Invalid diagnosis id: ' . $value]]);
+                }
+            }
+            if ($key === 'intervensi' && is_array($value)) {
+                foreach ($value as $id) {
+                    if (!is_numeric($id) || !NursingIntervention::where('id', $id)->exists()) {
+                        throw ValidationException::withMessages(['data' => ['Invalid intervention id: ' . $id]]);
+                    }
+                }
+            }
+
+            // Recurse into nested arrays
+            if (is_array($value)) {
+                $this->validateNursingIds($value);
+            }
+        }
+    }
+
+    /**
+     * Validate basic genogram structure shape.
+     * Accepts either a list of members directly or an object {members: [], connections: []}
+     */
+    private function validateGenogramStructure($structure): bool
+    {
+        if ($structure === null) return false;
+
+        // If JSON string, try to decode
+        if (is_string($structure)) {
+            $decoded = json_decode($structure, true);
+            if ($decoded === null) return false;
+            $structure = $decoded;
+        }
+
+        // If top-level is list, treat as members
+        $members = [];
+        $connections = [];
+        if (is_array($structure) && isset($structure['members'])) {
+            $members = $structure['members'];
+            $connections = $structure['connections'] ?? [];
+        } elseif (is_array($structure) && array_values($structure) !== $structure) {
+            // associative but missing 'members' key - assume invalid
+            return false;
+        } elseif (is_array($structure)) {
+            // numeric-indexed list: there are members
+            $members = $structure;
+        } else {
+            return false;
+        }
+
+        if (!is_array($members) || count($members) === 0) return false;
+
+        // collect ids and validate members
+        $ids = [];
+        foreach ($members as $m) {
+            if (!is_array($m)) return false;
+            if (!isset($m['name']) || trim($m['name']) === '') return false;
+            if (!isset($m['id'])) return false;
+            $ids[] = $m['id'];
+        }
+
+        // Validate connections if present
+        if ($connections && !is_array($connections)) return false;
+        foreach ($connections as $conn) {
+            if (!is_array($conn)) return false;
+            if (!isset($conn['from']) || !isset($conn['to'])) return false;
+            if (!in_array($conn['from'], $ids) || !in_array($conn['to'], $ids)) return false;
+            if (!isset($conn['type']) || trim($conn['type']) === '') return false;
+        }
+
+        return true;
     }
 }

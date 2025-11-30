@@ -9,7 +9,7 @@ class NursingDiagnosisService {
   // GET all nursing diagnoses
   static Future<http.Response> getDiagnoses() async {
     final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token');
+    final token = prefs.getString('auth_token');
 
     final response = await http.get(
       Uri.parse('$baseUrl/diagnoses'),
@@ -25,7 +25,7 @@ class NursingDiagnosisService {
   // POST a new nursing diagnosis
   static Future<http.Response> createDiagnosis(Map<String, dynamic> body) async {
     final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token');
+    final token = prefs.getString('auth_token');
 
     final response = await http.post(
       Uri.parse('$baseUrl/diagnoses'),
@@ -42,7 +42,7 @@ class NursingDiagnosisService {
   // PUT update a nursing diagnosis
   static Future<http.Response> updateDiagnosis(int id, Map<String, dynamic> body) async {
     final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token');
+    final token = prefs.getString('auth_token');
 
     final response = await http.put(
       Uri.parse('$baseUrl/diagnoses/$id'),
@@ -59,7 +59,7 @@ class NursingDiagnosisService {
   // DELETE a nursing diagnosis
   static Future<http.Response> deleteDiagnosis(int id) async {
     final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token');
+    final token = prefs.getString('auth_token');
 
     final response = await http.delete(
       Uri.parse('$baseUrl/diagnoses/$id'),

@@ -11,10 +11,20 @@ class ApiService {
   // Helper method to get token with error handling
   static Future<String?> _getToken() async {
     try {
-      if (!AuthController.to.isTokenValid()) {
+      final token = AuthController.to.token;
+      
+      if (token.isEmpty) {
+        _logger.warning('Token is empty');
         return null;
       }
-      return AuthController.to.token;
+      
+      final isValid = AuthController.to.isTokenValid();
+      if (!isValid) {
+        _logger.warning('Token is not valid');
+        return null;
+      }
+      
+      return token;
     } catch (e, stackTrace) {
       _logger.error(
         'Failed to get token from AuthController',

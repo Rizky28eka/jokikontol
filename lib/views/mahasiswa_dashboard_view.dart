@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../controllers/dashboard_controller.dart';
+import '../controllers/auth_controller.dart';
 import '../services/logger_service.dart';
 
 class MahasiswaDashboardView extends GetView<DashboardController> {
@@ -65,6 +66,7 @@ class MahasiswaDashboardView extends GetView<DashboardController> {
 
   Widget _buildHeader(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final AuthController authController = Get.find();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -104,6 +106,14 @@ class MahasiswaDashboardView extends GetView<DashboardController> {
                   ),
                 ],
               ),
+            ),
+            IconButton(
+              onPressed: () => authController.logout(),
+              icon: Icon(
+                Icons.logout_rounded,
+                color: colorScheme.error,
+              ),
+              tooltip: 'Logout',
             ),
           ],
         ),
@@ -541,12 +551,18 @@ class MahasiswaDashboardView extends GetView<DashboardController> {
 
   Widget _buildFAB(BuildContext context, LoggerService logger) {
     return FloatingActionButton.extended(
-      onPressed: () {
+      onPressed: () async {
         logger.userAction(
           action: 'Add Patient FAB pressed',
           metadata: {'page': 'MahasiswaDashboardView'},
         );
-        Get.toNamed('/patient-form');
+        final result = await Get.toNamed('/patient-form');
+        // If a new patient was created (result is not null), refresh latest patients
+        if (result != null) {
+          await controller.fetchLatestPatients();
+          // Also try to refresh stats in case totals changed
+          await controller.fetchMahasiswaStats();
+        }
       },
       icon: const Icon(Icons.add_rounded),
       label: const Text('Tambah Pasien'),

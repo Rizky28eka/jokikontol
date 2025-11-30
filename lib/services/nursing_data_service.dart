@@ -8,7 +8,7 @@ class NursingDataService {
   // GET all nursing diagnoses
   static Future<http.Response> getDiagnoses() async {
     final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token');
+    final token = prefs.getString('auth_token');
 
     final response = await http.get(
       Uri.parse('$baseUrl/diagnoses'),
@@ -24,7 +24,7 @@ class NursingDataService {
   // GET all nursing interventions
   static Future<http.Response> getInterventions() async {
     final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token');
+    final token = prefs.getString('auth_token');
 
     final response = await http.get(
       Uri.parse('$baseUrl/interventions'),

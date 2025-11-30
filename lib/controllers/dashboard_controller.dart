@@ -28,12 +28,27 @@ class DashboardController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    _initDashboard();
+  }
+
+  Future<void> _initDashboard() async {
     final userRole = _authController.user?.role;
-    _logger.info('Dashboard initialized', context: {'userRole': userRole});
+    final hasToken = _authController.token.isNotEmpty;
+    
+    _logger.info('Dashboard initialized', context: {
+      'userRole': userRole,
+      'hasToken': hasToken
+    });
+
+    if (!hasToken) {
+      _logger.error('No token available');
+      _showSessionExpiredDialog();
+      return;
+    }
 
     if (userRole == 'mahasiswa') {
       fetchMahasiswaStats();
-      fetchLatestPatients(); // Fetch latest patients for mahasiswa dashboard
+      fetchLatestPatients();
     } else if (userRole == 'dosen') {
       fetchDosenStats();
     }

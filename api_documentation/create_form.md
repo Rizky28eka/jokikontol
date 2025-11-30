@@ -34,6 +34,29 @@ Creates a new form.
 }
 ```
 
+When including a genogram with a `pengkajian` form, add a `genogram` key inside `data`. The `structure` follows a simple schema with `members` and `connections`:
+
+```json
+{
+  "type": "pengkajian",
+  "patient_id": 2,
+  "data": {
+    "genogram": {
+      "structure": {
+        "members": [
+          { "id": 1, "name": "John Doe", "age": 50, "gender": "L", "relationship": "Ayah" },
+          { "id": 2, "name": "Jane Doe", "age": 48, "gender": "P", "relationship": "Ibu" }
+        ],
+        "connections": [
+          { "id": 10, "from": 1, "to": 2, "type": "marriage" }
+        ]
+      },
+      "notes": "Pola komunikasi rapuh antara orang tua"
+    }
+  }
+}
+```
+
 **Success Response (201 Created):**
 Returns a success message and the newly created form data.
 ```json
