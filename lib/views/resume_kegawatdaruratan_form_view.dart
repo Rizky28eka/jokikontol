@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_form_builder/flutter_form_builder.dart';
 import 'package:get/get.dart';
 import '../controllers/form_controller.dart';
 import '../controllers/patient_controller.dart';
+import '../controllers/nursing_intervention_controller.dart';
 import '../models/patient_model.dart';
 import '../services/nursing_data_global_service.dart';
-import '../controllers/nursing_intervention_controller.dart';
-import '../utils/form_base_mixin.dart';
+import '../utils/form_builder_mixin.dart';
+import '../widgets/form_components/custom_text_field.dart';
+import '../widgets/form_components/custom_dropdown.dart';
+import '../widgets/form_components/custom_checkbox_group.dart';
 
 class ResumeKegawatdaruratanFormView extends StatefulWidget {
   final Patient? patient;
@@ -19,108 +23,215 @@ class ResumeKegawatdaruratanFormView extends StatefulWidget {
 }
 
 class _ResumeKegawatdaruratanFormViewState
-    extends State<ResumeKegawatdaruratanFormView> with FormBaseMixin {
+    extends State<ResumeKegawatdaruratanFormView>
+    with FormBuilderMixin {
   @override
   final FormController formController = Get.put(FormController());
   @override
   final PatientController patientController = Get.find();
-  final NursingInterventionController _interventionController = Get.put(NursingInterventionController());
+  final NursingInterventionController _interventionController = Get.put(
+    NursingInterventionController(),
+  );
 
   int _currentSection = 0;
 
   @override
   String get formType => 'resume_kegawatdaruratan';
-  
+
   @override
   int? get formId => widget.formId ?? Get.arguments?['formId'] as int?;
-  
+
   Patient? _currentPatient;
   int? _currentPatientId;
-  
+
   @override
   Patient? get currentPatient => _currentPatient;
-  
+
   @override
   int? get currentPatientId => _currentPatientId;
-
-  // Data structure for the resume kegawatdaruratan form with 11 sections
-  @override
-  final Map<String, dynamic> formData = {
-    'identitas': {}, // Section 1: Identitas
-    'riwayat_keluhan':
-        {}, // Section 2: Riwayat Keluhan Utama dan Riwayat Penyakit Sekarang
-    'pemeriksaan_fisik': {}, // Section 3: Pemeriksaan Fisik
-    'status_mental': {}, // Section 4: Pemeriksaan Status Mental
-    'diagnosis': {}, // Section 5: Diagnosis Kerja
-    'tindakan': {}, // Section 6: Tindakan yang Telah Dilakukan
-    'implementasi': {}, // Section 7: Implementasi
-    'evaluasi': {}, // Section 8: Evaluasi
-    'rencana_lanjut': {}, // Section 9: Rencana Tindak Lanjut
-    'rencana_keluarga': {}, // Section 10: Rencana dengan Keluarga
-    'renpra': {}, // Section 11: Renpra (Rencana Perawatan)
-  };
 
   @override
   void initState() {
     super.initState();
     _currentPatient = widget.patient ?? Get.arguments?['patient'] as Patient?;
-    _currentPatientId = _currentPatient?.id ?? Get.arguments?['patientId'] as int?;
-    initializeForm();
+    _currentPatientId =
+        _currentPatient?.id ?? Get.arguments?['patientId'] as int?;
+    initializeForm(
+      patient: _currentPatient,
+      patientId: _currentPatientId,
+      formId: formId,
+    );
   }
 
   @override
-  void dispose() {
-    super.dispose();
+  Map<String, dynamic> transformInitialData(Map<String, dynamic> data) {
+    return {
+      // Section 1: Identitas
+      'nama_lengkap': data['identitas']?['nama_lengkap'],
+      'umur': data['identitas']?['umur'],
+      'jenis_kelamin': data['identitas']?['jenis_kelamin'],
+      'alamat': data['identitas']?['alamat'],
+      'tanggal_masuk': data['identitas']?['tanggal_masuk'],
+      // Section 2: Riwayat Keluhan
+      'keluhan_utama': data['riwayat_keluhan']?['keluhan_utama'],
+      'riwayat_penyakit_sekarang':
+          data['riwayat_keluhan']?['riwayat_penyakit_sekarang'],
+      'faktor_pencetus': data['riwayat_keluhan']?['faktor_pencetus'],
+      // Section 3: Pemeriksaan Fisik
+      'keadaan_umum': data['pemeriksaan_fisik']?['keadaan_umum'],
+      'tanda_vital': data['pemeriksaan_fisik']?['tanda_vital'],
+      'pemeriksaan_lain': data['pemeriksaan_fisik']?['pemeriksaan_lain'],
+      // Section 4: Status Mental
+      'kesadaran': data['status_mental']?['kesadaran'],
+      'orientasi': data['status_mental']?['orientasi'],
+      'bentuk_pemikiran': data['status_mental']?['bentuk_pemikiran'],
+      'isi_pemikiran': data['status_mental']?['isi_pemikiran'],
+      'persepsi': data['status_mental']?['persepsi'],
+      // Section 5: Diagnosis
+      'diagnosis_utama': data['diagnosis']?['diagnosis_utama'],
+      'diagnosis_banding': data['diagnosis']?['diagnosis_banding'],
+      'diagnosis_tambahan': data['diagnosis']?['diagnosis_tambahan'],
+      // Section 6: Tindakan
+      'tindakan_medis': data['tindakan']?['tindakan_medis'],
+      'tindakan_keperawatan': data['tindakan']?['tindakan_keperawatan'],
+      'terapi_psikososial': data['tindakan']?['terapi_psikososial'],
+      // Section 7: Implementasi
+      'pelaksanaan_intervensi': data['implementasi']?['pelaksanaan_intervensi'],
+      'kolaborasi_tim': data['implementasi']?['kolaborasi_tim'],
+      'edukasi': data['implementasi']?['edukasi'],
+      // Section 8: Evaluasi
+      'respon_intervensi': data['evaluasi']?['respon_intervensi'],
+      'perubahan_klinis': data['evaluasi']?['perubahan_klinis'],
+      'tujuan_tercapai': data['evaluasi']?['tujuan_tercapai'],
+      'hambatan_perawatan': data['evaluasi']?['hambatan_perawatan'],
+      // Section 9: Rencana Lanjut
+      'rencana_medis': data['rencana_lanjut']?['rencana_medis'],
+      'rencana_keperawatan': data['rencana_lanjut']?['rencana_keperawatan'],
+      'rencana_pemantauan': data['rencana_lanjut']?['rencana_pemantauan'],
+      // Section 10: Rencana Keluarga
+      'keterlibatan_keluarga':
+          data['rencana_keluarga']?['keterlibatan_keluarga'],
+      'edukasi_keluarga': data['rencana_keluarga']?['edukasi_keluarga'],
+      'dukungan_keluarga': data['rencana_keluarga']?['dukungan_keluarga'],
+      // Section 11: Renpra
+      'diagnosis': data['renpra']?['diagnosis'],
+      'intervensi': data['renpra']?['intervensi'] ?? [],
+      'tujuan': data['renpra']?['tujuan'],
+      'kriteria': data['renpra']?['kriteria'],
+      'rasional': data['renpra']?['rasional'],
+      'evaluasi_renpra': data['renpra']?['evaluasi'],
+    };
+  }
+
+  @override
+  Map<String, dynamic> transformFormData(Map<String, dynamic> formData) {
+    return {
+      'identitas': {
+        'nama_lengkap': formData['nama_lengkap'],
+        'umur': formData['umur'],
+        'jenis_kelamin': formData['jenis_kelamin'],
+        'alamat': formData['alamat'],
+        'tanggal_masuk': formData['tanggal_masuk'],
+      },
+      'riwayat_keluhan': {
+        'keluhan_utama': formData['keluhan_utama'],
+        'riwayat_penyakit_sekarang': formData['riwayat_penyakit_sekarang'],
+        'faktor_pencetus': formData['faktor_pencetus'],
+      },
+      'pemeriksaan_fisik': {
+        'keadaan_umum': formData['keadaan_umum'],
+        'tanda_vital': formData['tanda_vital'],
+        'pemeriksaan_lain': formData['pemeriksaan_lain'],
+      },
+      'status_mental': {
+        'kesadaran': formData['kesadaran'],
+        'orientasi': formData['orientasi'],
+        'bentuk_pemikiran': formData['bentuk_pemikiran'],
+        'isi_pemikiran': formData['isi_pemikiran'],
+        'persepsi': formData['persepsi'],
+      },
+      'diagnosis': {
+        'diagnosis_utama': formData['diagnosis_utama'],
+        'diagnosis_banding': formData['diagnosis_banding'],
+        'diagnosis_tambahan': formData['diagnosis_tambahan'],
+      },
+      'tindakan': {
+        'tindakan_medis': formData['tindakan_medis'],
+        'tindakan_keperawatan': formData['tindakan_keperawatan'],
+        'terapi_psikososial': formData['terapi_psikososial'],
+      },
+      'implementasi': {
+        'pelaksanaan_intervensi': formData['pelaksanaan_intervensi'],
+        'kolaborasi_tim': formData['kolaborasi_tim'],
+        'edukasi': formData['edukasi'],
+      },
+      'evaluasi': {
+        'respon_intervensi': formData['respon_intervensi'],
+        'perubahan_klinis': formData['perubahan_klinis'],
+        'tujuan_tercapai': formData['tujuan_tercapai'],
+        'hambatan_perawatan': formData['hambatan_perawatan'],
+      },
+      'rencana_lanjut': {
+        'rencana_medis': formData['rencana_medis'],
+        'rencana_keperawatan': formData['rencana_keperawatan'],
+        'rencana_pemantauan': formData['rencana_pemantauan'],
+      },
+      'rencana_keluarga': {
+        'keterlibatan_keluarga': formData['keterlibatan_keluarga'],
+        'edukasi_keluarga': formData['edukasi_keluarga'],
+        'dukungan_keluarga': formData['dukungan_keluarga'],
+      },
+      'renpra': formData['diagnosis'] != null
+          ? {
+              'diagnosis': formData['diagnosis'],
+              'intervensi': formData['intervensi'],
+              'tujuan': formData['tujuan'],
+              'kriteria': formData['kriteria'],
+              'rasional': formData['rasional'],
+              'evaluasi': formData['evaluasi_renpra'],
+            }
+          : null,
+    };
   }
 
   void _nextSection() {
-    if (_currentSection < 10) {
-      setState(() {
-        _currentSection++;
-      });
-    } else {
-      submitForm();
-    }
+    if (_currentSection < 10) setState(() => _currentSection++);
   }
 
   void _previousSection() {
-    if (_currentSection > 0) {
-      setState(() {
-        _currentSection--;
-      });
-    }
+    if (_currentSection > 0) setState(() => _currentSection--);
   }
 
   Widget _buildSection(int sectionNumber) {
     switch (sectionNumber) {
       case 0:
-        return _buildSection1Identitas();
+        return _buildIdentitasSection();
       case 1:
-        return _buildSection2RiwayatKeluhan();
+        return _buildRiwayatKeluhanSection();
       case 2:
-        return _buildSection3PemeriksaanFisik();
+        return _buildPemeriksaanFisikSection();
       case 3:
-        return _buildSection4StatusMental();
+        return _buildStatusMentalSection();
       case 4:
-        return _buildSection5Diagnosis();
+        return _buildDiagnosisSection();
       case 5:
-        return _buildSection6Tindakan();
+        return _buildTindakanSection();
       case 6:
-        return _buildSection7Implementasi();
+        return _buildImplementasiSection();
       case 7:
-        return _buildSection8Evaluasi();
+        return _buildEvaluasiSection();
       case 8:
-        return _buildSection9RencanaLanjut();
+        return _buildRencanaLanjutSection();
       case 9:
-        return _buildSection10RencanaKeluarga();
+        return _buildRencanaKeluargaSection();
       case 10:
-        return _buildSection11Renpra();
+        return _buildRenpraSection();
       default:
         return const SizedBox();
     }
   }
 
-  Widget _buildSection1Identitas() {
+  Widget _buildIdentitasSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -129,117 +240,58 @@ class _ResumeKegawatdaruratanFormViewState
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
-        TextFormField(
-          initialValue: formData['identitas']['nama_lengkap'],
-          decoration: const InputDecoration(
-            labelText: 'Nama Lengkap',
-            border: OutlineInputBorder(),
-          ),
-          onChanged: (value) {
-            formData['identitas']['nama_lengkap'] = value;
-          },
-        ),
+        const CustomTextField(name: 'nama_lengkap', label: 'Nama Lengkap'),
         const SizedBox(height: 16),
-        TextFormField(
-          initialValue: formData['identitas']['umur']?.toString(),
-          decoration: const InputDecoration(
-            labelText: 'Umur',
-            border: OutlineInputBorder(),
-          ),
+        const CustomTextField(
+          name: 'umur',
+          label: 'Umur',
           keyboardType: TextInputType.number,
-          onChanged: (value) {
-            formData['identitas']['umur'] = value;
-          },
         ),
         const SizedBox(height: 16),
-        TextFormField(
-          initialValue: formData['identitas']['jenis_kelamin'],
-          decoration: const InputDecoration(
-            labelText: 'Jenis Kelamin',
-            border: OutlineInputBorder(),
-          ),
-          onChanged: (value) {
-            formData['identitas']['jenis_kelamin'] = value;
-          },
-        ),
+        const CustomTextField(name: 'jenis_kelamin', label: 'Jenis Kelamin'),
         const SizedBox(height: 16),
-        TextFormField(
-          initialValue: formData['identitas']['alamat'],
-          decoration: const InputDecoration(
-            labelText: 'Alamat',
-            border: OutlineInputBorder(),
-          ),
-          maxLines: 2,
-          onChanged: (value) {
-            formData['identitas']['alamat'] = value;
-          },
-        ),
+        const CustomTextField(name: 'alamat', label: 'Alamat', maxLines: 2),
         const SizedBox(height: 16),
-        TextFormField(
-          initialValue: formData['identitas']['tanggal_masuk'],
-          decoration: const InputDecoration(
-            labelText: 'Tanggal Masuk',
-            border: OutlineInputBorder(),
-          ),
+        const CustomTextField(
+          name: 'tanggal_masuk',
+          label: 'Tanggal Masuk',
           keyboardType: TextInputType.datetime,
-          onChanged: (value) {
-            formData['identitas']['tanggal_masuk'] = value;
-          },
         ),
       ],
     );
   }
 
-  Widget _buildSection2RiwayatKeluhan() {
+  Widget _buildRiwayatKeluhanSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Section 2: Riwayat Keluhan Utama dan Riwayat Penyakit Sekarang',
+          'Section 2: Riwayat Keluhan',
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
-        TextFormField(
-          initialValue: formData['riwayat_keluhan']['keluhan_utama'],
-          decoration: const InputDecoration(
-            labelText: 'Keluhan Utama',
-            border: OutlineInputBorder(),
-          ),
+        const CustomTextField(
+          name: 'keluhan_utama',
+          label: 'Keluhan Utama',
           maxLines: 3,
-          onChanged: (value) {
-            formData['riwayat_keluhan']['keluhan_utama'] = value;
-          },
         ),
         const SizedBox(height: 16),
-        TextFormField(
-          initialValue:
-              formData['riwayat_keluhan']['riwayat_penyakit_sekarang'],
-          decoration: const InputDecoration(
-            labelText: 'Riwayat Penyakit Sekarang',
-            border: OutlineInputBorder(),
-          ),
+        const CustomTextField(
+          name: 'riwayat_penyakit_sekarang',
+          label: 'Riwayat Penyakit Sekarang',
           maxLines: 5,
-          onChanged: (value) {
-            formData['riwayat_keluhan']['riwayat_penyakit_sekarang'] = value;
-          },
         ),
         const SizedBox(height: 16),
-        TextFormField(
-          initialValue: formData['riwayat_keluhan']['faktor_pencetus'],
-          decoration: const InputDecoration(
-            labelText: 'Faktor Pencetus',
-            border: OutlineInputBorder(),
-          ),
+        const CustomTextField(
+          name: 'faktor_pencetus',
+          label: 'Faktor Pencetus',
           maxLines: 3,
-          onChanged: (value) {
-            formData['riwayat_keluhan']['faktor_pencetus'] = value;
-          },
         ),
       ],
     );
   }
 
-  Widget _buildSection3PemeriksaanFisik() {
+  Widget _buildPemeriksaanFisikSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -248,116 +300,58 @@ class _ResumeKegawatdaruratanFormViewState
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
-        TextFormField(
-          initialValue: formData['pemeriksaan_fisik']['keadaan_umum'],
-          decoration: const InputDecoration(
-            labelText: 'Keadaan Umum',
-            border: OutlineInputBorder(),
-          ),
-          onChanged: (value) {
-            formData['pemeriksaan_fisik']['keadaan_umum'] = value;
-          },
+        const CustomTextField(name: 'keadaan_umum', label: 'Keadaan Umum'),
+        const SizedBox(height: 16),
+        const CustomTextField(
+          name: 'tanda_vital',
+          label: 'Tanda-tanda Vital',
+          maxLines: 3,
         ),
         const SizedBox(height: 16),
-        TextFormField(
-          initialValue: formData['pemeriksaan_fisik']['tanda_vital'],
-          decoration: const InputDecoration(
-            labelText: 'Tanda-tanda Vital',
-            border: OutlineInputBorder(),
-          ),
+        const CustomTextField(
+          name: 'pemeriksaan_lain',
+          label: 'Pemeriksaan Fisik Lain',
           maxLines: 3,
-          onChanged: (value) {
-            formData['pemeriksaan_fisik']['tanda_vital'] = value;
-          },
-        ),
-        const SizedBox(height: 16),
-        TextFormField(
-          initialValue: formData['pemeriksaan_fisik']['pemeriksaan_lain'],
-          decoration: const InputDecoration(
-            labelText: 'Pemeriksaan Fisik Lain',
-            border: OutlineInputBorder(),
-          ),
-          maxLines: 3,
-          onChanged: (value) {
-            formData['pemeriksaan_fisik']['pemeriksaan_lain'] = value;
-          },
         ),
       ],
     );
   }
 
-  Widget _buildSection4StatusMental() {
+  Widget _buildStatusMentalSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Section 4: Pemeriksaan Status Mental',
+          'Section 4: Status Mental',
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
-        TextFormField(
-          initialValue: formData['status_mental']['kesadaran'],
-          decoration: const InputDecoration(
-            labelText: 'Kesadaran',
-            border: OutlineInputBorder(),
-          ),
-          onChanged: (value) {
-            formData['status_mental']['kesadaran'] = value;
-          },
+        const CustomTextField(name: 'kesadaran', label: 'Kesadaran'),
+        const SizedBox(height: 16),
+        const CustomTextField(
+          name: 'orientasi',
+          label: 'Orientasi',
+          maxLines: 3,
         ),
         const SizedBox(height: 16),
-        TextFormField(
-          initialValue: formData['status_mental']['orientasi'],
-          decoration: const InputDecoration(
-            labelText: 'Orientasi',
-            border: OutlineInputBorder(),
-          ),
+        const CustomTextField(
+          name: 'bentuk_pemikiran',
+          label: 'Bentuk Pemikiran',
           maxLines: 3,
-          onChanged: (value) {
-            formData['status_mental']['orientasi'] = value;
-          },
         ),
         const SizedBox(height: 16),
-        TextFormField(
-          initialValue: formData['status_mental']['bentuk_pemikiran'],
-          decoration: const InputDecoration(
-            labelText: 'Bentuk Pemikiran',
-            border: OutlineInputBorder(),
-          ),
+        const CustomTextField(
+          name: 'isi_pemikiran',
+          label: 'Isi Pemikiran',
           maxLines: 3,
-          onChanged: (value) {
-            formData['status_mental']['bentuk_pemikiran'] = value;
-          },
         ),
         const SizedBox(height: 16),
-        TextFormField(
-          initialValue: formData['status_mental']['isi_pemikiran'],
-          decoration: const InputDecoration(
-            labelText: 'Isi Pemikiran',
-            border: OutlineInputBorder(),
-          ),
-          maxLines: 3,
-          onChanged: (value) {
-            formData['status_mental']['isi_pemikiran'] = value;
-          },
-        ),
-        const SizedBox(height: 16),
-        TextFormField(
-          initialValue: formData['status_mental']['persepsi'],
-          decoration: const InputDecoration(
-            labelText: 'Persepsi',
-            border: OutlineInputBorder(),
-          ),
-          maxLines: 3,
-          onChanged: (value) {
-            formData['status_mental']['persepsi'] = value;
-          },
-        ),
+        const CustomTextField(name: 'persepsi', label: 'Persepsi', maxLines: 3),
       ],
     );
   }
 
-  Widget _buildSection5Diagnosis() {
+  Widget _buildDiagnosisSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -366,94 +360,58 @@ class _ResumeKegawatdaruratanFormViewState
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
-        TextFormField(
-          initialValue: formData['diagnosis']['diagnosis_utama'],
-          decoration: const InputDecoration(
-            labelText: 'Diagnosis Utama',
-            border: OutlineInputBorder(),
-          ),
+        const CustomTextField(
+          name: 'diagnosis_utama',
+          label: 'Diagnosis Utama',
           maxLines: 3,
-          onChanged: (value) {
-            formData['diagnosis']['diagnosis_utama'] = value;
-          },
         ),
         const SizedBox(height: 16),
-        TextFormField(
-          initialValue: formData['diagnosis']['diagnosis_banding'],
-          decoration: const InputDecoration(
-            labelText: 'Diagnosis Banding',
-            border: OutlineInputBorder(),
-          ),
+        const CustomTextField(
+          name: 'diagnosis_banding',
+          label: 'Diagnosis Banding',
           maxLines: 3,
-          onChanged: (value) {
-            formData['diagnosis']['diagnosis_banding'] = value;
-          },
         ),
         const SizedBox(height: 16),
-        TextFormField(
-          initialValue: formData['diagnosis']['diagnosis_tambahan'],
-          decoration: const InputDecoration(
-            labelText: 'Diagnosis Tambahan',
-            border: OutlineInputBorder(),
-          ),
+        const CustomTextField(
+          name: 'diagnosis_tambahan',
+          label: 'Diagnosis Tambahan',
           maxLines: 3,
-          onChanged: (value) {
-            formData['diagnosis']['diagnosis_tambahan'] = value;
-          },
         ),
       ],
     );
   }
 
-  Widget _buildSection6Tindakan() {
+  Widget _buildTindakanSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Section 6: Tindakan yang Telah Dilakukan',
+          'Section 6: Tindakan',
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
-        TextFormField(
-          initialValue: formData['tindakan']['tindakan_medis'],
-          decoration: const InputDecoration(
-            labelText: 'Tindakan Medis',
-            border: OutlineInputBorder(),
-          ),
+        const CustomTextField(
+          name: 'tindakan_medis',
+          label: 'Tindakan Medis',
           maxLines: 3,
-          onChanged: (value) {
-            formData['tindakan']['tindakan_medis'] = value;
-          },
         ),
         const SizedBox(height: 16),
-        TextFormField(
-          initialValue: formData['tindakan']['tindakan_keperawatan'],
-          decoration: const InputDecoration(
-            labelText: 'Tindakan Keperawatan',
-            border: OutlineInputBorder(),
-          ),
+        const CustomTextField(
+          name: 'tindakan_keperawatan',
+          label: 'Tindakan Keperawatan',
           maxLines: 3,
-          onChanged: (value) {
-            formData['tindakan']['tindakan_keperawatan'] = value;
-          },
         ),
         const SizedBox(height: 16),
-        TextFormField(
-          initialValue: formData['tindakan']['terapi_psikososial'],
-          decoration: const InputDecoration(
-            labelText: 'Terapi Psikososial',
-            border: OutlineInputBorder(),
-          ),
+        const CustomTextField(
+          name: 'terapi_psikososial',
+          label: 'Terapi Psikososial',
           maxLines: 3,
-          onChanged: (value) {
-            formData['tindakan']['terapi_psikososial'] = value;
-          },
         ),
       ],
     );
   }
 
-  Widget _buildSection7Implementasi() {
+  Widget _buildImplementasiSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -462,46 +420,28 @@ class _ResumeKegawatdaruratanFormViewState
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
-        TextFormField(
-          initialValue: formData['implementasi']['pelaksanaan_intervensi'],
-          decoration: const InputDecoration(
-            labelText: 'Pelaksanaan Intervensi',
-            border: OutlineInputBorder(),
-          ),
+        const CustomTextField(
+          name: 'pelaksanaan_intervensi',
+          label: 'Pelaksanaan Intervensi',
           maxLines: 5,
-          onChanged: (value) {
-            formData['implementasi']['pelaksanaan_intervensi'] = value;
-          },
         ),
         const SizedBox(height: 16),
-        TextFormField(
-          initialValue: formData['implementasi']['kolaborasi_tim'],
-          decoration: const InputDecoration(
-            labelText: 'Kolaborasi dengan Tim Lain',
-            border: OutlineInputBorder(),
-          ),
+        const CustomTextField(
+          name: 'kolaborasi_tim',
+          label: 'Kolaborasi dengan Tim Lain',
           maxLines: 3,
-          onChanged: (value) {
-            formData['implementasi']['kolaborasi_tim'] = value;
-          },
         ),
         const SizedBox(height: 16),
-        TextFormField(
-          initialValue: formData['implementasi']['edukasi'],
-          decoration: const InputDecoration(
-            labelText: 'Edukasi yang Diberikan',
-            border: OutlineInputBorder(),
-          ),
+        const CustomTextField(
+          name: 'edukasi',
+          label: 'Edukasi yang Diberikan',
           maxLines: 3,
-          onChanged: (value) {
-            formData['implementasi']['edukasi'] = value;
-          },
         ),
       ],
     );
   }
 
-  Widget _buildSection8Evaluasi() {
+  Widget _buildEvaluasiSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -510,58 +450,34 @@ class _ResumeKegawatdaruratanFormViewState
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
-        TextFormField(
-          initialValue: formData['evaluasi']['respon_intervensi'],
-          decoration: const InputDecoration(
-            labelText: 'Respon Terhadap Intervensi',
-            border: OutlineInputBorder(),
-          ),
+        const CustomTextField(
+          name: 'respon_intervensi',
+          label: 'Respon Terhadap Intervensi',
           maxLines: 3,
-          onChanged: (value) {
-            formData['evaluasi']['respon_intervensi'] = value;
-          },
         ),
         const SizedBox(height: 16),
-        TextFormField(
-          initialValue: formData['evaluasi']['perubahan_klinis'],
-          decoration: const InputDecoration(
-            labelText: 'Perubahan Klinis',
-            border: OutlineInputBorder(),
-          ),
+        const CustomTextField(
+          name: 'perubahan_klinis',
+          label: 'Perubahan Klinis',
           maxLines: 3,
-          onChanged: (value) {
-            formData['evaluasi']['perubahan_klinis'] = value;
-          },
         ),
         const SizedBox(height: 16),
-        TextFormField(
-          initialValue: formData['evaluasi']['tujuan_tercapai'],
-          decoration: const InputDecoration(
-            labelText: 'Tujuan yang Telah Tercapai',
-            border: OutlineInputBorder(),
-          ),
+        const CustomTextField(
+          name: 'tujuan_tercapai',
+          label: 'Tujuan yang Telah Tercapai',
           maxLines: 3,
-          onChanged: (value) {
-            formData['evaluasi']['tujuan_tercapai'] = value;
-          },
         ),
         const SizedBox(height: 16),
-        TextFormField(
-          initialValue: formData['evaluasi']['hambatan_perawatan'],
-          decoration: const InputDecoration(
-            labelText: 'Hambatan dalam Perawatan',
-            border: OutlineInputBorder(),
-          ),
+        const CustomTextField(
+          name: 'hambatan_perawatan',
+          label: 'Hambatan dalam Perawatan',
           maxLines: 3,
-          onChanged: (value) {
-            formData['evaluasi']['hambatan_perawatan'] = value;
-          },
         ),
       ],
     );
   }
 
-  Widget _buildSection9RencanaLanjut() {
+  Widget _buildRencanaLanjutSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -570,46 +486,28 @@ class _ResumeKegawatdaruratanFormViewState
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
-        TextFormField(
-          initialValue: formData['rencana_lanjut']['rencana_medis'],
-          decoration: const InputDecoration(
-            labelText: 'Rencana Medis Lanjutan',
-            border: OutlineInputBorder(),
-          ),
+        const CustomTextField(
+          name: 'rencana_medis',
+          label: 'Rencana Medis Lanjutan',
           maxLines: 3,
-          onChanged: (value) {
-            formData['rencana_lanjut']['rencana_medis'] = value;
-          },
         ),
         const SizedBox(height: 16),
-        TextFormField(
-          initialValue: formData['rencana_lanjut']['rencana_keperawatan'],
-          decoration: const InputDecoration(
-            labelText: 'Rencana Keperawatan Lanjutan',
-            border: OutlineInputBorder(),
-          ),
+        const CustomTextField(
+          name: 'rencana_keperawatan',
+          label: 'Rencana Keperawatan Lanjutan',
           maxLines: 3,
-          onChanged: (value) {
-            formData['rencana_lanjut']['rencana_keperawatan'] = value;
-          },
         ),
         const SizedBox(height: 16),
-        TextFormField(
-          initialValue: formData['rencana_lanjut']['rencana_pemantauan'],
-          decoration: const InputDecoration(
-            labelText: 'Rencana Pemantauan',
-            border: OutlineInputBorder(),
-          ),
+        const CustomTextField(
+          name: 'rencana_pemantauan',
+          label: 'Rencana Pemantauan',
           maxLines: 3,
-          onChanged: (value) {
-            formData['rencana_lanjut']['rencana_pemantauan'] = value;
-          },
         ),
       ],
     );
   }
 
-  Widget _buildSection10RencanaKeluarga() {
+  Widget _buildRencanaKeluargaSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -618,46 +516,28 @@ class _ResumeKegawatdaruratanFormViewState
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
-        TextFormField(
-          initialValue: formData['rencana_keluarga']['keterlibatan_keluarga'],
-          decoration: const InputDecoration(
-            labelText: 'Keterlibatan Keluarga',
-            border: OutlineInputBorder(),
-          ),
+        const CustomTextField(
+          name: 'keterlibatan_keluarga',
+          label: 'Keterlibatan Keluarga',
           maxLines: 3,
-          onChanged: (value) {
-            formData['rencana_keluarga']['keterlibatan_keluarga'] = value;
-          },
         ),
         const SizedBox(height: 16),
-        TextFormField(
-          initialValue: formData['rencana_keluarga']['edukasi_keluarga'],
-          decoration: const InputDecoration(
-            labelText: 'Edukasi untuk Keluarga',
-            border: OutlineInputBorder(),
-          ),
+        const CustomTextField(
+          name: 'edukasi_keluarga',
+          label: 'Edukasi untuk Keluarga',
           maxLines: 3,
-          onChanged: (value) {
-            formData['rencana_keluarga']['edukasi_keluarga'] = value;
-          },
         ),
         const SizedBox(height: 16),
-        TextFormField(
-          initialValue: formData['rencana_keluarga']['dukungan_keluarga'],
-          decoration: const InputDecoration(
-            labelText: 'Dukungan dari Keluarga',
-            border: OutlineInputBorder(),
-          ),
+        const CustomTextField(
+          name: 'dukungan_keluarga',
+          label: 'Dukungan dari Keluarga',
           maxLines: 3,
-          onChanged: (value) {
-            formData['rencana_keluarga']['dukungan_keluarga'] = value;
-          },
         ),
       ],
     );
   }
 
-  Widget _buildSection11Renpra() {
+  Widget _buildRenpraSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -666,127 +546,54 @@ class _ResumeKegawatdaruratanFormViewState
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
-        // Diagnosis dropdown
-        const Text('Diagnosis Keperawatan'),
-        const SizedBox(height: 8),
         Obx(() {
           final nursingService = Get.find<NursingDataGlobalService>();
           final diagnoses = nursingService.diagnoses;
+          if (diagnoses.isEmpty)
+            return const Text('Tidak ada diagnosis tersedia');
 
-          // Create dropdown items from dynamic diagnoses
-          final items = diagnoses
-                  .map((diag) => DropdownMenuItem(value: diag.id, child: Text(diag.name)),)
-              .toList();
-
-          // Add a default option if no diagnoses available
-          if (items.isEmpty) {
-            items.add(
-              DropdownMenuItem<int>(
-                value: null,
-                child: const Text('Tidak ada diagnosis tersedia'),
-              ),
-            );
-          }
-
-          return DropdownButtonFormField<int?>(
-            decoration: const InputDecoration(border: OutlineInputBorder()),
-            items: items.cast<DropdownMenuItem<int?>>(),
-            value: formData['renpra']['diagnosis'] as int?,
-            onChanged: (value) {
-              formData['renpra']['diagnosis'] = value;
-            },
-            hint: const Text('Pilih Diagnosis Keperawatan'),
+          return CustomDropdown<int>(
+            name: 'diagnosis',
+            label: 'Diagnosis Keperawatan',
+            items: diagnoses
+                .map(
+                  (diag) =>
+                      DropdownMenuItem(value: diag.id, child: Text(diag.name)),
+                )
+                .toList(),
+            hint: 'Pilih Diagnosis',
           );
         }),
         const SizedBox(height: 16),
-        const Text('Intervensi'),
-        const SizedBox(height: 8),
         Obx(() {
           final interventions = _interventionController.interventions;
-          if (interventions.isEmpty) return const Text('Tidak ada intervensi tersedia');
-          return Column(
-            children: interventions.map((iv) {
-              final currentInterventions =
-                  (formData['renpra']['intervensi'] as List?) ?? <int>[];
-              final isChecked = currentInterventions.contains(iv.id);
-              return CheckboxListTile(
-                title: Text(iv.name),
-                value: isChecked,
-                onChanged: (bool? value) {
-                  final intervensi = List<int>.from(currentInterventions);
-                  if (value == true) {
-                    if (!intervensi.contains(iv.id)) intervensi.add(iv.id);
-                  } else {
-                    intervensi.remove(iv.id);
-                  }
-                  formData['renpra']['intervensi'] = intervensi;
-                  setState(() {});
-                },
-              );
-            }).toList(),
+          if (interventions.isEmpty)
+            return const Text('Tidak ada intervensi tersedia');
+
+          return CustomCheckboxGroup<int>(
+            name: 'intervensi',
+            label: 'Intervensi',
+            options: interventions
+                .map(
+                  (iv) => FormBuilderFieldOption(
+                    value: iv.id,
+                    child: Text(iv.name),
+                  ),
+                )
+                .toList(),
           );
         }),
-        CheckboxListTile(
-          title: const Text('Peningkatan Aktivitas'),
-          value:
-              (formData['renpra']['intervensi'] as List?)?.contains(
-                'Peningkatan Aktivitas',
-              ) ??
-              false,
-          onChanged: (bool? value) {
-            final intervensi =
-                formData['renpra']['intervensi'] as List? ?? <String>[];
-            if (value == true) {
-              intervensi.add('Peningkatan Aktivitas');
-            } else {
-              intervensi.remove('Peningkatan Aktivitas');
-            }
-            formData['renpra']['intervensi'] = intervensi;
-          },
-        ),
         const SizedBox(height: 16),
-        TextFormField(
-          decoration: const InputDecoration(
-            labelText: 'Tujuan',
-            border: OutlineInputBorder(),
-          ),
-          maxLines: 3,
-          onChanged: (value) {
-            formData['renpra']['tujuan'] = value;
-          },
-        ),
+        const CustomTextField(name: 'tujuan', label: 'Tujuan', maxLines: 3),
         const SizedBox(height: 16),
-        TextFormField(
-          decoration: const InputDecoration(
-            labelText: 'Kriteria',
-            border: OutlineInputBorder(),
-          ),
-          maxLines: 3,
-          onChanged: (value) {
-            formData['renpra']['kriteria'] = value;
-          },
-        ),
+        const CustomTextField(name: 'kriteria', label: 'Kriteria', maxLines: 3),
         const SizedBox(height: 16),
-        TextFormField(
-          decoration: const InputDecoration(
-            labelText: 'Rasional',
-            border: OutlineInputBorder(),
-          ),
-          maxLines: 3,
-          onChanged: (value) {
-            formData['renpra']['rasional'] = value;
-          },
-        ),
+        const CustomTextField(name: 'rasional', label: 'Rasional', maxLines: 3),
         const SizedBox(height: 16),
-        TextFormField(
-          decoration: const InputDecoration(
-            labelText: 'Evaluasi',
-            border: OutlineInputBorder(),
-          ),
+        const CustomTextField(
+          name: 'evaluasi_renpra',
+          label: 'Evaluasi',
           maxLines: 3,
-          onChanged: (value) {
-            formData['renpra']['evaluasi'] = value;
-          },
         ),
       ],
     );
@@ -807,20 +614,19 @@ class _ResumeKegawatdaruratanFormViewState
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            // Progress indicator
             LinearProgressIndicator(value: (_currentSection + 1) / 11),
             const SizedBox(height: 16),
             Text('Section ${_currentSection + 1} dari 11'),
             const SizedBox(height: 16),
-
-            // Section content
             Expanded(
               child: SingleChildScrollView(
-                child: _buildSection(_currentSection),
+                child: FormBuilder(
+                  key: formKey,
+                  initialValue: initialValues,
+                  child: _buildSection(_currentSection),
+                ),
               ),
             ),
-
-            // Navigation buttons
             const SizedBox(height: 24),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -832,12 +638,8 @@ class _ResumeKegawatdaruratanFormViewState
                   )
                 else
                   const SizedBox.shrink(),
-
                 if (_currentSection == 10)
-                  // Last section, show action buttons
-                  Expanded(
-                    child: buildActionButtons(),
-                  )
+                  Expanded(child: buildActionButtons())
                 else
                   ElevatedButton(
                     onPressed: _nextSection,

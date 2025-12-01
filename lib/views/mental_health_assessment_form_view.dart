@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_form_builder/flutter_form_builder.dart';
 import 'package:get/get.dart';
 import '../controllers/form_controller.dart';
 import '../controllers/form_selection_controller.dart';
@@ -7,9 +8,10 @@ import '../controllers/pdf_controller.dart';
 import '../controllers/nursing_intervention_controller.dart';
 import '../models/patient_model.dart';
 import '../services/nursing_data_global_service.dart';
-import '../widgets/form_text_field.dart';
-import '../widgets/form_section_header.dart';
-import '../utils/form_base_mixin.dart';
+import '../utils/form_builder_mixin.dart';
+import '../widgets/form_components/custom_text_field.dart';
+import '../widgets/form_components/custom_dropdown.dart';
+import '../widgets/form_components/custom_checkbox_group.dart';
 
 class MentalHealthAssessmentFormView extends StatefulWidget {
   final Patient? patient;
@@ -23,7 +25,8 @@ class MentalHealthAssessmentFormView extends StatefulWidget {
 }
 
 class _MentalHealthAssessmentFormViewState
-    extends State<MentalHealthAssessmentFormView> with FormBaseMixin {
+    extends State<MentalHealthAssessmentFormView>
+    with FormBuilderMixin {
   @override
   final FormController formController = Get.put(FormController());
   @override
@@ -34,76 +37,61 @@ class _MentalHealthAssessmentFormViewState
 
   int _currentSection = 0;
 
-  // Controllers for the form fields - one for each field
-  final List<TextEditingController> _controllers = List.generate(
-    30,
-    (index) => TextEditingController(),
-  );
-
   @override
   String get formType => 'pengkajian';
-  
+
   @override
   int? get formId => widget.formId ?? Get.arguments?['formId'] as int?;
-  
+
   Patient? _currentPatient;
   int? _currentPatientId;
-  
+
   @override
   Patient? get currentPatient => _currentPatient;
-  
+
   @override
   int? get currentPatientId => _currentPatientId;
-
-  // Data structure for the form
-  @override
-  final Map<String, dynamic> formData = {
-    'section_1': {}, // Identitas Klien
-    'section_2': {}, // Riwayat Kehidupan
-    'section_3': {}, // Riwayat Psikososial
-    'section_4': {}, // Riwayat Psikiatri
-    'section_5': {}, // Pemeriksaan Psikologis
-    'section_6': {}, // Fungsi Psikologis
-    'section_7': {}, // Fungsi Sosial
-    'section_8': {}, // Fungsi Spiritual
-    'section_9': {}, // Genogram
-    'section_10': {}, // Renpra (Rencana Perawatan)
-    'section_11': {}, // Penutup
-  };
 
   @override
   void initState() {
     super.initState();
     _currentPatient = widget.patient ?? Get.arguments?['patient'] as Patient?;
-    _currentPatientId = _currentPatient?.id ?? Get.arguments?['patientId'] as int?;
-    
+    _currentPatientId =
+        _currentPatient?.id ?? Get.arguments?['patientId'] as int?;
+
     final formDataArg = Get.arguments?['formData'] as Map<String, dynamic>?;
     if (formDataArg != null) {
-      formData.addAll(formDataArg);
-      _populateControllers();
+      initialValues = transformInitialData(formDataArg);
     }
-    
-    initializeForm();
-    
-    // Prefill genogram from patient's previous forms
+
+    initializeForm(
+      patient: _currentPatient,
+      patientId: _currentPatientId,
+      formId: formId,
+    );
+
     Future.microtask(() async {
-      if (_currentPatientId != null) {
+      if (_currentPatientId != null)
         await _prefillGenogramFromPatient(_currentPatientId!);
-      }
     });
   }
 
   Future<void> _prefillGenogramFromPatient(int patientId) async {
     try {
       await formController.fetchForms(patientId: patientId);
-      final formsWithGenogram = formController.forms.where((f) => f.patientId == patientId && f.genogram != null).toList();
+      final formsWithGenogram = formController.forms
+          .where((f) => f.patientId == patientId && f.genogram != null)
+          .toList();
       if (formsWithGenogram.isNotEmpty) {
-        // Find the latest (forms are sorted by created_at desc)
         final latest = formsWithGenogram.first;
         if (latest.genogram?.structure != null) {
           setState(() {
-            formData['section_9'] = {'structure': latest.genogram!.structure, 'notes': latest.genogram!.notes};
-            formData['genogram'] = {'structure': latest.genogram!.structure, 'notes': latest.genogram!.notes};
+            formKey.currentState?.fields['genogram_structure']?.didChange(
+              latest.genogram!.structure,
+            );
+            formKey.currentState?.fields['genogram_notes']?.didChange(
+              latest.genogram!.notes,
+            );
           });
         }
       }
@@ -112,149 +100,119 @@ class _MentalHealthAssessmentFormViewState
     }
   }
 
-  void _populateControllers() {
-    // Section 1: Identitas Klien (0-3)
-    if (formData['section_1'] != null) {
-      _controllers[0].text = formData['section_1']['nama_lengkap'] ?? '';
-      _controllers[1].text = formData['section_1']['umur']?.toString() ?? '';
-      // populate text controllers if legacy data present
-      _controllers[2].text = formData['section_1']['jenis_kelamin'] ?? '';
-      _controllers[3].text = formData['section_1']['status_perkawinan'] ?? '';
-      // ensure formData has dropdown values set if loaded from controllers
-      if ((formData['section_1']['jenis_kelamin'] ?? '').isEmpty &&
-          _controllers[2].text.isNotEmpty) {
-        formData['section_1']['jenis_kelamin'] = _controllers[2].text;
-      }
-      if ((formData['section_1']['status_perkawinan'] ?? '').isEmpty &&
-          _controllers[3].text.isNotEmpty) {
-        formData['section_1']['status_perkawinan'] = _controllers[3].text;
-      }
-    }
-
-    // Section 2: Riwayat Kehidupan (4-6)
-    if (formData['section_2'] != null) {
-      _controllers[4].text = formData['section_2']['riwayat_pendidikan'] ?? '';
-      _controllers[5].text = formData['section_2']['pekerjaan'] ?? '';
-      _controllers[6].text = formData['section_2']['riwayat_keluarga'] ?? '';
-    }
-
-    // Section 3: Riwayat Psikososial (7-9)
-    if (formData['section_3'] != null) {
-      _controllers[7].text = formData['section_3']['hubungan_sosial'] ?? '';
-      _controllers[8].text = formData['section_3']['dukungan_sosial'] ?? '';
-      _controllers[9].text =
-          formData['section_3']['stresor_psikososial'] ?? '';
-    }
-
-    // Section 4: Riwayat Psikiatri (10)
-    if (formData['section_4'] != null) {
-      _controllers[10].text =
-          formData['section_4']['riwayat_gangguan_psikiatri'] ?? '';
-    }
-
-    // Section 5: Pemeriksaan Psikologis (11-13)
-    if (formData['section_5'] != null) {
-      _controllers[11].text = formData['section_5']['kesadaran'] ?? '';
-      _controllers[12].text = formData['section_5']['orientasi'] ?? '';
-      _controllers[13].text = formData['section_5']['penampilan'] ?? '';
-      if ((formData['section_5']['kesadaran'] ?? '').isEmpty &&
-          _controllers[11].text.isNotEmpty) {
-        formData['section_5']['kesadaran'] = _controllers[11].text;
-      }
-      if ((formData['section_5']['orientasi'] ?? '').isEmpty &&
-          _controllers[12].text.isNotEmpty) {
-        formData['section_5']['orientasi'] = _controllers[12].text;
-      }
-    }
-
-    // Section 6: Fungsi Psikologis (14-16)
-    if (formData['section_6'] != null) {
-      _controllers[14].text = formData['section_6']['mood'] ?? '';
-      _controllers[15].text = formData['section_6']['afect'] ?? '';
-      _controllers[16].text = formData['section_6']['alam_pikiran'] ?? '';
-      if ((formData['section_6']['mood'] ?? '').isEmpty &&
-          _controllers[14].text.isNotEmpty) {
-        formData['section_6']['mood'] = _controllers[14].text;
-      }
-      if ((formData['section_6']['afect'] ?? '').isEmpty &&
-          _controllers[15].text.isNotEmpty) {
-        formData['section_6']['afect'] = _controllers[15].text;
-      }
-    }
-
-    // Section 7: Fungsi Sosial (17)
-    if (formData['section_7'] != null) {
-      _controllers[17].text = formData['section_7']['fungsi_sosial'] ?? '';
-    }
-
-    // Section 8: Fungsi Spiritual (18-19)
-    if (formData['section_8'] != null) {
-      _controllers[18].text = formData['section_8']['kepercayaan'] ?? '';
-      _controllers[19].text = formData['section_8']['praktik_ibadah'] ?? '';
-    }
-
-    // Section 11: Penutup (20)
-    if (formData['section_11'] != null) {
-      _controllers[20].text = formData['section_11']['catatan_tambahan'] ?? '';
-    }
+  @override
+  Map<String, dynamic> transformInitialData(Map<String, dynamic> data) {
+    return {
+      'nama_lengkap': data['section_1']?['nama_lengkap'],
+      'umur': data['section_1']?['umur'],
+      'jenis_kelamin': data['section_1']?['jenis_kelamin'],
+      'status_perkawinan': data['section_1']?['status_perkawinan'],
+      'riwayat_pendidikan': data['section_2']?['riwayat_pendidikan'],
+      'pekerjaan': data['section_2']?['pekerjaan'],
+      'riwayat_keluarga': data['section_2']?['riwayat_keluarga'],
+      'hubungan_sosial': data['section_3']?['hubungan_sosial'],
+      'dukungan_sosial': data['section_3']?['dukungan_sosial'],
+      'stresor_psikososial': data['section_3']?['stresor_psikososial'],
+      'riwayat_gangguan_psikiatri':
+          data['section_4']?['riwayat_gangguan_psikiatri'],
+      'kesadaran': data['section_5']?['kesadaran'],
+      'orientasi': data['section_5']?['orientasi'],
+      'penampilan': data['section_5']?['penampilan'],
+      'mood': data['section_6']?['mood'],
+      'afect': data['section_6']?['afect'],
+      'alam_pikiran': data['section_6']?['alam_pikiran'],
+      'fungsi_sosial': data['section_7']?['fungsi_sosial'],
+      'kepercayaan': data['section_8']?['kepercayaan'],
+      'praktik_ibadah': data['section_8']?['praktik_ibadah'],
+      'genogram_structure':
+          data['section_9']?['structure'] ?? data['genogram']?['structure'],
+      'genogram_notes':
+          data['section_9']?['notes'] ?? data['genogram']?['notes'],
+      'diagnosis': data['section_10']?['diagnosis'],
+      'intervensi': data['section_10']?['intervensi'] ?? [],
+      'tujuan': data['section_10']?['tujuan'],
+      'kriteria': data['section_10']?['kriteria'],
+      'rasional': data['section_10']?['rasional'],
+      'catatan_tambahan': data['section_11']?['catatan_tambahan'],
+      'tanggal_pengisian': data['section_11']?['tanggal_pengisian'],
+    };
   }
 
   @override
-  void dispose() {
-    for (var controller in _controllers) {
-      controller.dispose();
-    }
-    super.dispose();
-  }
+  Map<String, dynamic> transformFormData(Map<String, dynamic> formData) {
+    final result = {
+      'section_1': {
+        'nama_lengkap': formData['nama_lengkap'],
+        'umur': formData['umur'],
+        'jenis_kelamin': formData['jenis_kelamin'],
+        'status_perkawinan': formData['status_perkawinan'],
+      },
+      'section_2': {
+        'riwayat_pendidikan': formData['riwayat_pendidikan'],
+        'pekerjaan': formData['pekerjaan'],
+        'riwayat_keluarga': formData['riwayat_keluarga'],
+      },
+      'section_3': {
+        'hubungan_sosial': formData['hubungan_sosial'],
+        'dukungan_sosial': formData['dukungan_sosial'],
+        'stresor_psikososial': formData['stresor_psikososial'],
+      },
+      'section_4': {
+        'riwayat_gangguan_psikiatri': formData['riwayat_gangguan_psikiatri'],
+      },
+      'section_5': {
+        'kesadaran': formData['kesadaran'],
+        'orientasi': formData['orientasi'],
+        'penampilan': formData['penampilan'],
+      },
+      'section_6': {
+        'mood': formData['mood'],
+        'afect': formData['afect'],
+        'alam_pikiran': formData['alam_pikiran'],
+      },
+      'section_7': {'fungsi_sosial': formData['fungsi_sosial']},
+      'section_8': {
+        'kepercayaan': formData['kepercayaan'],
+        'praktik_ibadah': formData['praktik_ibadah'],
+      },
+      'section_9': formData['genogram_structure'] != null
+          ? {
+              'structure': formData['genogram_structure'],
+              'notes': formData['genogram_notes'],
+            }
+          : null,
+      'section_10': formData['diagnosis'] != null
+          ? {
+              'diagnosis': formData['diagnosis'],
+              'intervensi': formData['intervensi'],
+              'tujuan': formData['tujuan'],
+              'kriteria': formData['kriteria'],
+              'rasional': formData['rasional'],
+            }
+          : null,
+      'section_11': {
+        'catatan_tambahan': formData['catatan_tambahan'],
+        'tanggal_pengisian': formData['tanggal_pengisian'],
+      },
+    };
 
-  void _nextSection() {
-    if (_currentSection < 10) {
-      setState(() {
-        _currentSection++;
-      });
-    } else {
-      _submitFormWithValidation();
-    }
-  }
-
-  void _previousSection() {
-    if (_currentSection > 0) {
-      setState(() {
-        _currentSection--;
-      });
-    }
-  }
-
-  // Custom validation before submit
-  Future<void> _submitFormWithValidation() async {
-    // Basic validation: ensure required fields exist
-    if ((formData['section_1']['jenis_kelamin'] ?? '').toString().isEmpty) {
-      Get.snackbar('Validation', 'Jenis Kelamin harus dipilih');
-      return;
-    }
-    if ((formData['section_1']['status_perkawinan'] ?? '').toString().isEmpty) {
-      Get.snackbar('Validation', 'Status Perkawinan harus dipilih');
-      return;
-    }
-
-    // Ensure genogram payload is present for backend if we have a section_9 structure
-    if ((formData['section_9'] ?? {})['structure'] != null) {
-      formData['genogram'] = {
-        'structure': formData['section_9']['structure'],
-        'notes': formData['section_9']['notes'] ?? '',
+    // Add genogram at top level for backend
+    if (formData['genogram_structure'] != null) {
+      result['genogram'] = {
+        'structure': formData['genogram_structure'],
+        'notes': formData['genogram_notes'],
       };
     }
 
-    // Call mixin's submitForm
-    await submitForm();
-    
-    // Refresh form list after successful submission
-    try {
-      final formSelectionController = Get.find<FormSelectionController>();
-      await formSelectionController.fetchForms();
-    } catch (e) {
-      // FormSelectionController not found, ignore
-    }
+    return result;
+  }
+
+  void _nextSection() {
+    if (_currentSection < 10) setState(() => _currentSection++);
+  }
+
+  void _previousSection() {
+    if (_currentSection > 0) setState(() => _currentSection--);
   }
 
   Future<void> _exportToPdf() async {
@@ -265,90 +223,73 @@ class _MentalHealthAssessmentFormViewState
       );
       return;
     }
-
     final pdfController = Get.put(PdfController());
     final pdfUrl = await pdfController.generatePdfForForm(widget.formId!);
-
     if (pdfUrl != null) {
-      // Open the PDF in a new window or download it
       Get.snackbar('Success', 'PDF generated successfully. URL: $pdfUrl');
-      // In a real implementation, you might open the PDF viewer here
     }
   }
 
   Widget _buildSection(int sectionNumber) {
     switch (sectionNumber) {
       case 0:
-        return _buildSection1IdentitasKlien();
+        return _buildIdentitasKlienSection();
       case 1:
-        return _buildSection2RiwayatKehidupan();
+        return _buildRiwayatKehidupanSection();
       case 2:
-        return _buildSection3RiwayatPsikososial();
+        return _buildRiwayatPsikososialSection();
       case 3:
-        return _buildSection4RiwayatPsikiatri();
+        return _buildRiwayatPsikiatriSection();
       case 4:
-        return _buildSection5PemeriksaanPsikologis();
+        return _buildPemeriksaanPsikologisSection();
       case 5:
-        return _buildSection6FungsiPsikologis();
+        return _buildFungsiPsikologisSection();
       case 6:
-        return _buildSection7FungsiSosial();
+        return _buildFungsiSosialSection();
       case 7:
-        return _buildSection8FungsiSpiritual();
+        return _buildFungsiSpiritualSection();
       case 8:
-        return _buildSection9Genogram();
+        return _buildGenogramSection();
       case 9:
-        return _buildSection10Renpra();
+        return _buildRenpraSection();
       case 10:
-        return _buildSection11Penutup();
+        return _buildPenutupSection();
       default:
         return const SizedBox();
     }
   }
 
-  Widget _buildSection1IdentitasKlien() {
+  Widget _buildIdentitasKlienSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const FormSectionHeader(title: 'Section 1: Identitas Klien'),
-        const SizedBox(height: 16),
-        FormTextField(
-          controller: _controllers[0],
-          labelText: 'Nama Lengkap',
-            onChanged: (value) {
-              formData['section_1']['nama_lengkap'] = value;
-            },
+        const Text(
+          'Section 1: Identitas Klien',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
-        FormTextField(
-          controller: _controllers[1],
-          labelText: 'Umur',
+        const CustomTextField(name: 'nama_lengkap', label: 'Nama Lengkap'),
+        const SizedBox(height: 16),
+        const CustomTextField(
+          name: 'umur',
+          label: 'Umur',
           keyboardType: TextInputType.number,
-            onChanged: (value) {
-              formData['section_1']['umur'] = value;
-            },
         ),
         const SizedBox(height: 16),
-        // Jenis Kelamin (Dropdown)
-        DropdownButtonFormField<String>(
-          value: formData['section_1']['jenis_kelamin'] as String?,
-          decoration: const InputDecoration(border: OutlineInputBorder()),
+        CustomDropdown<String>(
+          name: 'jenis_kelamin',
+          label: 'Jenis Kelamin',
           items: const [
             DropdownMenuItem(value: 'L', child: Text('Laki-laki')),
             DropdownMenuItem(value: 'P', child: Text('Perempuan')),
             DropdownMenuItem(value: 'O', child: Text('Lainnya')),
           ],
-            onChanged: (value) {
-              setState(() {
-                formData['section_1']['jenis_kelamin'] = value;
-              });
-            },
-          hint: const Text('Pilih Jenis Kelamin'),
+          hint: 'Pilih Jenis Kelamin',
         ),
         const SizedBox(height: 16),
-        // Status Perkawinan (Dropdown)
-        DropdownButtonFormField<String>(
-          value: formData['section_1']['status_perkawinan'] as String?,
-          decoration: const InputDecoration(border: OutlineInputBorder()),
+        CustomDropdown<String>(
+          name: 'status_perkawinan',
+          label: 'Status Perkawinan',
           items: const [
             DropdownMenuItem(value: 'belum_kawin', child: Text('Belum Kawin')),
             DropdownMenuItem(value: 'menikah', child: Text('Menikah')),
@@ -357,167 +298,134 @@ class _MentalHealthAssessmentFormViewState
             DropdownMenuItem(value: 'duda', child: Text('Duda')),
             DropdownMenuItem(value: 'janda', child: Text('Janda')),
           ],
-            onChanged: (value) {
-              setState(() {
-                formData['section_1']['status_perkawinan'] = value;
-              });
-            },
-          hint: const Text('Pilih Status Perkawinan'),
+          hint: 'Pilih Status Perkawinan',
         ),
       ],
     );
   }
 
-  Widget _buildSection2RiwayatKehidupan() {
+  Widget _buildRiwayatKehidupanSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const FormSectionHeader(title: 'Section 2: Riwayat Kehidupan'),
-        const SizedBox(height: 16),
-        FormTextField(
-          controller: _controllers[4],
-          labelText: 'Riwayat Pendidikan',
-          maxLines: 3,
-            onChanged: (value) {
-              formData['section_2']['riwayat_pendidikan'] = value;
-            },
+        const Text(
+          'Section 2: Riwayat Kehidupan',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
-        FormTextField(
-          controller: _controllers[5],
-          labelText: 'Pekerjaan',
-            onChanged: (value) {
-              formData['section_2']['pekerjaan'] = value;
-            },
+        const CustomTextField(
+          name: 'riwayat_pendidikan',
+          label: 'Riwayat Pendidikan',
+          maxLines: 3,
         ),
         const SizedBox(height: 16),
-        FormTextField(
-          controller: _controllers[6],
-          labelText: 'Riwayat Keluarga',
+        const CustomTextField(name: 'pekerjaan', label: 'Pekerjaan'),
+        const SizedBox(height: 16),
+        const CustomTextField(
+          name: 'riwayat_keluarga',
+          label: 'Riwayat Keluarga',
           maxLines: 3,
-            onChanged: (value) {
-              formData['section_2']['riwayat_keluarga'] = value;
-            },
         ),
       ],
     );
   }
 
-  Widget _buildSection3RiwayatPsikososial() {
+  Widget _buildRiwayatPsikososialSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const FormSectionHeader(title: 'Section 3: Riwayat Psikososial'),
-        const SizedBox(height: 16),
-        FormTextField(
-          controller: _controllers[7],
-          labelText: 'Hubungan Sosial',
-          maxLines: 3,
-            onChanged: (value) {
-              formData['section_3']['hubungan_sosial'] = value;
-            },
+        const Text(
+          'Section 3: Riwayat Psikososial',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
-        FormTextField(
-          controller: _controllers[8],
-          labelText: 'Dukungan Sosial',
+        const CustomTextField(
+          name: 'hubungan_sosial',
+          label: 'Hubungan Sosial',
           maxLines: 3,
-            onChanged: (value) {
-              formData['section_3']['dukungan_sosial'] = value;
-            },
         ),
         const SizedBox(height: 16),
-        FormTextField(
-          controller: _controllers[9],
-          labelText: 'Stresor Psikososial',
+        const CustomTextField(
+          name: 'dukungan_sosial',
+          label: 'Dukungan Sosial',
           maxLines: 3,
-            onChanged: (value) {
-              formData['section_3']['stresor_psikososial'] = value;
-            },
+        ),
+        const SizedBox(height: 16),
+        const CustomTextField(
+          name: 'stresor_psikososial',
+          label: 'Stresor Psikososial',
+          maxLines: 3,
         ),
       ],
     );
   }
 
-  Widget _buildSection4RiwayatPsikiatri() {
+  Widget _buildRiwayatPsikiatriSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const FormSectionHeader(title: 'Section 4: Riwayat Psikiatri'),
+        const Text(
+          'Section 4: Riwayat Psikiatri',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
         const SizedBox(height: 16),
-        FormTextField(
-          controller: _controllers[10],
-          labelText: 'Riwayat Gangguan Psikiatri',
+        const CustomTextField(
+          name: 'riwayat_gangguan_psikiatri',
+          label: 'Riwayat Gangguan Psikiatri',
           maxLines: 3,
-            onChanged: (value) {
-              formData['section_4']['riwayat_gangguan_psikiatri'] = value;
-            },
         ),
       ],
     );
   }
 
-  Widget _buildSection5PemeriksaanPsikologis() {
+  Widget _buildPemeriksaanPsikologisSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const FormSectionHeader(title: 'Section 5: Pemeriksaan Psikologis'),
+        const Text(
+          'Section 5: Pemeriksaan Psikologis',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
         const SizedBox(height: 16),
-        // Kesadaran (Dropdown)
-        DropdownButtonFormField<String>(
-          value: formData['section_5']['kesadaran'] as String?,
-          decoration: const InputDecoration(border: OutlineInputBorder()),
+        CustomDropdown<String>(
+          name: 'kesadaran',
+          label: 'Kesadaran',
           items: const [
             DropdownMenuItem(value: 'sadar_penuh', child: Text('Sadar Penuh')),
             DropdownMenuItem(value: 'somnolent', child: Text('Somnolent')),
             DropdownMenuItem(value: 'stupor', child: Text('Stupor')),
             DropdownMenuItem(value: 'coma', child: Text('Coma')),
           ],
-            onChanged: (value) {
-              setState(() {
-                formData['section_5']['kesadaran'] = value;
-              });
-            },
-          hint: const Text('Pilih Kesadaran'),
+          hint: 'Pilih Kesadaran',
         ),
         const SizedBox(height: 16),
-        // Orientasi (Dropdown)
-        DropdownButtonFormField<String>(
-          value: formData['section_5']['orientasi'] as String?,
-          decoration: const InputDecoration(border: OutlineInputBorder()),
+        CustomDropdown<String>(
+          name: 'orientasi',
+          label: 'Orientasi',
           items: const [
             DropdownMenuItem(value: 'utuh', child: Text('Utuh')),
             DropdownMenuItem(value: 'gangguan', child: Text('Gangguan')),
           ],
-            onChanged: (value) {
-              setState(() {
-                formData['section_5']['orientasi'] = value;
-              });
-            },
-          hint: const Text('Pilih Orientasi'),
+          hint: 'Pilih Orientasi',
         ),
         const SizedBox(height: 16),
-        FormTextField(
-          controller: _controllers[13],
-          labelText: 'Penampilan',
-            onChanged: (value) {
-              formData['section_5']['penampilan'] = value;
-            },
-        ),
+        const CustomTextField(name: 'penampilan', label: 'Penampilan'),
       ],
     );
   }
 
-  Widget _buildSection6FungsiPsikologis() {
+  Widget _buildFungsiPsikologisSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const FormSectionHeader(title: 'Section 6: Fungsi Psikologis'),
+        const Text(
+          'Section 6: Fungsi Psikologis',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
         const SizedBox(height: 16),
-        // Mood (Dropdown)
-        DropdownButtonFormField<String>(
-          value: formData['section_6']['mood'] as String?,
-          decoration: const InputDecoration(border: OutlineInputBorder()),
+        CustomDropdown<String>(
+          name: 'mood',
+          label: 'Mood',
           items: const [
             DropdownMenuItem(value: 'normal', child: Text('Normal')),
             DropdownMenuItem(value: 'depresi', child: Text('Depresi')),
@@ -525,18 +433,12 @@ class _MentalHealthAssessmentFormViewState
             DropdownMenuItem(value: 'iritabel', child: Text('Iritabel')),
             DropdownMenuItem(value: 'labil', child: Text('Labil')),
           ],
-            onChanged: (value) {
-              setState(() {
-                formData['section_6']['mood'] = value;
-              });
-            },
-          hint: const Text('Pilih Mood'),
+          hint: 'Pilih Mood',
         ),
         const SizedBox(height: 16),
-        // Afect (Dropdown)
-        DropdownButtonFormField<String>(
-          value: formData['section_6']['afect'] as String?,
-          decoration: const InputDecoration(border: OutlineInputBorder()),
+        CustomDropdown<String>(
+          name: 'afect',
+          label: 'Afect',
           items: const [
             DropdownMenuItem(value: 'normal', child: Text('Normal')),
             DropdownMenuItem(value: 'flat', child: Text('Flat')),
@@ -544,88 +446,72 @@ class _MentalHealthAssessmentFormViewState
             DropdownMenuItem(value: 'labil', child: Text('Labil')),
             DropdownMenuItem(value: 'iritabel', child: Text('Iritabel')),
           ],
-            onChanged: (value) {
-              setState(() {
-                formData['section_6']['afect'] = value;
-              });
-            },
-          hint: const Text('Pilih Afect'),
+          hint: 'Pilih Afect',
         ),
         const SizedBox(height: 16),
-        FormTextField(
-          controller: _controllers[16],
-          labelText: 'Alam pikiran',
-            onChanged: (value) {
-              formData['section_6']['alam_pikiran'] = value;
-            },
-        ),
+        const CustomTextField(name: 'alam_pikiran', label: 'Alam Pikiran'),
       ],
     );
   }
 
-  Widget _buildSection7FungsiSosial() {
+  Widget _buildFungsiSosialSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const FormSectionHeader(title: 'Section 7: Fungsi Sosial'),
+        const Text(
+          'Section 7: Fungsi Sosial',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
         const SizedBox(height: 16),
-        FormTextField(
-          controller: _controllers[17],
-          labelText: 'Fungsi Sosial',
+        const CustomTextField(
+          name: 'fungsi_sosial',
+          label: 'Fungsi Sosial',
           maxLines: 3,
-            onChanged: (value) {
-              formData['section_7']['fungsi_sosial'] = value;
-            },
         ),
       ],
     );
   }
 
-  Widget _buildSection8FungsiSpiritual() {
+  Widget _buildFungsiSpiritualSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const FormSectionHeader(title: 'Section 8: Fungsi Spiritual'),
-        const SizedBox(height: 16),
-        FormTextField(
-          controller: _controllers[18],
-          labelText: 'Kepercayaan',
-            onChanged: (value) {
-              formData['section_8']['kepercayaan'] = value;
-            },
+        const Text(
+          'Section 8: Fungsi Spiritual',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
-        FormTextField(
-          controller: _controllers[19],
-          labelText: 'Praktik Ibadah',
-            onChanged: (value) {
-              formData['section_8']['praktik_ibadah'] = value;
-            },
-        ),
+        const CustomTextField(name: 'kepercayaan', label: 'Kepercayaan'),
+        const SizedBox(height: 16),
+        const CustomTextField(name: 'praktik_ibadah', label: 'Praktik Ibadah'),
       ],
     );
   }
 
-  Widget _buildSection9Genogram() {
+  Widget _buildGenogramSection() {
+    final structure = formKey.currentState?.fields['genogram_structure']?.value;
+    final List members = structure != null && structure is Map
+        ? (structure['members'] ?? []) as List
+        : [];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const FormSectionHeader(title: 'Section 9: Genogram'),
+        const Text(
+          'Section 9: Genogram',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
         const SizedBox(height: 16),
-        const Text('Genogram Builder will be implemented here'),
-        const SizedBox(height: 12),
-        // Inline preview of current genogram members (if any)
-        Builder(builder: (context) {
-          final structure = (formData['section_9'] ?? {})['structure'] ?? (formData['genogram'] ?? {})['structure'];
-          final List members = structure != null && structure is Map ? (structure['members'] ?? []) as List : <dynamic>[];
-          final List connections = structure != null && structure is Map ? (structure['connections'] ?? []) as List : <dynamic>[];
-          if (members.isEmpty) {
-            return const Text('Belum ada anggota genogram.');
-          }
-          return Column(
+        if (members.isEmpty)
+          const Text('Belum ada anggota genogram.')
+        else
+          Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Anggota Genogram (${members.length})', style: const TextStyle(fontWeight: FontWeight.bold)),
+              Text(
+                'Anggota Genogram (${members.length})',
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 8),
               ListView.builder(
                 shrinkWrap: true,
@@ -635,174 +521,122 @@ class _MentalHealthAssessmentFormViewState
                   final member = members[idx] as Map<String, dynamic>;
                   return ListTile(
                     title: Text(member['name'] ?? 'Unknown'),
-                    subtitle: Text('${member['relationship'] ?? ''} • ${member['age'] ?? ''}'),
+                    subtitle: Text(
+                      '${member['relationship'] ?? ''} • ${member['age'] ?? ''}',
+                    ),
                   );
                 },
               ),
-              const SizedBox(height: 8),
-              Text('Hubungan: ${connections.length}'),
             ],
-          );
-        }),
-        const SizedBox(height: 8),
+          ),
+        const SizedBox(height: 16),
         ElevatedButton(
           onPressed: () async {
-            final genogramStructure = (formData['section_9'] ?? {})['structure'] ?? {'members': [], 'connections': []};
-            final genogramNotes = (formData['section_9'] ?? {})['notes'] ?? '';
-            final result = await Get.toNamed('/genogram-builder', arguments: {
-              'structure': genogramStructure,
-              'notes': genogramNotes,
-            });
+            final result = await Get.toNamed(
+              '/genogram-builder',
+              arguments: {
+                'structure': structure ?? {'members': [], 'connections': []},
+                'notes':
+                    formKey.currentState?.fields['genogram_notes']?.value ?? '',
+              },
+            );
             if (result != null && result is Map<String, dynamic>) {
-              setState(() {
-                formData['section_9'] = {};
-                formData['section_9']['structure'] = result['structure'] ?? result;
-                formData['section_9']['notes'] = result['notes'] ?? result['structure']?['notes'] ?? '';
-                // Mirror to top-level genogram key so backend can persist it
-                formData['genogram'] = {
-                  'structure': formData['section_9']['structure'],
-                  'notes': formData['section_9']['notes'],
-                };
-              });
+              formKey.currentState?.fields['genogram_structure']?.didChange(
+                result['structure'] ?? result,
+              );
+              formKey.currentState?.fields['genogram_notes']?.didChange(
+                result['notes'] ?? '',
+              );
+              setState(() {});
             }
           },
-            child: const Text('Open Genogram Builder'),
+          child: const Text('Open Genogram Builder'),
         ),
       ],
     );
   }
 
-  Widget _buildSection10Renpra() {
+  Widget _buildRenpraSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const FormSectionHeader(
-          title: 'Section 10: Rencana Perawatan (Renpra)',
+        const Text(
+          'Section 10: Rencana Perawatan (Renpra)',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
-        const Text('Diagnosis'),
-        const SizedBox(height: 8),
         Obx(() {
           final nursingService = Get.find<NursingDataGlobalService>();
           final diagnoses = nursingService.diagnoses;
-          final items = diagnoses
-              .map(
-                (diag) =>
-                    DropdownMenuItem(value: diag.id, child: Text(diag.name)),
-              )
-              .toList();
-          if (items.isEmpty) {
-            items.add(
-              DropdownMenuItem<int>(
-                value: null,
-                child: const Text('Tidak ada diagnosis tersedia'),
-              ),
-            );
-          }
-          return DropdownButtonFormField<int>(
-            decoration: const InputDecoration(border: OutlineInputBorder()),
-            items: items,
-            value: formData['section_10']['diagnosis'] as int?,
-              onChanged: (value) {
-                formData['section_10']['diagnosis'] = value;
-              },
-            hint: const Text('Pilih Diagnosis'),
+          if (diagnoses.isEmpty)
+            return const Text('Tidak ada diagnosis tersedia');
+
+          return CustomDropdown<int>(
+            name: 'diagnosis',
+            label: 'Diagnosis',
+            items: diagnoses
+                .map(
+                  (diag) =>
+                      DropdownMenuItem(value: diag.id, child: Text(diag.name)),
+                )
+                .toList(),
+            hint: 'Pilih Diagnosis',
           );
         }),
         const SizedBox(height: 16),
-        const Text('Intervensi'),
         Obx(() {
           final interventions = _interventionController.interventions;
           if (interventions.isEmpty)
             return const Text('Tidak ada intervensi tersedia');
-          return Column(
-            children: interventions.map((iv) {
-              final currentInterventions =
-                  (formData['section_10']['intervensi'] as List?) ?? <int>[];
-              final isChecked = currentInterventions.contains(iv.id);
-              return CheckboxListTile(
-                title: Text(iv.name),
-                value: isChecked,
-                  onChanged: (bool? value) {
-                    final intervensi = List<int>.from(currentInterventions);
-                    if (value == true) {
-                      if (!intervensi.contains(iv.id)) intervensi.add(iv.id);
-                    } else {
-                      intervensi.remove(iv.id);
-                    }
-                    formData['section_10']['intervensi'] = intervensi;
-                    setState(() {});
-                  },
-              );
-            }).toList(),
+
+          return CustomCheckboxGroup<int>(
+            name: 'intervensi',
+            label: 'Intervensi',
+            options: interventions
+                .map(
+                  (iv) => FormBuilderFieldOption(
+                    value: iv.id,
+                    child: Text(iv.name),
+                  ),
+                )
+                .toList(),
           );
         }),
         const SizedBox(height: 16),
-        FormTextField(
-          labelText: 'Tujuan',
-          maxLines: 3,
-            onChanged: (value) {
-              formData['section_10']['tujuan'] = value;
-            },
-        ),
+        const CustomTextField(name: 'tujuan', label: 'Tujuan', maxLines: 3),
         const SizedBox(height: 16),
-        FormTextField(
-          labelText: 'Kriteria',
-          maxLines: 3,
-            onChanged: (value) {
-              formData['section_10']['kriteria'] = value;
-            },
-        ),
+        const CustomTextField(name: 'kriteria', label: 'Kriteria', maxLines: 3),
         const SizedBox(height: 16),
-        FormTextField(
-          labelText: 'Rasional',
-          maxLines: 3,
-            onChanged: (value) {
-              formData['section_10']['rasional'] = value;
-            },
-        ),
+        const CustomTextField(name: 'rasional', label: 'Rasional', maxLines: 3),
       ],
     );
   }
 
-  Widget _buildSection11Penutup() {
+  Widget _buildPenutupSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const FormSectionHeader(title: 'Section 11: Penutup'),
-        const SizedBox(height: 16),
-        FormTextField(
-          controller: _controllers[20],
-          labelText: 'Catatan Tambahan',
-          maxLines: 5,
-            onChanged: (value) {
-              formData['section_11']['catatan_tambahan'] = value;
-            },
+        const Text(
+          'Section 11: Penutup',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
-        const Text('Tanggal Pengisian:'),
-        TextButton(
-          onPressed: () async {
-            DateTime? pickedDate = await showDatePicker(
-              context: context,
-              initialDate: DateTime.now(),
-              firstDate: DateTime(2000),
-              lastDate: DateTime.now(),
-            );
-            if (pickedDate != null) {
-              setState(() {
-                formData['section_11']['tanggal_pengisian'] = pickedDate
-                    .toIso8601String();
-              });
-            }
-          },
-          child: Text(
-            formData['section_11']['tanggal_pengisian'] != null
-                ? formData['section_11']['tanggal_pengisian']
-                      .toString()
-                      .substring(0, 10)
-                : 'Pilih Tanggal',
+        const CustomTextField(
+          name: 'catatan_tambahan',
+          label: 'Catatan Tambahan',
+          maxLines: 5,
+        ),
+        const SizedBox(height: 16),
+        FormBuilderDateTimePicker(
+          name: 'tanggal_pengisian',
+          inputType: InputType.date,
+          decoration: const InputDecoration(
+            labelText: 'Tanggal Pengisian',
+            border: OutlineInputBorder(),
           ),
+          initialDate: DateTime.now(),
+          firstDate: DateTime(2000),
+          lastDate: DateTime.now(),
         ),
       ],
     );
@@ -812,16 +646,11 @@ class _MentalHealthAssessmentFormViewState
   Widget build(BuildContext context) {
     return WillPopScope(
       onWillPop: () async {
-        // Simpan draft jika belum submit
-        if (formId == null || (formData['status'] != 'submitted')) {
-          await saveDraft();
-        }
+        if (formId == null) await saveDraft();
         try {
           final formSelectionController = Get.find<FormSelectionController>();
           await formSelectionController.fetchForms();
-        } catch (e) {
-          // Controller not found, ignore
-        }
+        } catch (e) {}
         return true;
       },
       child: Scaffold(
@@ -849,7 +678,11 @@ class _MentalHealthAssessmentFormViewState
               const SizedBox(height: 16),
               Expanded(
                 child: SingleChildScrollView(
-                  child: _buildSection(_currentSection),
+                  child: FormBuilder(
+                    key: formKey,
+                    initialValue: initialValues,
+                    child: _buildSection(_currentSection),
+                  ),
                 ),
               ),
               const SizedBox(height: 24),
@@ -864,10 +697,7 @@ class _MentalHealthAssessmentFormViewState
                   else
                     const SizedBox.shrink(),
                   if (_currentSection == 10)
-                    // Last section, show action buttons
-                    Expanded(
-                      child: buildActionButtons(),
-                    )
+                    Expanded(child: buildActionButtons())
                   else
                     ElevatedButton(
                       onPressed: _nextSection,

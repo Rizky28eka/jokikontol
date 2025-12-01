@@ -41,6 +41,9 @@ dependencies:
   hive_flutter: ^1.1.0
   image_picker: ^1.1.2
   file_picker: ^8.0.3
+  graphview: ^1.5.1
+  flutter_form_builder: ^10.2.0
+  uuid: ^4.5.2
   logger: ^2.6.2
   flutter_svg: ^2.0.6
 
