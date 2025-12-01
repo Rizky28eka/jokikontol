@@ -58,13 +58,18 @@ class _GenogramBuilderViewState extends State<GenogramBuilderView> {
   void initState() {
     super.initState();
     // Parse any initial data passed via widget.initialData or Get.arguments
-    final Map<String, dynamic>? args = widget.initialData ?? (Get.arguments as Map<String, dynamic>?);
+    final Map<String, dynamic>? args =
+        widget.initialData ?? (Get.arguments as Map<String, dynamic>?);
     if (args != null) {
       final struct = args['structure'] ?? args;
       if (struct != null) {
         // if struct is a list, treat it as the members list directly
-        final dynamic rawMembers = (struct is List) ? struct : (struct['members'] ?? struct['family'] ?? null);
-        final dynamic rawConnections = (struct is Map) ? (struct['connections'] ?? struct['edges'] ?? null) : null;
+        final dynamic rawMembers = (struct is List)
+            ? struct
+            : (struct['members'] ?? struct['family'] ?? null);
+        final dynamic rawConnections = (struct is Map)
+            ? (struct['connections'] ?? struct['edges'] ?? null)
+            : null;
         List<Map<String, dynamic>> parsedMembers = [];
         List<Map<String, dynamic>> parsedConnections = [];
 
@@ -74,12 +79,19 @@ class _GenogramBuilderViewState extends State<GenogramBuilderView> {
             if (rawMembers is String) {
               final dynamicJson = json.decode(rawMembers);
               if (dynamicJson is List) {
-                parsedMembers = List<Map<String, dynamic>>.from(dynamicJson.map((e) => (e is Map) ? Map<String, dynamic>.from(e) : json.decode(e)));
+                parsedMembers = List<Map<String, dynamic>>.from(
+                  dynamicJson.map(
+                    (e) => (e is Map)
+                        ? Map<String, dynamic>.from(e)
+                        : json.decode(e),
+                  ),
+                );
               }
             } else if (rawMembers is List) {
               parsedMembers = rawMembers.map<Map<String, dynamic>>((e) {
                 if (e is Map) return Map<String, dynamic>.from(e);
-                if (e is String) return Map<String, dynamic>.from(json.decode(e));
+                if (e is String)
+                  return Map<String, dynamic>.from(json.decode(e));
                 return <String, dynamic>{};
               }).toList();
             }
@@ -93,12 +105,19 @@ class _GenogramBuilderViewState extends State<GenogramBuilderView> {
             if (rawConnections is String) {
               final dynamicJson = json.decode(rawConnections);
               if (dynamicJson is List) {
-                parsedConnections = List<Map<String, dynamic>>.from(dynamicJson.map((e) => (e is Map) ? Map<String, dynamic>.from(e) : json.decode(e)));
+                parsedConnections = List<Map<String, dynamic>>.from(
+                  dynamicJson.map(
+                    (e) => (e is Map)
+                        ? Map<String, dynamic>.from(e)
+                        : json.decode(e),
+                  ),
+                );
               }
             } else if (rawConnections is List) {
               parsedConnections = rawConnections.map<Map<String, dynamic>>((e) {
                 if (e is Map) return Map<String, dynamic>.from(e);
-                if (e is String) return Map<String, dynamic>.from(json.decode(e));
+                if (e is String)
+                  return Map<String, dynamic>.from(json.decode(e));
                 return <String, dynamic>{};
               }).toList();
             }
@@ -134,9 +153,12 @@ class _GenogramBuilderViewState extends State<GenogramBuilderView> {
       return;
     }
 
-    final relationshipValue = _isOtherRelationship && _otherRelationshipController.text.isNotEmpty
-      ? _otherRelationshipController.text
-      : (_selectedRelationship != null && _selectedRelationship!.isNotEmpty ? _selectedRelationship : _relationshipController.text);
+    final relationshipValue =
+        _isOtherRelationship && _otherRelationshipController.text.isNotEmpty
+        ? _otherRelationshipController.text
+        : (_selectedRelationship != null && _selectedRelationship!.isNotEmpty
+              ? _selectedRelationship
+              : _relationshipController.text);
     if (relationshipValue == null || relationshipValue.isEmpty) {
       Get.snackbar('Error', 'Hubungan harus dipilih');
       return;
@@ -170,79 +192,87 @@ class _GenogramBuilderViewState extends State<GenogramBuilderView> {
 
   void _showEditMemberDialog(int index) {
     final member = _familyMembers[index];
-    final TextEditingController nameEdit = TextEditingController(text: member['name']);
-    final TextEditingController ageEdit = TextEditingController(text: member['age']?.toString() ?? '');
-    final TextEditingController otherRelEdit = TextEditingController(text: member['relationship'] ?? '');
+    final TextEditingController nameEdit = TextEditingController(
+      text: member['name'],
+    );
+    final TextEditingController ageEdit = TextEditingController(
+      text: member['age']?.toString() ?? '',
+    );
+    final TextEditingController otherRelEdit = TextEditingController(
+      text: member['relationship'] ?? '',
+    );
     String genderEdit = member['gender'] ?? 'L';
     String statusEdit = member['status'] ?? 'alive';
     // NOTE: We'll simply use a TextFormField for relationship text in the edit dialog.
 
-    Get.dialog(AlertDialog(
-      title: const Text('Edit Anggota Keluarga'),
-      content: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            TextFormField(
-              controller: nameEdit,
-              decoration: const InputDecoration(labelText: 'Nama'),
-            ),
-            const SizedBox(height: 8),
-            TextFormField(
-              controller: ageEdit,
-              decoration: const InputDecoration(labelText: 'Usia'),
-              keyboardType: TextInputType.number,
-            ),
-            const SizedBox(height: 8),
-            DropdownButtonFormField<String>(
-              value: genderEdit,
-              decoration: const InputDecoration(labelText: 'Jenis Kelamin'),
-              items: const [
-                DropdownMenuItem(value: 'L', child: Text('Laki-laki')),
-                DropdownMenuItem(value: 'P', child: Text('Perempuan')),
-              ],
-              onChanged: (v) => genderEdit = v ?? genderEdit,
-            ),
-            const SizedBox(height: 8),
-            DropdownButtonFormField<String>(
-              value: statusEdit,
-              decoration: const InputDecoration(labelText: 'Status'),
-              items: const [
-                DropdownMenuItem(value: 'alive', child: Text('Hidup')),
-                DropdownMenuItem(value: 'deceased', child: Text('Meninggal')),
-                DropdownMenuItem(value: 'pregnant', child: Text('Hamil')),
-              ],
-              onChanged: (v) => statusEdit = v ?? statusEdit,
-            ),
-            const SizedBox(height: 8),
-            TextFormField(
-              controller: otherRelEdit,
-              decoration: const InputDecoration(labelText: 'Hubungan (isi)') ,
-            ),
-          ],
+    Get.dialog(
+      AlertDialog(
+        title: const Text('Edit Anggota Keluarga'),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TextFormField(
+                controller: nameEdit,
+                decoration: const InputDecoration(labelText: 'Nama'),
+              ),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: ageEdit,
+                decoration: const InputDecoration(labelText: 'Usia'),
+                keyboardType: TextInputType.number,
+              ),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<String>(
+                value: genderEdit,
+                decoration: const InputDecoration(labelText: 'Jenis Kelamin'),
+                items: const [
+                  DropdownMenuItem(value: 'L', child: Text('Laki-laki')),
+                  DropdownMenuItem(value: 'P', child: Text('Perempuan')),
+                ],
+                onChanged: (v) => genderEdit = v ?? genderEdit,
+              ),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<String>(
+                value: statusEdit,
+                decoration: const InputDecoration(labelText: 'Status'),
+                items: const [
+                  DropdownMenuItem(value: 'alive', child: Text('Hidup')),
+                  DropdownMenuItem(value: 'deceased', child: Text('Meninggal')),
+                  DropdownMenuItem(value: 'pregnant', child: Text('Hamil')),
+                ],
+                onChanged: (v) => statusEdit = v ?? statusEdit,
+              ),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: otherRelEdit,
+                decoration: const InputDecoration(labelText: 'Hubungan (isi)'),
+              ),
+            ],
+          ),
         ),
+        actions: [
+          TextButton(onPressed: () => Get.back(), child: const Text('Batal')),
+          TextButton(
+            onPressed: () {
+              setState(() {
+                _familyMembers[index] = {
+                  'id': member['id'],
+                  'name': nameEdit.text,
+                  'age': int.tryParse(ageEdit.text) ?? member['age'],
+                  'gender': genderEdit,
+                  'status': statusEdit,
+                  'relationship': otherRelEdit.text,
+                };
+              });
+              Get.back();
+              Get.snackbar('Success', 'Anggota berhasil diperbarui');
+            },
+            child: const Text('Simpan'),
+          ),
+        ],
       ),
-      actions: [
-        TextButton(onPressed: () => Get.back(), child: const Text('Batal')),
-        TextButton(
-          onPressed: () {
-            setState(() {
-              _familyMembers[index] = {
-                'id': member['id'],
-                'name': nameEdit.text,
-                'age': int.tryParse(ageEdit.text) ?? member['age'],
-                'gender': genderEdit,
-                'status': statusEdit,
-                'relationship': otherRelEdit.text,
-              };
-            });
-            Get.back();
-            Get.snackbar('Success', 'Anggota berhasil diperbarui');
-          },
-          child: const Text('Simpan'),
-        ),
-      ],
-    ));
+    );
   }
 
   String _memberNameById(int id) {
@@ -251,7 +281,9 @@ class _GenogramBuilderViewState extends State<GenogramBuilderView> {
   }
 
   void _addConnection() {
-    if (_selectedFromMemberId == null || _selectedToMemberId == null || _selectedConnectionType == null) {
+    if (_selectedFromMemberId == null ||
+        _selectedToMemberId == null ||
+        _selectedConnectionType == null) {
       Get.snackbar('Error', 'Harap pilih kedua anggota dan tipe hubungan');
       return;
     }
@@ -290,7 +322,8 @@ class _GenogramBuilderViewState extends State<GenogramBuilderView> {
     if (lower.contains('kakak') || lower.contains('adik')) return Colors.purple;
     if (lower.contains('anak')) return Colors.blue;
     if (lower.contains('pasangan')) return Colors.orange;
-    if (lower.contains('istri') || lower.contains('suami')) return Colors.orange;
+    if (lower.contains('istri') || lower.contains('suami'))
+      return Colors.orange;
     return Colors.grey;
   }
 
@@ -307,23 +340,34 @@ class _GenogramBuilderViewState extends State<GenogramBuilderView> {
             tooltip: 'Export JSON',
             onPressed: () async {
               final payload = json.encode({
-                'structure': { 'members': _familyMembers, 'connections': _connections },
-                'notes': _notesController.text
+                'structure': {
+                  'members': _familyMembers,
+                  'connections': _connections,
+                },
+                'notes': _notesController.text,
               });
               await Clipboard.setData(ClipboardData(text: payload));
               Get.snackbar('Copied', 'Genogram JSON copied to clipboard');
               // Also show a dialog
-              Get.dialog(AlertDialog(
-                title: const Text('Genogram JSON'),
-                content: SingleChildScrollView(child: Text(payload)),
-                actions: [
-                  TextButton(onPressed: () => Get.back(), child: const Text('Close')),
-                  TextButton(onPressed: () {
-                    Clipboard.setData(ClipboardData(text: payload));
-                    Get.back();
-                  }, child: const Text('Copy')),
-                ],
-              ));
+              Get.dialog(
+                AlertDialog(
+                  title: const Text('Genogram JSON'),
+                  content: SingleChildScrollView(child: Text(payload)),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Get.back(),
+                      child: const Text('Close'),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        Clipboard.setData(ClipboardData(text: payload));
+                        Get.back();
+                      },
+                      child: const Text('Copy'),
+                    ),
+                  ],
+                ),
+              );
             },
           ),
         ],
@@ -430,13 +474,15 @@ class _GenogramBuilderViewState extends State<GenogramBuilderView> {
                                     child: Text('♀ Perempuan'),
                                   ),
                                 ],
-                                onChanged: _isReadOnly ? null : (value) {
-                                  if (value != null) {
-                                    setState(() {
-                                      _selectedGender = value;
-                                    });
-                                  }
-                                },
+                                onChanged: _isReadOnly
+                                    ? null
+                                    : (value) {
+                                        if (value != null) {
+                                          setState(() {
+                                            _selectedGender = value;
+                                          });
+                                        }
+                                      },
                               ),
                             ),
                           ],
@@ -486,13 +532,15 @@ class _GenogramBuilderViewState extends State<GenogramBuilderView> {
                                         child: Text('Lainnya'),
                                       ),
                                     ],
-                                    onChanged: _isReadOnly ? null : (value) {
-                                      setState(() {
-                                        _selectedRelationship = value;
-                                        _isOtherRelationship =
-                                            value == 'lainnya';
-                                      });
-                                    },
+                                    onChanged: _isReadOnly
+                                        ? null
+                                        : (value) {
+                                            setState(() {
+                                              _selectedRelationship = value;
+                                              _isOtherRelationship =
+                                                  value == 'lainnya';
+                                            });
+                                          },
                                     hint: const Text('Pilih Hubungan'),
                                   ),
                                   const SizedBox(height: 8),
@@ -530,13 +578,15 @@ class _GenogramBuilderViewState extends State<GenogramBuilderView> {
                                     child: Text('○ Hamil'),
                                   ),
                                 ],
-                                onChanged: _isReadOnly ? null : (value) {
-                                  if (value != null) {
-                                    setState(() {
-                                      _selectedStatus = value;
-                                    });
-                                  }
-                                },
+                                onChanged: _isReadOnly
+                                    ? null
+                                    : (value) {
+                                        if (value != null) {
+                                          setState(() {
+                                            _selectedStatus = value;
+                                          });
+                                        }
+                                      },
                               ),
                             ),
                           ],
@@ -562,29 +612,62 @@ class _GenogramBuilderViewState extends State<GenogramBuilderView> {
                       children: [
                         const Text(
                           'Hubungan Antar Anggota',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                         const SizedBox(height: 8),
                         if (_familyMembers.length < 2)
-                          const Text('Tambahkan minimal dua anggota untuk membuat hubungan.'),
+                          const Text(
+                            'Tambahkan minimal dua anggota untuk membuat hubungan.',
+                          ),
                         if (_familyMembers.length >= 2) ...[
                           Row(
                             children: [
                               Expanded(
                                 child: DropdownButtonFormField<int>(
                                   value: _selectedFromMemberId,
-                                  decoration: const InputDecoration(labelText: 'Dari', border: OutlineInputBorder()),
-                                  items: _familyMembers.map((m) => DropdownMenuItem<int>(value: m['id'] as int, child: Text(m['name']))).toList(),
-                                  onChanged: _isReadOnly ? null : (value) => setState(() { _selectedFromMemberId = value; }),
+                                  decoration: const InputDecoration(
+                                    labelText: 'Dari',
+                                    border: OutlineInputBorder(),
+                                  ),
+                                  items: _familyMembers
+                                      .map(
+                                        (m) => DropdownMenuItem<int>(
+                                          value: m['id'] as int,
+                                          child: Text(m['name']),
+                                        ),
+                                      )
+                                      .toList(),
+                                  onChanged: _isReadOnly
+                                      ? null
+                                      : (value) => setState(() {
+                                          _selectedFromMemberId = value;
+                                        }),
                                 ),
                               ),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: DropdownButtonFormField<int>(
                                   value: _selectedToMemberId,
-                                  decoration: const InputDecoration(labelText: 'Ke', border: OutlineInputBorder()),
-                                  items: _familyMembers.map((m) => DropdownMenuItem<int>(value: m['id'] as int, child: Text(m['name']))).toList(),
-                                  onChanged: _isReadOnly ? null : (value) => setState(() { _selectedToMemberId = value; }),
+                                  decoration: const InputDecoration(
+                                    labelText: 'Ke',
+                                    border: OutlineInputBorder(),
+                                  ),
+                                  items: _familyMembers
+                                      .map(
+                                        (m) => DropdownMenuItem<int>(
+                                          value: m['id'] as int,
+                                          child: Text(m['name']),
+                                        ),
+                                      )
+                                      .toList(),
+                                  onChanged: _isReadOnly
+                                      ? null
+                                      : (value) => setState(() {
+                                          _selectedToMemberId = value;
+                                        }),
                                 ),
                               ),
                             ],
@@ -592,16 +675,34 @@ class _GenogramBuilderViewState extends State<GenogramBuilderView> {
                           const SizedBox(height: 8),
                           DropdownButtonFormField<String>(
                             value: _selectedConnectionType,
-                            decoration: const InputDecoration(labelText: 'Tipe Hubungan', border: OutlineInputBorder()),
-                            items: _connectionTypes.map((ct) => DropdownMenuItem<String>(value: ct['id'], child: Text(ct['label']!))).toList(),
-                            onChanged: _isReadOnly ? null : (v) => setState(() { _selectedConnectionType = v; }),
+                            decoration: const InputDecoration(
+                              labelText: 'Tipe Hubungan',
+                              border: OutlineInputBorder(),
+                            ),
+                            items: _connectionTypes
+                                .map(
+                                  (ct) => DropdownMenuItem<String>(
+                                    value: ct['id'],
+                                    child: Text(ct['label']!),
+                                  ),
+                                )
+                                .toList(),
+                            onChanged: _isReadOnly
+                                ? null
+                                : (v) => setState(() {
+                                    _selectedConnectionType = v;
+                                  }),
                           ),
                           const SizedBox(height: 8),
-                          ElevatedButton(onPressed: _isReadOnly ? null : _addConnection, child: const Text('Tambah Hubungan')),
+                          ElevatedButton(
+                            onPressed: _isReadOnly ? null : _addConnection,
+                            child: const Text('Tambah Hubungan'),
+                          ),
                           const SizedBox(height: 8),
                           const Text('Daftar Hubungan:'),
                           const SizedBox(height: 8),
-                          if (_connections.isEmpty) const Text('Belum ada hubungan.'),
+                          if (_connections.isEmpty)
+                            const Text('Belum ada hubungan.'),
                           if (_connections.isNotEmpty)
                             ListView.builder(
                               shrinkWrap: true,
@@ -609,13 +710,31 @@ class _GenogramBuilderViewState extends State<GenogramBuilderView> {
                               itemCount: _connections.length,
                               itemBuilder: (context, idx) {
                                 final conn = _connections[idx];
-                                final fromName = _memberNameById(conn['from'] as int);
-                                final toName = _memberNameById(conn['to'] as int);
-                                final label = _connectionTypes.firstWhere((c) => c['id'] == conn['type'], orElse: () => {'label':'Hubungan'})['label'];
+                                final fromName = _memberNameById(
+                                  conn['from'] as int,
+                                );
+                                final toName = _memberNameById(
+                                  conn['to'] as int,
+                                );
+                                final label = _connectionTypes.firstWhere(
+                                  (c) => c['id'] == conn['type'],
+                                  orElse: () => {'label': 'Hubungan'},
+                                )['label'];
                                 return ListTile(
                                   title: Text('$fromName → $toName'),
                                   subtitle: Text(label ?? ''),
-                                  trailing: IconButton(onPressed: _isReadOnly ? null : () { _connections.removeAt(idx); setState(() {}); }, icon: const Icon(Icons.delete, color: Colors.red)),
+                                  trailing: IconButton(
+                                    onPressed: _isReadOnly
+                                        ? null
+                                        : () {
+                                            _connections.removeAt(idx);
+                                            setState(() {});
+                                          },
+                                    icon: const Icon(
+                                      Icons.delete,
+                                      color: Colors.red,
+                                    ),
+                                  ),
                                 );
                               },
                             ),
@@ -700,20 +819,37 @@ class _GenogramBuilderViewState extends State<GenogramBuilderView> {
                                                       child: Text(
                                                         member['name'],
                                                         style: const TextStyle(
-                                                          fontWeight: FontWeight.bold,
+                                                          fontWeight:
+                                                              FontWeight.bold,
                                                         ),
-                                                        overflow: TextOverflow.ellipsis,
+                                                        overflow: TextOverflow
+                                                            .ellipsis,
                                                       ),
                                                     ),
                                                     const SizedBox(width: 8),
-                                                    if (member['is_client'] == true)
+                                                    if (member['is_client'] ==
+                                                        true)
                                                       Container(
-                                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                        padding:
+                                                            const EdgeInsets.symmetric(
+                                                              horizontal: 6,
+                                                              vertical: 2,
+                                                            ),
                                                         decoration: BoxDecoration(
-                                                          color: Colors.blueAccent,
-                                                          borderRadius: BorderRadius.circular(4),
+                                                          color:
+                                                              Colors.blueAccent,
+                                                          borderRadius:
+                                                              BorderRadius.circular(
+                                                                4,
+                                                              ),
                                                         ),
-                                                        child: const Text('Klien', style: TextStyle(color: Colors.white, fontSize: 12)),
+                                                        child: const Text(
+                                                          'Klien',
+                                                          style: TextStyle(
+                                                            color: Colors.white,
+                                                            fontSize: 12,
+                                                          ),
+                                                        ),
                                                       ),
                                                   ],
                                                 ),
@@ -721,56 +857,118 @@ class _GenogramBuilderViewState extends State<GenogramBuilderView> {
                                                   spacing: 8,
                                                   runSpacing: 4,
                                                   children: [
-                                                    Text('${member['age']} tahun'),
+                                                    Text(
+                                                      '${member['age']} tahun',
+                                                    ),
                                                     Tooltip(
-                                                      message: member['relationship'] ?? '',
+                                                      message:
+                                                          member['relationship'] ??
+                                                          '',
                                                       child: Chip(
-                                                        backgroundColor: _relationshipColor(member['relationship'] ?? ''),
+                                                        backgroundColor:
+                                                            _relationshipColor(
+                                                              member['relationship'] ??
+                                                                  '',
+                                                            ),
                                                         label: Text(
-                                                          member['relationship'] ?? '',
-                                                          style: const TextStyle(color: Colors.white),
+                                                          member['relationship'] ??
+                                                              '',
+                                                          style:
+                                                              const TextStyle(
+                                                                color: Colors
+                                                                    .white,
+                                                              ),
                                                         ),
                                                       ),
                                                     ),
                                                   ],
                                                 ),
                                                 const SizedBox(height: 4),
-                                                Builder(builder: (ctx) {
-                                                  final connMap = _connectionsMap();
-                                                  final myConns = connMap[member['id'] as int] ?? [];
-                                                  if (myConns.isEmpty) return const SizedBox.shrink();
-                                                  return Wrap(
-                                                    spacing: 6,
-                                                    children: myConns.map<Widget>((c) {
-                                                      final otherId = (c['to'] ?? c['from']) as int;
-                                                      final otherName = _memberNameById(otherId);
-                                                      return Chip(
-                                                        avatar: const Icon(Icons.link, size: 16, color: Colors.white),
-                                                        label: Text('${c['type']}: $otherName', style: const TextStyle(color: Colors.white)),
-                                                        backgroundColor: Colors.black54,
-                                                      );
-                                                    }).toList(),
-                                                  );
-                                                }),
+                                                Builder(
+                                                  builder: (ctx) {
+                                                    final connMap =
+                                                        _connectionsMap();
+                                                    final myConns =
+                                                        connMap[member['id']
+                                                            as int] ??
+                                                        [];
+                                                    if (myConns.isEmpty)
+                                                      return const SizedBox.shrink();
+                                                    return Wrap(
+                                                      spacing: 6,
+                                                      children: myConns.map<Widget>((
+                                                        c,
+                                                      ) {
+                                                        final otherId =
+                                                            (c['to'] ??
+                                                                    c['from'])
+                                                                as int;
+                                                        final otherName =
+                                                            _memberNameById(
+                                                              otherId,
+                                                            );
+                                                        return Chip(
+                                                          avatar: const Icon(
+                                                            Icons.link,
+                                                            size: 16,
+                                                            color: Colors.white,
+                                                          ),
+                                                          label: Text(
+                                                            '${c['type']}: $otherName',
+                                                            style:
+                                                                const TextStyle(
+                                                                  color: Colors
+                                                                      .white,
+                                                                ),
+                                                          ),
+                                                          backgroundColor:
+                                                              Colors.black54,
+                                                        );
+                                                      }).toList(),
+                                                    );
+                                                  },
+                                                ),
                                               ],
                                             ),
                                           ),
                                           Row(
                                             children: [
                                               IconButton(
-                                                icon: const Icon(Icons.edit, color: Colors.grey),
-                                                onPressed: _isReadOnly ? null : () => _showEditMemberDialog(index),
-                                              ),
-                                                IconButton(
-                                                  icon: Icon(member['is_client'] == true ? Icons.star : Icons.star_border, color: Colors.amber),
-                                                  onPressed: _isReadOnly ? null : () async {
-                                                    // Set this member as client and unset others
-                                                    for (int i = 0; i < _familyMembers.length; i++) {
-                                                      _familyMembers[i]['is_client'] = (i == index);
-                                                    }
-                                                    setState(() {});
-                                                  },
+                                                icon: const Icon(
+                                                  Icons.edit,
+                                                  color: Colors.grey,
                                                 ),
+                                                onPressed: _isReadOnly
+                                                    ? null
+                                                    : () =>
+                                                          _showEditMemberDialog(
+                                                            index,
+                                                          ),
+                                              ),
+                                              IconButton(
+                                                icon: Icon(
+                                                  member['is_client'] == true
+                                                      ? Icons.star
+                                                      : Icons.star_border,
+                                                  color: Colors.amber,
+                                                ),
+                                                onPressed: _isReadOnly
+                                                    ? null
+                                                    : () async {
+                                                        // Set this member as client and unset others
+                                                        for (
+                                                          int i = 0;
+                                                          i <
+                                                              _familyMembers
+                                                                  .length;
+                                                          i++
+                                                        ) {
+                                                          _familyMembers[i]['is_client'] =
+                                                              (i == index);
+                                                        }
+                                                        setState(() {});
+                                                      },
+                                              ),
                                               IconButton(
                                                 icon: const Icon(
                                                   Icons.delete,
@@ -779,7 +977,9 @@ class _GenogramBuilderViewState extends State<GenogramBuilderView> {
                                                 onPressed: _isReadOnly
                                                     ? null
                                                     : () {
-                                                        _familyMembers.removeAt(index);
+                                                        _familyMembers.removeAt(
+                                                          index,
+                                                        );
                                                         setState(() {});
                                                       },
                                               ),
@@ -834,46 +1034,49 @@ class _GenogramBuilderViewState extends State<GenogramBuilderView> {
           ),
         ),
       ),
-        floatingActionButton: _isReadOnly
+      floatingActionButton: _isReadOnly
           ? null
           : FloatingActionButton(
               onPressed: () {
-      // Save genogram data and return (local validation first)
-      if (!_validateBeforeSave()) return;
-          Get.back(
-            result: {
-              'structure': {
-                'members': _familyMembers,
-                'connections': _connections,
+                // Save genogram data and return (local validation first)
+                if (!_validateBeforeSave()) return;
+                Get.back(
+                  result: {
+                    'structure': {
+                      'members': _familyMembers,
+                      'connections': _connections,
+                    },
+                    'notes': _notesController.text,
+                  },
+                );
               },
-              'notes': _notesController.text,
-            },
-          );
-        },
-        child: const Icon(Icons.save),
-      ),
+              child: const Icon(Icons.save),
+            ),
     );
   }
 
-    bool _validateBeforeSave() {
-      if (_familyMembers.isEmpty) {
-        Get.snackbar('Error', 'Harap tambahkan setidaknya satu anggota keluarga');
+  bool _validateBeforeSave() {
+    if (_familyMembers.isEmpty) {
+      Get.snackbar('Error', 'Harap tambahkan setidaknya satu anggota keluarga');
+      return false;
+    }
+    // Ensure all connections point to existing members
+    final ids = _familyMembers.map<int>((m) => m['id'] as int).toSet();
+    for (final c in _connections) {
+      final from = c['from'] as int;
+      final to = c['to'] as int;
+      if (!ids.contains(from) || !ids.contains(to)) {
+        Get.snackbar('Error', 'Hubungan mengandung anggota yang tidak valid');
         return false;
       }
-      // Ensure all connections point to existing members
-      final ids = _familyMembers.map<int>((m) => m['id'] as int).toSet();
-      for (final c in _connections) {
-        final from = c['from'] as int;
-        final to = c['to'] as int;
-        if (!ids.contains(from) || !ids.contains(to)) {
-          Get.snackbar('Error', 'Hubungan mengandung anggota yang tidak valid');
-          return false;
-        }
-        if (from == to) {
-          Get.snackbar('Error', 'Hubungan mengandung referensi ke anggota yang sama');
-          return false;
-        }
+      if (from == to) {
+        Get.snackbar(
+          'Error',
+          'Hubungan mengandung referensi ke anggota yang sama',
+        );
+        return false;
       }
-      return true;
     }
+    return true;
+  }
 }

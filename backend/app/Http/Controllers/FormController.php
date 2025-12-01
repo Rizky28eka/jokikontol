@@ -31,7 +31,7 @@ class FormController extends Controller
             $query->where('patient_id', $request->patient_id);
         }
 
-        $forms = $query->with('genogram')->orderBy('created_at', 'desc')->paginate(10);
+        $forms = $query->with(['genogram', 'patient'])->orderBy('created_at', 'desc')->paginate(10);
 
         return response()->json($forms);
     }

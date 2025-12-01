@@ -13,7 +13,8 @@ class FormsListView extends StatefulWidget {
   State<FormsListView> createState() => FormsListViewState();
 }
 
-class FormsListViewState extends State<FormsListView> with AutomaticKeepAliveClientMixin {
+class FormsListViewState extends State<FormsListView>
+    with AutomaticKeepAliveClientMixin {
   final LoggerService _logger = LoggerService();
   String? _selectedType;
   String? _selectedStatus;
@@ -51,29 +52,43 @@ class FormsListViewState extends State<FormsListView> with AutomaticKeepAliveCli
 
   Future<void> _fetch() async {
     if (!mounted) return;
-    setState(() { _loading = true; _error = ''; });
+    setState(() {
+      _loading = true;
+      _error = '';
+    });
     try {
       final res = await FormsService.list(
         type: (_selectedType?.isNotEmpty ?? false) ? _selectedType : null,
         status: (_selectedStatus?.isNotEmpty ?? false) ? _selectedStatus : null,
       );
-      _logger.info('Fetched forms list', context: {'statusCode': res.statusCode});
+      _logger.info(
+        'Fetched forms list',
+        context: {'statusCode': res.statusCode},
+      );
       if (res.body.isEmpty) {
-        setState(() { _error = 'Empty response'; });
+        setState(() {
+          _error = 'Empty response';
+        });
         return;
       }
       final data = json.decode(res.body);
       if (res.statusCode == 200) {
-        final list = (data is List) ? data : (data['data'] ?? data['forms'] ?? data['items'] ?? []);
+        final list = (data is List)
+            ? data
+            : (data['data'] ?? data['forms'] ?? data['items'] ?? []);
         _items = List<Map<String, dynamic>>.from(list);
       } else {
-        _error = (data['error']?['message'] ?? data['message'] ?? 'Failed to load');
+        _error =
+            (data['error']?['message'] ?? data['message'] ?? 'Failed to load');
       }
     } catch (e) {
       _error = e.toString();
       _logger.error('Error loading forms', error: e);
     } finally {
-      if (mounted) setState(() { _loading = false; });
+      if (mounted)
+        setState(() {
+          _loading = false;
+        });
     }
   }
 
@@ -94,13 +109,23 @@ class FormsListViewState extends State<FormsListView> with AutomaticKeepAliveCli
                 Expanded(
                   child: DropdownButtonFormField<String>(
                     value: _selectedType,
-                    items: _types.map((t) => DropdownMenuItem(
-                      value: t['value'],
-                      child: Text(t['label']!),
-                    )).toList(),
-                    onChanged: (v) { setState(() { _selectedType = v; }); _fetch(); },
+                    items: _types
+                        .map(
+                          (t) => DropdownMenuItem(
+                            value: t['value'],
+                            child: Text(t['label']!),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (v) {
+                      setState(() {
+                        _selectedType = v;
+                      });
+                      _fetch();
+                    },
                     decoration: const InputDecoration(
-                      labelText: 'Tipe', border: OutlineInputBorder(),
+                      labelText: 'Tipe',
+                      border: OutlineInputBorder(),
                     ),
                   ),
                 ),
@@ -108,13 +133,23 @@ class FormsListViewState extends State<FormsListView> with AutomaticKeepAliveCli
                 Expanded(
                   child: DropdownButtonFormField<String>(
                     value: _selectedStatus,
-                    items: _statuses.map((s) => DropdownMenuItem(
-                      value: s['value'],
-                      child: Text(s['label']!),
-                    )).toList(),
-                    onChanged: (v) { setState(() { _selectedStatus = v; }); _fetch(); },
+                    items: _statuses
+                        .map(
+                          (s) => DropdownMenuItem(
+                            value: s['value'],
+                            child: Text(s['label']!),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (v) {
+                      setState(() {
+                        _selectedStatus = v;
+                      });
+                      _fetch();
+                    },
                     decoration: const InputDecoration(
-                      labelText: 'Status', border: OutlineInputBorder(),
+                      labelText: 'Status',
+                      border: OutlineInputBorder(),
                     ),
                   ),
                 ),
@@ -131,31 +166,43 @@ class FormsListViewState extends State<FormsListView> with AutomaticKeepAliveCli
             child: RefreshIndicator(
               onRefresh: _fetch,
               child: _loading
-                  ? Center(child: CircularProgressIndicator(color: colorScheme.primary))
+                  ? Center(
+                      child: CircularProgressIndicator(
+                        color: colorScheme.primary,
+                      ),
+                    )
                   : _error.isNotEmpty
-                      ? Center(child: Text('Error: $_error'))
-                      : ListView.separated(
-                          physics: const AlwaysScrollableScrollPhysics(),
-                          padding: const EdgeInsets.all(12),
-                          itemCount: _items.length,
-                          separatorBuilder: (_, __) => const SizedBox(height: 8),
-                          itemBuilder: (context, index) {
-                            final f = _items[index];
-                            return Card(
-                              child: ListTile(
-                                leading: Icon(_iconForType(f['type'])),
-                                title: Text(_titleForType(f['type'])),
-                                subtitle: Text('Status: ${_statusLabel(f['status'])} • Pasien: ${_patientName(f)}'),
-                                trailing: const Icon(Icons.chevron_right_rounded),
-                                onTap: () async {
-                                  final model = FormModel.fromJson(f);
-                                  await Get.to(() => const FormDetailView(), arguments: model);
-                                  _fetch();
-                                },
-                              ),
-                            );
-                          },
-                        ),
+                  ? Center(child: Text('Error: $_error'))
+                  : ListView.separated(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.all(12),
+                      itemCount: _items.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 8),
+                      itemBuilder: (context, index) {
+                        final f = _items[index];
+                        return Card(
+                          child: ListTile(
+                            leading: Hero(
+                              tag: 'form_icon_${f['id']}',
+                              child: Icon(_iconForType(f['type'])),
+                            ),
+                            title: Text(_titleForType(f['type'])),
+                            subtitle: Text(
+                              'Status: ${_statusLabel(f['status'])} • Pasien: ${_patientName(f)}',
+                            ),
+                            trailing: const Icon(Icons.chevron_right_rounded),
+                            onTap: () async {
+                              final model = FormModel.fromJson(f);
+                              await Get.to(
+                                () => const FormDetailView(),
+                                arguments: model,
+                              );
+                              _fetch();
+                            },
+                          ),
+                        );
+                      },
+                    ),
             ),
           ),
         ],
@@ -165,46 +212,73 @@ class FormsListViewState extends State<FormsListView> with AutomaticKeepAliveCli
 
   IconData _iconForType(String? type) {
     switch (type) {
-      case 'pengkajian': return Icons.medical_information_rounded;
-      case 'resume_kegawatdaruratan': return Icons.emergency_rounded;
-      case 'resume_poliklinik': return Icons.local_hospital_rounded;
-      case 'sap': return Icons.school_rounded;
-      case 'catatan_tambahan': return Icons.note_add_rounded;
-      default: return Icons.description_rounded;
+      case 'pengkajian':
+        return Icons.medical_information_rounded;
+      case 'resume_kegawatdaruratan':
+        return Icons.emergency_rounded;
+      case 'resume_poliklinik':
+        return Icons.local_hospital_rounded;
+      case 'sap':
+        return Icons.school_rounded;
+      case 'catatan_tambahan':
+        return Icons.note_add_rounded;
+      default:
+        return Icons.description_rounded;
     }
   }
 
   String _titleForType(String? type) {
     switch (type) {
-      case 'pengkajian': return 'Pengkajian Kesehatan Jiwa';
-      case 'resume_kegawatdaruratan': return 'Resume Kegawatdaruratan Psikiatri';
-      case 'resume_poliklinik': return 'Resume Poliklinik';
-      case 'sap': return 'SAP (Satuan Acara Penyuluhan)';
-      case 'catatan_tambahan': return 'Catatan Tambahan';
-      default: return 'Form';
+      case 'pengkajian':
+        return 'Pengkajian Kesehatan Jiwa';
+      case 'resume_kegawatdaruratan':
+        return 'Resume Kegawatdaruratan Psikiatri';
+      case 'resume_poliklinik':
+        return 'Resume Poliklinik';
+      case 'sap':
+        return 'SAP (Satuan Acara Penyuluhan)';
+      case 'catatan_tambahan':
+        return 'Catatan Tambahan';
+      default:
+        return 'Form';
     }
   }
 
   String _statusLabel(String? status) {
-    switch (status) {
-      case 'draft': return 'Draft';
-      case 'submitted': return 'Menunggu Review';
-      case 'revised': return 'Perlu Revisi';
-      case 'approved': return 'Disetujui';
-      default: return status ?? '-';
+    if (status == null) return '-';
+    switch (status.toLowerCase()) {
+      case 'draft':
+        return 'Draft';
+      case 'submitted':
+        return 'Menunggu Review';
+      case 'revised':
+        return 'Perlu Revisi';
+      case 'approved':
+        return 'Disetujui';
+      default:
+        return status;
     }
   }
 
   String _patientName(Map<String, dynamic> f) {
-    // Prefer nested patient name, fallback to flat fields
-    String? nested;
-    final patient = f['patient'];
-    if (patient is Map) {
-      final nameVal = patient['name'];
-      if (nameVal is String) nested = nameVal;
+    // 1. Try nested patient object
+    if (f['patient'] is Map) {
+      final p = f['patient'];
+      if (p['name'] != null && p['name'].toString().isNotEmpty) {
+        return p['name'].toString();
+      }
     }
-    final flatDyn = f['patient_name'] ?? f['patientName'] ?? f['name'];
-    final flat = flatDyn is String ? flatDyn : null;
-    return nested ?? flat ?? '-';
+    
+    // 2. Try flat fields
+    if (f['patient_name'] != null && f['patient_name'].toString().isNotEmpty) {
+      return f['patient_name'].toString();
+    }
+    
+    if (f['patientName'] != null && f['patientName'].toString().isNotEmpty) {
+      return f['patientName'].toString();
+    }
+
+    // 3. Fallback
+    return 'Tanpa Nama';
   }
 }

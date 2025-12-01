@@ -42,7 +42,11 @@ class _FormDetailViewState extends State<FormDetailView> {
 
     _commentController.text = form.comments ?? '';
     isLecturer = RoleGuard.isDosen();
-    _genogramAvailable = form.genogram != null || (form.data != null && (form.data!['section_9']?['structure'] != null || form.data!['genogram']?['structure'] != null));
+    _genogramAvailable =
+        form.genogram != null ||
+        (form.data != null &&
+            (form.data!['section_9']?['structure'] != null ||
+                form.data!['genogram']?['structure'] != null));
   }
 
   // Prevent unexpected setState during hot reload by pausing auto-refresh logic
@@ -60,16 +64,42 @@ class _FormDetailViewState extends State<FormDetailView> {
   }
 
   int _genogramMemberCount() {
-    if (form.genogram?.structure != null) return (form.genogram!.structure!['members'] as List?)?.length ?? 0;
-    if (form.data?['section_9']?['structure'] != null) return (form.data!['section_9']['structure']['members'] as List?)?.length ?? 0;
-    if (form.data?['genogram']?['structure'] != null) return (form.data!['genogram']['structure']['members'] as List?)?.length ?? 0;
+    try {
+      if (form.genogram?.structure != null) {
+        final members = form.genogram!.structure!['members'];
+        if (members is List) return members.length;
+      }
+      if (form.data?['section_9']?['structure'] != null) {
+        final members = form.data!['section_9']['structure']['members'];
+        if (members is List) return members.length;
+      }
+      if (form.data?['genogram']?['structure'] != null) {
+        final members = form.data!['genogram']['structure']['members'];
+        if (members is List) return members.length;
+      }
+    } catch (e) {
+      // ignore error
+    }
     return 0;
   }
 
   int _genogramConnectionCount() {
-    if (form.genogram?.structure != null) return (form.genogram!.structure!['connections'] as List?)?.length ?? 0;
-    if (form.data?['section_9']?['structure'] != null) return (form.data!['section_9']['structure']['connections'] as List?)?.length ?? 0;
-    if (form.data?['genogram']?['structure'] != null) return (form.data!['genogram']['structure']['connections'] as List?)?.length ?? 0;
+    try {
+      if (form.genogram?.structure != null) {
+        final connections = form.genogram!.structure!['connections'];
+        if (connections is List) return connections.length;
+      }
+      if (form.data?['section_9']?['structure'] != null) {
+        final connections = form.data!['section_9']['structure']['connections'];
+        if (connections is List) return connections.length;
+      }
+      if (form.data?['genogram']?['structure'] != null) {
+        final connections = form.data!['genogram']['structure']['connections'];
+        if (connections is List) return connections.length;
+      }
+    } catch (e) {
+      // ignore error
+    }
     return 0;
   }
 
@@ -137,7 +167,7 @@ class _FormDetailViewState extends State<FormDetailView> {
     final cards = <Widget>[];
     form.data!.forEach((key, value) {
       if (value == null) return;
-      
+
       String title = _formatSectionTitle(key);
       Widget content;
 
@@ -145,7 +175,8 @@ class _FormDetailViewState extends State<FormDetailView> {
         content = Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: value.entries.map((e) {
-            if (e.value == null || e.value.toString().isEmpty) return const SizedBox.shrink();
+            if (e.value == null || e.value.toString().isEmpty)
+              return const SizedBox.shrink();
             return Padding(
               padding: const EdgeInsets.only(bottom: 8.0),
               child: Row(
@@ -208,7 +239,10 @@ class _FormDetailViewState extends State<FormDetailView> {
     return key
         .replaceAll('_', ' ')
         .split(' ')
-        .map((word) => word.isEmpty ? '' : word[0].toUpperCase() + word.substring(1))
+        .map(
+          (word) =>
+              word.isEmpty ? '' : word[0].toUpperCase() + word.substring(1),
+        )
         .join(' ');
   }
 
@@ -216,7 +250,10 @@ class _FormDetailViewState extends State<FormDetailView> {
     return key
         .replaceAll('_', ' ')
         .split(' ')
-        .map((word) => word.isEmpty ? '' : word[0].toUpperCase() + word.substring(1))
+        .map(
+          (word) =>
+              word.isEmpty ? '' : word[0].toUpperCase() + word.substring(1),
+        )
         .join(' ');
   }
 
@@ -366,9 +403,24 @@ class _FormDetailViewState extends State<FormDetailView> {
                         FilledButton.tonal(
                           onPressed: () {
                             // open builder in read-only mode
-                            final struct = form.genogram?.structure ?? (form.data?['genogram']?['structure'] ?? form.data?['section_9']?['structure']);
-                            final notes = form.genogram?.notes ?? (form.data?['genogram']?['notes'] ?? form.data?['section_9']?['notes']) ?? '';
-                            Get.to(() => GenogramBuilderView(initialData: {'structure': struct, 'notes': notes}), arguments: {'readOnly': true});
+                            final struct =
+                                form.genogram?.structure ??
+                                (form.data?['genogram']?['structure'] ??
+                                    form.data?['section_9']?['structure']);
+                            final notes =
+                                form.genogram?.notes ??
+                                (form.data?['genogram']?['notes'] ??
+                                    form.data?['section_9']?['notes']) ??
+                                '';
+                            Get.to(
+                              () => GenogramBuilderView(
+                                initialData: {
+                                  'structure': struct,
+                                  'notes': notes,
+                                },
+                              ),
+                              arguments: {'readOnly': true},
+                            );
                           },
                           child: const Text('View Genogram'),
                         ),
@@ -376,18 +428,35 @@ class _FormDetailViewState extends State<FormDetailView> {
                         FilledButton.tonal(
                           onPressed: () async {
                             // fetch svg and show preview modal
-                            final svg = await formController.fetchGenogramSvg(form.id);
+                            final svg = await formController.fetchGenogramSvg(
+                              form.id,
+                            );
                             if (svg == null) {
-                              Get.snackbar('Not available', 'Genogram preview not available');
+                              Get.snackbar(
+                                'Not available',
+                                'Genogram preview not available',
+                              );
                               return;
                             }
-                            Get.dialog(AlertDialog(
-                              title: const Text('Genogram Preview'),
-                              content: SizedBox(width: 400, height: 200, child: SvgPicture.string(svg, fit: BoxFit.contain)),
-                              actions: [
-                                TextButton(onPressed: () => Get.back(), child: const Text('Close')),
-                              ],
-                            ));
+                            Get.dialog(
+                              AlertDialog(
+                                title: const Text('Genogram Preview'),
+                                content: SizedBox(
+                                  width: 400,
+                                  height: 200,
+                                  child: SvgPicture.string(
+                                    svg,
+                                    fit: BoxFit.contain,
+                                  ),
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Get.back(),
+                                    child: const Text('Close'),
+                                  ),
+                                ],
+                              ),
+                            );
                           },
                           child: const Text('Preview SVG'),
                         ),
