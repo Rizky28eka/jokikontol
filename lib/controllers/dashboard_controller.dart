@@ -140,9 +140,12 @@ class DashboardController extends GetxController {
       }
 
       if (response.statusCode == 200) {
-        // Assign the data (we're confident it's not null after successful parsing)
-        _mahasiswaStats.value = data;
-        _logger.info('Mahasiswa stats loaded successfully', context: data);
+        // Accept either direct stats map or wrapped under 'statistics'
+        final stats = (data['statistics'] is Map<String, dynamic>)
+            ? data['statistics'] as Map<String, dynamic>
+            : data;
+        _mahasiswaStats.value = stats;
+        _logger.info('Mahasiswa stats loaded successfully', context: stats);
       } else if (response.statusCode == 401) {
         // Unauthorized - token might be expired
         _errorMessage.value = 'Authentication required';

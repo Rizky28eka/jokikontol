@@ -9,11 +9,14 @@ class ProfileView extends StatefulWidget {
   ProfileView({super.key});
 
   @override
-  State<ProfileView> createState() => _ProfileViewState();
+  State<ProfileView> createState() => ProfileViewState();
 }
 
-class _ProfileViewState extends State<ProfileView> {
+class ProfileViewState extends State<ProfileView> with AutomaticKeepAliveClientMixin {
   final AuthController authController = Get.find();
+
+  @override
+  bool get wantKeepAlive => true;
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController = TextEditingController();
@@ -24,6 +27,8 @@ class _ProfileViewState extends State<ProfileView> {
   Future<void> _refreshProfile() async {
     await authController.getUserProfile();
   }
+
+  void refresh() => _refreshProfile();
 
   @override
   void dispose() {
@@ -37,6 +42,7 @@ class _ProfileViewState extends State<ProfileView> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // Required for AutomaticKeepAliveClientMixin
     return Scaffold(
       appBar: AppBar(
         title: const Text('Profile'),
@@ -219,14 +225,18 @@ class _ProfileViewState extends State<ProfileView> {
       }
     }
 
-    await authController.updateProfile(
-      name: _nameController.text,
-      password: _passwordController.text.isNotEmpty ? _passwordController.text : null,
-      username: _usernameController.text.isNotEmpty ? _usernameController.text : null,
-      phoneNumber: _phoneController.text.isNotEmpty ? _phoneController.text : null,
-      profilePhotoPath: _pickedProfilePhotoPath,
-    );
-    // After update attempt, refresh user info from API
-    await authController.getUserProfile();
+    try {
+      await authController.updateProfile(
+        name: _nameController.text,
+        password: _passwordController.text.isNotEmpty ? _passwordController.text : null,
+        username: _usernameController.text.isNotEmpty ? _usernameController.text : null,
+        phoneNumber: _phoneController.text.isNotEmpty ? _phoneController.text : null,
+        profilePhotoPath: _pickedProfilePhotoPath,
+      );
+      // After successful update, refresh user info from API
+      await authController.getUserProfile();
+    } catch (e) {
+      // Error already handled in controller with snackbar
+    }
   }
 }

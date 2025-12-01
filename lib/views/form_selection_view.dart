@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../controllers/form_selection_controller.dart';
+import '../utils/responsive.dart';
 import '../models/form_model.dart';
 import '../services/logger_service.dart';
 import 'form_detail_view.dart';
@@ -52,9 +53,10 @@ class FormSelectionView extends GetView<FormSelectionController> {
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
-            final isWide = constraints.maxWidth > 600;
-            final horizontalPadding = isWide ? 32.0 : 20.0;
-            final maxWidth = isWide ? 900.0 : double.infinity;
+            final r = Responsive(constraints);
+            final isWide = r.isMedium || r.isWide || r.isExpanded;
+            final horizontalPadding = r.isCompact ? 20.0 : 32.0;
+            final maxWidth = r.isExpanded ? 1100.0 : (r.isWide ? 980.0 : (r.isMedium ? 900.0 : double.infinity));
 
             return RefreshIndicator(
               onRefresh: controller.fetchForms,
@@ -281,12 +283,16 @@ class FormSelectionView extends GetView<FormSelectionController> {
 
   Widget _buildExistingFormsList(BuildContext context, bool isWide) {
     if (isWide) {
-            return GridView.builder(
+      final width = MediaQuery.of(context).size.width;
+      int columns = 2;
+      if (width > ResponsiveBreakpoints.medium && width < ResponsiveBreakpoints.expanded) columns = 3;
+      if (width >= ResponsiveBreakpoints.expanded) columns = 4;
+      return GridView.builder(
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          childAspectRatio: 3.5,
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: columns,
+          childAspectRatio: 3.6,
           crossAxisSpacing: 16,
           mainAxisSpacing: 16,
         ),
@@ -310,12 +316,16 @@ class FormSelectionView extends GetView<FormSelectionController> {
 
   Widget _buildNewFormsList(BuildContext context, bool isWide) {
     if (isWide) {
+      final width = MediaQuery.of(context).size.width;
+      int columns = 2;
+      if (width > ResponsiveBreakpoints.medium && width < ResponsiveBreakpoints.expanded) columns = 3;
+      if (width >= ResponsiveBreakpoints.expanded) columns = 4;
       return GridView.builder(
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          childAspectRatio: 3.5,
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: columns,
+          childAspectRatio: 3.4,
           crossAxisSpacing: 16,
           mainAxisSpacing: 16,
         ),

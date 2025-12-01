@@ -3,10 +3,9 @@ import 'package:get/get.dart';
 import '../controllers/form_controller.dart';
 import '../controllers/patient_controller.dart';
 import '../models/patient_model.dart';
-import '../models/form_model.dart';
-import '../services/hive_service.dart';
 import '../services/nursing_data_global_service.dart';
 import '../controllers/nursing_intervention_controller.dart';
+import '../utils/form_base_mixin.dart';
 
 class ResumePoliklinikFormView extends StatefulWidget {
   final Patient? patient;
@@ -19,8 +18,10 @@ class ResumePoliklinikFormView extends StatefulWidget {
       _ResumePoliklinikFormViewState();
 }
 
-class _ResumePoliklinikFormViewState extends State<ResumePoliklinikFormView> {
+class _ResumePoliklinikFormViewState extends State<ResumePoliklinikFormView> with FormBaseMixin {
+  @override
   final FormController formController = Get.put(FormController());
+  @override
   final PatientController patientController = Get.find();
   final NursingInterventionController _interventionController = Get.put(NursingInterventionController());
 
@@ -32,8 +33,24 @@ class _ResumePoliklinikFormViewState extends State<ResumePoliklinikFormView> {
     (index) => TextEditingController(),
   );
 
+  @override
+  String get formType => 'resume_poliklinik';
+  
+  @override
+  int? get formId => widget.formId ?? Get.arguments?['formId'] as int?;
+  
+  Patient? _currentPatient;
+  int? _currentPatientId;
+  
+  @override
+  Patient? get currentPatient => _currentPatient;
+  
+  @override
+  int? get currentPatientId => _currentPatientId;
+
   // Data structure for the form - similar to pengkajian but without genogram section
-  final Map<String, dynamic> _formData = {
+  @override
+  final Map<String, dynamic> formData = {
     'section_1': {}, // Identitas Klien
     'section_2': {}, // Riwayat Kehidupan
     'section_3': {}, // Riwayat Psikososial
@@ -45,139 +62,13 @@ class _ResumePoliklinikFormViewState extends State<ResumePoliklinikFormView> {
     'section_9': {}, // Renpra (Rencana Perawatan) - moved from section 10 to 9
     'section_10': {}, // Penutup - moved from section 11 to 10
   };
-  Patient? _currentPatient;
-  int? _currentPatientId;
 
   @override
   void initState() {
     super.initState();
-
-    // Initialize Hive
-    HiveService.init();
-
-    // If editing existing form, load the data
-    final effectiveFormId = widget.formId ?? Get.arguments?['formId'] as int?;
-    if (effectiveFormId != null) {
-      _loadFormData(effectiveFormId);
-    } else {
-      // set current patient for fallback
-      _currentPatient = widget.patient ?? Get.arguments?['patient'] as Patient?;
-      _currentPatientId = _currentPatient?.id ?? Get.arguments?['patientId'] as int?;
-      // Check for any existing draft forms to continue
-      _checkForDrafts();
-      _currentPatient = widget.patient ?? Get.arguments?['patient'] as Patient?;
-      _currentPatientId = _currentPatient?.id ?? Get.arguments?['patientId'] as int?;
-    }
-  }
-
-  Future<void> _checkForDrafts() async {
-    final patient = _currentPatient ?? widget.patient ?? Get.arguments?['patient'] as Patient?;
-    final patientId = _currentPatientId ?? patient?.id ?? Get.arguments?['patientId'] as int?;
-    if (patientId == null) return;
-
-    final draft = await HiveService.getDraftForm(
-      'resume_poliklinik',
-      widget.patient!.id,
-    );
-    if (draft != null) {
-      Get.defaultDialog(
-        title: 'Draft Ditemukan',
-        middleText:
-            'Apakah Anda ingin melanjutkan pengisian form dari draft yang tersimpan?',
-        textConfirm: 'Ya',
-        textCancel: 'Tidak',
-        confirmTextColor: Colors.white,
-        onConfirm: () {
-          Get.back();
-          setState(() {
-            _formData.addAll(draft.data ?? {});
-            _populateControllers();
-          });
-        },
-        onCancel: () {
-          // Optional: Delete draft if user chooses not to restore
-        },
-      );
-    }
-  }
-
-  Future<void> _loadFormData([int? id]) async {
-    final formIdToLoad = id ?? widget.formId ?? Get.arguments?['formId'] as int?;
-    if (formIdToLoad == null) return;
-
-    final form = await formController.getFormById(formIdToLoad);
-    if (form != null && form.data != null) {
-      setState(() {
-        if (form.patient != null) {
-          _currentPatient = form.patient as Patient;
-          _currentPatientId = form.patient!.id;
-        }
-        _formData.addAll(form.data!);
-        _populateControllers();
-      });
-    }
-  }
-
-  void _populateControllers() {
-    // Section 1
-    if (_formData['section_1'] != null) {
-      _controllers[0].text = _formData['section_1']['nama_lengkap'] ?? '';
-      _controllers[1].text = _formData['section_1']['umur']?.toString() ?? '';
-      _controllers[2].text = _formData['section_1']['jenis_kelamin'] ?? '';
-      _controllers[3].text = _formData['section_1']['status_perkawinan'] ?? '';
-    }
-    // Section 2
-    if (_formData['section_2'] != null) {
-      _controllers[4].text = _formData['section_2']['riwayat_pendidikan'] ?? '';
-      _controllers[5].text = _formData['section_2']['pekerjaan'] ?? '';
-      _controllers[6].text = _formData['section_2']['riwayat_keluarga'] ?? '';
-    }
-    // Section 3
-    if (_formData['section_3'] != null) {
-      _controllers[7].text = _formData['section_3']['hubungan_sosial'] ?? '';
-      _controllers[8].text = _formData['section_3']['dukungan_sosial'] ?? '';
-      _controllers[9].text =
-          _formData['section_3']['stresor_psikososial'] ?? '';
-    }
-    // Section 4
-    if (_formData['section_4'] != null) {
-      _controllers[10].text =
-          _formData['section_4']['riwayat_gangguan_psikiatri'] ?? '';
-      _controllers[11].text =
-          _formData['section_4']['riwayat_pengobatan'] ?? '';
-    }
-    // Section 5
-    if (_formData['section_5'] != null) {
-      _controllers[12].text = _formData['section_5']['kesadaran'] ?? '';
-      _controllers[13].text = _formData['section_5']['orientasi'] ?? '';
-      _controllers[14].text = _formData['section_5']['penampilan'] ?? '';
-    }
-    // Section 6
-    if (_formData['section_6'] != null) {
-      _controllers[15].text = _formData['section_6']['mood'] ?? '';
-      _controllers[16].text = _formData['section_6']['afect'] ?? '';
-      _controllers[17].text = _formData['section_6']['alam_pikiran'] ?? '';
-    }
-    // Section 7
-    if (_formData['section_7'] != null) {
-      _controllers[18].text = _formData['section_7']['fungsi_sosial'] ?? '';
-      _controllers[19].text = _formData['section_7']['interaksi_sosial'] ?? '';
-    }
-    // Section 8
-    if (_formData['section_8'] != null) {
-      _controllers[20].text = _formData['section_8']['kepercayaan'] ?? '';
-      _controllers[21].text = _formData['section_8']['praktik_ibadah'] ?? '';
-    }
-    // Section 9
-    if (_formData['section_9'] != null) {
-      _controllers[22].text = _formData['section_9']['tujuan'] ?? '';
-      _controllers[23].text = _formData['section_9']['kriteria'] ?? '';
-      _controllers[24].text = _formData['section_9']['rasional'] ?? '';
-    }
-    // Section 10
-    if (_formData['section_10'] != null) {
-      _controllers[25].text = _formData['section_10']['catatan_tambahan'] ?? '';
-    }
+    _currentPatient = widget.patient ?? Get.arguments?['patient'] as Patient?;
+    _currentPatientId = _currentPatient?.id ?? Get.arguments?['patientId'] as int?;
+    initializeForm();
   }
 
   @override
@@ -194,7 +85,7 @@ class _ResumePoliklinikFormViewState extends State<ResumePoliklinikFormView> {
         _currentSection++;
       });
     } else {
-      _submitForm();
+      submitForm();
     }
   }
 
@@ -203,92 +94,6 @@ class _ResumePoliklinikFormViewState extends State<ResumePoliklinikFormView> {
       setState(() {
         _currentSection--;
       });
-    }
-  }
-
-  Future<void> _saveDraft() async {
-    final patient = _currentPatient ?? widget.patient ?? Get.arguments?['patient'] as Patient?;
-    final patientId = _currentPatientId ?? patient?.id ?? Get.arguments?['patientId'] as int?;
-
-    if (patient == null || patientId == null) {
-      Get.snackbar('Error', 'Patient information is required to save draft');
-      return;
-    }
-
-    try {
-      final form = FormModel(
-        id: widget.formId ?? DateTime.now().millisecondsSinceEpoch,
-        type: 'resume_poliklinik',
-        userId: 0,
-        patientId: patientId,
-        status: 'draft',
-        data: _formData,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-        genogram: null,
-      );
-
-      await HiveService.saveDraftForm(form);
-      Get.snackbar('Success', 'Draft saved locally');
-      // Return to previous route and provide the saved draft as result
-      Get.back(result: form);
-    } catch (e) {
-      Get.snackbar('Error', 'Failed to save draft: $e');
-    }
-  }
-
-  Future<void> _submitForm() async {
-    final patient = _currentPatient ?? widget.patient ?? Get.arguments?['patient'] as Patient?;
-    final patientId = _currentPatientId ?? patient?.id ?? Get.arguments?['patientId'] as int?;
-
-    // Check if patient is available
-    if (patient == null || patientId == null) {
-      Get.snackbar('Error', 'Patient information is required to submit form');
-      return;
-    }
-
-    try {
-      final resultForm = widget.formId != null
-          ? await formController.updateForm(
-              id: widget.formId!,
-              type: 'resume_poliklinik',
-              patientId: patientId,
-              data: _formData,
-              status: 'submitted',
-            )
-          : await formController.createForm(
-              type: 'resume_poliklinik',
-              patientId: patientId,
-              data: _formData,
-              status: 'submitted',
-            );
-
-      // If submission successful, remove any local draft
-      await HiveService.deleteDraftForm(
-        'resume_poliklinik',
-        widget.patient!.id,
-      );
-
-      Get.snackbar('Success', 'Form submitted successfully');
-      Get.back(result: resultForm);
-    } catch (e) {
-      // If submission fails, save as draft locally and notify user
-      Get.snackbar('Error', 'Submission failed. Form saved as draft locally.');
-
-      // Save to local storage as draft
-      final form = FormModel(
-        id: DateTime.now().millisecondsSinceEpoch,
-        type: 'resume_poliklinik',
-        userId: 0,
-        patientId: widget.patient!.id,
-        status: 'draft',
-        data: _formData,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-        genogram: null,
-      );
-
-      await HiveService.saveDraftForm(form);
     }
   }
 
@@ -335,7 +140,7 @@ class _ResumePoliklinikFormViewState extends State<ResumePoliklinikFormView> {
             border: OutlineInputBorder(),
           ),
           onChanged: (value) {
-            _formData['section_1']['nama_lengkap'] = value;
+            formData['section_1']['nama_lengkap'] = value;
           },
         ),
         const SizedBox(height: 16),
@@ -347,7 +152,7 @@ class _ResumePoliklinikFormViewState extends State<ResumePoliklinikFormView> {
           ),
           keyboardType: TextInputType.number,
           onChanged: (value) {
-            _formData['section_1']['umur'] = value;
+            formData['section_1']['umur'] = value;
           },
         ),
         const SizedBox(height: 16),
@@ -358,7 +163,7 @@ class _ResumePoliklinikFormViewState extends State<ResumePoliklinikFormView> {
             border: OutlineInputBorder(),
           ),
           onChanged: (value) {
-            _formData['section_1']['jenis_kelamin'] = value;
+            formData['section_1']['jenis_kelamin'] = value;
           },
         ),
         const SizedBox(height: 16),
@@ -369,7 +174,7 @@ class _ResumePoliklinikFormViewState extends State<ResumePoliklinikFormView> {
             border: OutlineInputBorder(),
           ),
           onChanged: (value) {
-            _formData['section_1']['status_perkawinan'] = value;
+            formData['section_1']['status_perkawinan'] = value;
           },
         ),
       ],
@@ -393,7 +198,7 @@ class _ResumePoliklinikFormViewState extends State<ResumePoliklinikFormView> {
           ),
           maxLines: 3,
           onChanged: (value) {
-            _formData['section_2']['riwayat_pendidikan'] = value;
+            formData['section_2']['riwayat_pendidikan'] = value;
           },
         ),
         const SizedBox(height: 16),
@@ -404,7 +209,7 @@ class _ResumePoliklinikFormViewState extends State<ResumePoliklinikFormView> {
             border: OutlineInputBorder(),
           ),
           onChanged: (value) {
-            _formData['section_2']['pekerjaan'] = value;
+            formData['section_2']['pekerjaan'] = value;
           },
         ),
         const SizedBox(height: 16),
@@ -416,7 +221,7 @@ class _ResumePoliklinikFormViewState extends State<ResumePoliklinikFormView> {
           ),
           maxLines: 3,
           onChanged: (value) {
-            _formData['section_2']['riwayat_keluarga'] = value;
+            formData['section_2']['riwayat_keluarga'] = value;
           },
         ),
       ],
@@ -440,7 +245,7 @@ class _ResumePoliklinikFormViewState extends State<ResumePoliklinikFormView> {
           ),
           maxLines: 3,
           onChanged: (value) {
-            _formData['section_3']['hubungan_sosial'] = value;
+            formData['section_3']['hubungan_sosial'] = value;
           },
         ),
         const SizedBox(height: 16),
@@ -452,7 +257,7 @@ class _ResumePoliklinikFormViewState extends State<ResumePoliklinikFormView> {
           ),
           maxLines: 3,
           onChanged: (value) {
-            _formData['section_3']['dukungan_sosial'] = value;
+            formData['section_3']['dukungan_sosial'] = value;
           },
         ),
         const SizedBox(height: 16),
@@ -464,7 +269,7 @@ class _ResumePoliklinikFormViewState extends State<ResumePoliklinikFormView> {
           ),
           maxLines: 3,
           onChanged: (value) {
-            _formData['section_3']['stresor_psikososial'] = value;
+            formData['section_3']['stresor_psikososial'] = value;
           },
         ),
       ],
@@ -488,7 +293,7 @@ class _ResumePoliklinikFormViewState extends State<ResumePoliklinikFormView> {
           ),
           maxLines: 3,
           onChanged: (value) {
-            _formData['section_4']['riwayat_gangguan_psikiatri'] = value;
+            formData['section_4']['riwayat_gangguan_psikiatri'] = value;
           },
         ),
         const SizedBox(height: 16),
@@ -500,7 +305,7 @@ class _ResumePoliklinikFormViewState extends State<ResumePoliklinikFormView> {
           ),
           maxLines: 3,
           onChanged: (value) {
-            _formData['section_4']['riwayat_pengobatan'] = value;
+            formData['section_4']['riwayat_pengobatan'] = value;
           },
         ),
       ],
@@ -523,7 +328,7 @@ class _ResumePoliklinikFormViewState extends State<ResumePoliklinikFormView> {
             border: OutlineInputBorder(),
           ),
           onChanged: (value) {
-            _formData['section_5']['kesadaran'] = value;
+            formData['section_5']['kesadaran'] = value;
           },
         ),
         const SizedBox(height: 16),
@@ -534,7 +339,7 @@ class _ResumePoliklinikFormViewState extends State<ResumePoliklinikFormView> {
             border: OutlineInputBorder(),
           ),
           onChanged: (value) {
-            _formData['section_5']['orientasi'] = value;
+            formData['section_5']['orientasi'] = value;
           },
         ),
         const SizedBox(height: 16),
@@ -545,7 +350,7 @@ class _ResumePoliklinikFormViewState extends State<ResumePoliklinikFormView> {
             border: OutlineInputBorder(),
           ),
           onChanged: (value) {
-            _formData['section_5']['penampilan'] = value;
+            formData['section_5']['penampilan'] = value;
           },
         ),
       ],
@@ -568,7 +373,7 @@ class _ResumePoliklinikFormViewState extends State<ResumePoliklinikFormView> {
             border: OutlineInputBorder(),
           ),
           onChanged: (value) {
-            _formData['section_6']['mood'] = value;
+            formData['section_6']['mood'] = value;
           },
         ),
         const SizedBox(height: 16),
@@ -579,7 +384,7 @@ class _ResumePoliklinikFormViewState extends State<ResumePoliklinikFormView> {
             border: OutlineInputBorder(),
           ),
           onChanged: (value) {
-            _formData['section_6']['afect'] = value;
+            formData['section_6']['afect'] = value;
           },
         ),
         const SizedBox(height: 16),
@@ -590,7 +395,7 @@ class _ResumePoliklinikFormViewState extends State<ResumePoliklinikFormView> {
             border: OutlineInputBorder(),
           ),
           onChanged: (value) {
-            _formData['section_6']['alam_pikiran'] = value;
+            formData['section_6']['alam_pikiran'] = value;
           },
         ),
       ],
@@ -614,7 +419,7 @@ class _ResumePoliklinikFormViewState extends State<ResumePoliklinikFormView> {
           ),
           maxLines: 3,
           onChanged: (value) {
-            _formData['section_7']['fungsi_sosial'] = value;
+            formData['section_7']['fungsi_sosial'] = value;
           },
         ),
         const SizedBox(height: 16),
@@ -626,7 +431,7 @@ class _ResumePoliklinikFormViewState extends State<ResumePoliklinikFormView> {
           ),
           maxLines: 3,
           onChanged: (value) {
-            _formData['section_7']['interaksi_sosial'] = value;
+            formData['section_7']['interaksi_sosial'] = value;
           },
         ),
       ],
@@ -649,7 +454,7 @@ class _ResumePoliklinikFormViewState extends State<ResumePoliklinikFormView> {
             border: OutlineInputBorder(),
           ),
           onChanged: (value) {
-            _formData['section_8']['kepercayaan'] = value;
+            formData['section_8']['kepercayaan'] = value;
           },
         ),
         const SizedBox(height: 16),
@@ -660,7 +465,7 @@ class _ResumePoliklinikFormViewState extends State<ResumePoliklinikFormView> {
             border: OutlineInputBorder(),
           ),
           onChanged: (value) {
-            _formData['section_8']['praktik_ibadah'] = value;
+            formData['section_8']['praktik_ibadah'] = value;
           },
         ),
       ],
@@ -704,9 +509,9 @@ class _ResumePoliklinikFormViewState extends State<ResumePoliklinikFormView> {
           return DropdownButtonFormField<int?>(
             decoration: const InputDecoration(border: OutlineInputBorder()),
             items: items.cast<DropdownMenuItem<int?>>(),
-            value: _formData['section_9']['diagnosis'] as int?,
+            value: formData['section_9']['diagnosis'] as int?,
             onChanged: (value) {
-              _formData['section_9']['diagnosis'] = value;
+              formData['section_9']['diagnosis'] = value;
             },
             hint: const Text('Pilih Diagnosis'),
           );
@@ -722,7 +527,7 @@ class _ResumePoliklinikFormViewState extends State<ResumePoliklinikFormView> {
           return Column(
             children: interventions.map((iv) {
               final currentInterventions =
-                  (_formData['section_9']['intervensi'] as List?) ?? <int>[];
+                  (formData['section_9']['intervensi'] as List?) ?? <int>[];
               final isChecked = currentInterventions.contains(iv.id);
               return CheckboxListTile(
                 title: Text(iv.name),
@@ -734,7 +539,7 @@ class _ResumePoliklinikFormViewState extends State<ResumePoliklinikFormView> {
                   } else {
                     intervensi.remove(iv.id);
                   }
-                  _formData['section_9']['intervensi'] = intervensi;
+                  formData['section_9']['intervensi'] = intervensi;
                   setState(() {});
                 },
               );
@@ -750,7 +555,7 @@ class _ResumePoliklinikFormViewState extends State<ResumePoliklinikFormView> {
           ),
           maxLines: 3,
           onChanged: (value) {
-            _formData['section_9']['tujuan'] = value;
+            formData['section_9']['tujuan'] = value;
           },
         ),
         const SizedBox(height: 16),
@@ -762,7 +567,7 @@ class _ResumePoliklinikFormViewState extends State<ResumePoliklinikFormView> {
           ),
           maxLines: 3,
           onChanged: (value) {
-            _formData['section_9']['kriteria'] = value;
+            formData['section_9']['kriteria'] = value;
           },
         ),
         const SizedBox(height: 16),
@@ -774,7 +579,7 @@ class _ResumePoliklinikFormViewState extends State<ResumePoliklinikFormView> {
           ),
           maxLines: 3,
           onChanged: (value) {
-            _formData['section_9']['rasional'] = value;
+            formData['section_9']['rasional'] = value;
           },
         ),
       ],
@@ -798,7 +603,7 @@ class _ResumePoliklinikFormViewState extends State<ResumePoliklinikFormView> {
           ),
           maxLines: 5,
           onChanged: (value) {
-            _formData['section_10']['catatan_tambahan'] = value;
+            formData['section_10']['catatan_tambahan'] = value;
           },
         ),
         const SizedBox(height: 16),
@@ -812,12 +617,12 @@ class _ResumePoliklinikFormViewState extends State<ResumePoliklinikFormView> {
               lastDate: DateTime.now(),
             );
             if (pickedDate != null) {
-              _formData['section_10']['tanggal_pengisian'] = pickedDate
+              formData['section_10']['tanggal_pengisian'] = pickedDate
                   .toIso8601String();
             }
           },
           child: Text(
-            _formData['section_10']['tanggal_pengisian'] ?? 'Pilih Tanggal',
+            formData['section_10']['tanggal_pengisian'] ?? 'Pilih Tanggal',
           ),
         ),
       ],
@@ -834,15 +639,6 @@ class _ResumePoliklinikFormViewState extends State<ResumePoliklinikFormView> {
               : 'Edit Resume',
         ),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        actions: [
-          TextButton(
-            onPressed: _saveDraft,
-            child: const Text(
-              'Simpan Draft',
-              style: TextStyle(color: Colors.white),
-            ),
-          ),
-        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -874,10 +670,16 @@ class _ResumePoliklinikFormViewState extends State<ResumePoliklinikFormView> {
                 else
                   const SizedBox.shrink(),
 
-                ElevatedButton(
-                  onPressed: _nextSection,
-                  child: Text(_currentSection == 9 ? 'Simpan' : 'Selanjutnya'),
-                ),
+                if (_currentSection == 9)
+                  // Last section, show action buttons
+                  Expanded(
+                    child: buildActionButtons(),
+                  )
+                else
+                  ElevatedButton(
+                    onPressed: _nextSection,
+                    child: const Text('Selanjutnya'),
+                  ),
               ],
             ),
           ],

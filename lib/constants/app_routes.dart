@@ -5,4 +5,5 @@ class AppRoutes {
   static const String profile = '/profile';
   static const String dosenDashboard = '/dosen-dashboard';
   static const String mahasiswaDashboard = '/mahasiswa-dashboard';
+  static const String mainShell = '/main-shell';
 }

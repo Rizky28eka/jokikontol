@@ -3,6 +3,8 @@ import 'package:get/get.dart';
 import '../controllers/dashboard_controller.dart';
 import '../controllers/auth_controller.dart';
 import '../services/logger_service.dart';
+import 'diagnoses_list_view.dart';
+import 'interventions_list_view.dart';
 
 class MahasiswaDashboardView extends GetView<DashboardController> {
   const MahasiswaDashboardView({super.key});
@@ -45,6 +47,8 @@ class MahasiswaDashboardView extends GetView<DashboardController> {
                       _buildHeader(context),
                       const SizedBox(height: 32),
                       _buildStatsSection(context, isTablet, isDesktop),
+                      const SizedBox(height: 40),
+                      _buildNursingLibrarySection(context, isTablet, isDesktop),
                       const SizedBox(height: 40),
                       _buildPatientsSection(
                         context,
@@ -202,10 +206,24 @@ class MahasiswaDashboardView extends GetView<DashboardController> {
                   ),
                   _buildStatCard(
                     context,
-                    'Form Menunggu',
-                    stats['form_menunggu'].toString(),
+                    'Form Menunggu Review',
+                    (stats['form_menunggu_review'] ?? stats['form_menunggu'] ?? 0).toString(),
                     Icons.pending_actions_rounded,
                     Colors.orange.shade600,
+                  ),
+                  _buildStatCard(
+                    context,
+                    'Form Perlu Revisi',
+                    (stats['form_revisi'] ?? 0).toString(),
+                    Icons.warning_rounded,
+                    Theme.of(context).colorScheme.error,
+                  ),
+                  _buildStatCard(
+                    context,
+                    'Genogram Lengkap (%)',
+                    '${(stats['genogram_complete_percent'] ?? 0).toString()}%',
+                    Icons.family_restroom_rounded,
+                    Theme.of(context).colorScheme.secondary,
                   ),
                 ],
               );
@@ -268,6 +286,123 @@ class MahasiswaDashboardView extends GetView<DashboardController> {
               overflow: TextOverflow.ellipsis,
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNursingLibrarySection(
+    BuildContext context,
+    bool isTablet,
+    bool isDesktop,
+  ) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Daftar Diagnosis & Intervensi',
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.w600,
+            color: colorScheme.onSurface,
+          ),
+        ),
+        const SizedBox(height: 16),
+        LayoutBuilder(builder: (context, constraints) {
+          int crossAxisCount = 1;
+          if (constraints.maxWidth > 900) {
+            crossAxisCount = 2;
+          } else if (constraints.maxWidth > 600) {
+            crossAxisCount = 2;
+          }
+          return GridView.count(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisCount: crossAxisCount,
+            mainAxisSpacing: 16,
+            crossAxisSpacing: 16,
+            childAspectRatio: isDesktop ? 3.2 : (isTablet ? 2.8 : 2.6),
+            children: [
+              _buildLibraryCard(
+                context,
+                title: 'Diagnoses Keperawatan',
+                subtitle: 'Lihat daftar diagnosis yang dikelola dosen',
+                icon: Icons.medical_services_rounded,
+                color: colorScheme.primary,
+                onTap: () => Get.to(() => const DiagnosesListView()),
+              ),
+              _buildLibraryCard(
+                context,
+                title: 'Intervensi Keperawatan',
+                subtitle: 'Lihat daftar intervensi yang dikelola dosen',
+                icon: Icons.volunteer_activism_rounded,
+                color: colorScheme.tertiary,
+                onTap: () => Get.to(() => const InterventionsListView()),
+              ),
+            ],
+          );
+        }),
+      ],
+    );
+  }
+
+  Widget _buildLibraryCard(
+    BuildContext context, {
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(color: colorScheme.outlineVariant.withOpacity(0.5)),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(icon, color: color, size: 26),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: colorScheme.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      subtitle,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Icon(Icons.chevron_right_rounded, color: colorScheme.onSurfaceVariant),
+            ],
+          ),
         ),
       ),
     );

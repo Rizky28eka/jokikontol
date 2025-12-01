@@ -4,6 +4,7 @@ import '../controllers/form_controller.dart';
 import '../controllers/auth_controller.dart';
 import '../models/form_model.dart';
 import '../services/logger_service.dart';
+import '../services/role_guard.dart';
 import 'genogram_builder_view.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
@@ -15,13 +16,13 @@ class FormDetailView extends StatefulWidget {
 }
 
 class _FormDetailViewState extends State<FormDetailView> {
-  final FormController formController = Get.find<FormController>();
+  final FormController formController = Get.put(FormController());
   final AuthController authController = Get.find<AuthController>();
   final LoggerService _logger = LoggerService();
   final TextEditingController _commentController = TextEditingController();
 
   late FormModel form;
-  bool isLecturer = false;
+  bool isLecturer = false; // legacy flag retained for minimal change
   bool _genogramAvailable = false;
 
   @override
@@ -40,8 +41,16 @@ class _FormDetailViewState extends State<FormDetailView> {
     }
 
     _commentController.text = form.comments ?? '';
-    isLecturer = authController.user?.role == 'dosen';
+    isLecturer = RoleGuard.isDosen();
     _genogramAvailable = form.genogram != null || (form.data != null && (form.data!['section_9']?['structure'] != null || form.data!['genogram']?['structure'] != null));
+  }
+
+  // Prevent unexpected setState during hot reload by pausing auto-refresh logic
+  @override
+  void reassemble() {
+    // Avoid triggering async refreshes automatically during hot reload.
+    // Keeps the widget stable when Flutter rebuilds the tree.
+    super.reassemble();
   }
 
   @override
@@ -68,6 +77,7 @@ class _FormDetailViewState extends State<FormDetailView> {
     _logger.info('Refreshing form detail data');
     // Fetch the specific form by id to ensure we get the full payload (data included)
     final fetchedForm = await formController.getFormById(form.id);
+    if (!mounted) return;
     if (fetchedForm != null) {
       setState(() {
         form = fetchedForm;
@@ -223,10 +233,12 @@ class _FormDetailViewState extends State<FormDetailView> {
     );
 
     // Update local form object to reflect changes
+    if (!mounted) return;
     setState(() {
       form = form.copyWith(status: status, comments: _commentController.text);
     });
 
+    if (!mounted) return;
     Get.snackbar(
       'Sukses',
       'Status form berhasil diperbarui',

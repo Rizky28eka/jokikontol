@@ -85,7 +85,11 @@ class FormController extends Controller
         // Ensure the form belongs to the authenticated user or allow 'dosen' to view submitted forms for review
         if ($form->user_id !== $request->user()->id && $request->user()->role !== 'dosen') {
             return response()->json([
-                'message' => 'Unauthorized'
+                'error' => [
+                    'code' => 'ROLE_FORBIDDEN',
+                    'message' => 'You are not authorized to view this form',
+                    'required_role' => 'owner_or_dosen'
+                ]
             ], 403);
         }
 
@@ -100,7 +104,11 @@ class FormController extends Controller
         // Ensure the form belongs to the authenticated user
         if ($form->user_id !== $request->user()->id) {
             return response()->json([
-                'message' => 'Unauthorized'
+                'error' => [
+                    'code' => 'ROLE_FORBIDDEN',
+                    'message' => 'You are not authorized to update this form',
+                    'required_role' => 'owner'
+                ]
             ], 403);
         }
 
@@ -150,7 +158,11 @@ class FormController extends Controller
         // Ensure the form belongs to the authenticated user
         if ($form->user_id !== $request->user()->id) {
             return response()->json([
-                'message' => 'Unauthorized'
+                'error' => [
+                    'code' => 'ROLE_FORBIDDEN',
+                    'message' => 'You are not authorized to delete this form',
+                    'required_role' => 'owner'
+                ]
             ], 403);
         }
 
@@ -169,14 +181,21 @@ class FormController extends Controller
         // Ensure the form belongs to the authenticated user
         if ($form->user_id !== $request->user()->id) {
             return response()->json([
-                'message' => 'Unauthorized'
+                'error' => [
+                    'code' => 'ROLE_FORBIDDEN',
+                    'message' => 'You are not authorized to upload materials for this form',
+                    'required_role' => 'owner'
+                ]
             ], 403);
         }
 
         // Validate that this is a SAP form
         if ($form->type !== 'sap') {
             return response()->json([
-                'message' => 'Material upload is only allowed for SAP forms'
+                'error' => [
+                    'code' => 'INVALID_FORM_TYPE',
+                    'message' => 'Material upload is only allowed for SAP forms'
+                ]
             ], 400);
         }
 
@@ -213,14 +232,21 @@ class FormController extends Controller
         // Ensure the form belongs to the authenticated user
         if ($form->user_id !== $request->user()->id) {
             return response()->json([
-                'message' => 'Unauthorized'
+                'error' => [
+                    'code' => 'ROLE_FORBIDDEN',
+                    'message' => 'You are not authorized to upload photos for this form',
+                    'required_role' => 'owner'
+                ]
             ], 403);
         }
 
         // Validate that this is a SAP form
         if ($form->type !== 'sap') {
             return response()->json([
-                'message' => 'Photo upload is only allowed for SAP forms'
+                'error' => [
+                    'code' => 'INVALID_FORM_TYPE',
+                    'message' => 'Photo upload is only allowed for SAP forms'
+                ]
             ], 400);
         }
 
@@ -278,7 +304,11 @@ class FormController extends Controller
         // Check if user is dosen
         if ($request->user()->role !== 'dosen') {
             return response()->json([
-                'message' => 'Unauthorized: Only dosen can review forms'
+                'error' => [
+                    'code' => 'ROLE_FORBIDDEN',
+                    'message' => 'Only dosen can review forms',
+                    'required_role' => 'dosen'
+                ]
             ], 403);
         }
 

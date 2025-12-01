@@ -3,10 +3,9 @@ import 'package:get/get.dart';
 import '../controllers/form_controller.dart';
 import '../controllers/patient_controller.dart';
 import '../models/patient_model.dart';
-import '../models/form_model.dart';
-import '../services/hive_service.dart';
 import '../services/nursing_data_global_service.dart';
 import '../controllers/nursing_intervention_controller.dart';
+import '../utils/form_base_mixin.dart';
 
 class ResumeKegawatdaruratanFormView extends StatefulWidget {
   final Patient? patient;
@@ -20,15 +19,33 @@ class ResumeKegawatdaruratanFormView extends StatefulWidget {
 }
 
 class _ResumeKegawatdaruratanFormViewState
-    extends State<ResumeKegawatdaruratanFormView> {
+    extends State<ResumeKegawatdaruratanFormView> with FormBaseMixin {
+  @override
   final FormController formController = Get.put(FormController());
+  @override
   final PatientController patientController = Get.find();
   final NursingInterventionController _interventionController = Get.put(NursingInterventionController());
 
   int _currentSection = 0;
 
+  @override
+  String get formType => 'resume_kegawatdaruratan';
+  
+  @override
+  int? get formId => widget.formId ?? Get.arguments?['formId'] as int?;
+  
+  Patient? _currentPatient;
+  int? _currentPatientId;
+  
+  @override
+  Patient? get currentPatient => _currentPatient;
+  
+  @override
+  int? get currentPatientId => _currentPatientId;
+
   // Data structure for the resume kegawatdaruratan form with 11 sections
-  final Map<String, dynamic> _formData = {
+  @override
+  final Map<String, dynamic> formData = {
     'identitas': {}, // Section 1: Identitas
     'riwayat_keluhan':
         {}, // Section 2: Riwayat Keluhan Utama dan Riwayat Penyakit Sekarang
@@ -42,75 +59,13 @@ class _ResumeKegawatdaruratanFormViewState
     'rencana_keluarga': {}, // Section 10: Rencana dengan Keluarga
     'renpra': {}, // Section 11: Renpra (Rencana Perawatan)
   };
-  Patient? _currentPatient;
-  int? _currentPatientId;
 
   @override
   void initState() {
     super.initState();
-
-    // Initialize Hive
-    HiveService.init();
-
-    // If editing existing form, load the data
-    final effectiveFormId = widget.formId ?? Get.arguments?['formId'] as int?;
-    if (effectiveFormId != null) {
-      _loadFormData(effectiveFormId);
-    } else {
-      // set current patient for fallback
-      _currentPatient = widget.patient ?? Get.arguments?['patient'] as Patient?;
-      _currentPatientId = _currentPatient?.id ?? Get.arguments?['patientId'] as int?;
-      // Check for any existing draft forms to continue
-      _checkForDrafts();
-      _currentPatient = widget.patient ?? Get.arguments?['patient'] as Patient?;
-      _currentPatientId = _currentPatient?.id ?? Get.arguments?['patientId'] as int?;
-    }
-  }
-
-  Future<void> _checkForDrafts() async {
-    final patient = _currentPatient ?? widget.patient ?? Get.arguments?['patient'] as Patient?;
-    final patientId = _currentPatientId ?? patient?.id ?? Get.arguments?['patientId'] as int?;
-    if (patientId == null) return;
-
-    final draft = await HiveService.getDraftForm(
-      'resume_kegawatdaruratan',
-      widget.patient!.id,
-    );
-    if (draft != null) {
-      Get.defaultDialog(
-        title: 'Draft Ditemukan',
-        middleText:
-            'Apakah Anda ingin melanjutkan pengisian form dari draft yang tersimpan?',
-        textConfirm: 'Ya',
-        textCancel: 'Tidak',
-        confirmTextColor: Colors.white,
-        onConfirm: () {
-          Get.back();
-          setState(() {
-            _formData.addAll(draft.data ?? {});
-          });
-        },
-        onCancel: () {
-          // Optional: Delete draft if user chooses not to restore
-        },
-      );
-    }
-  }
-
-  Future<void> _loadFormData([int? id]) async {
-    final formIdToLoad = id ?? widget.formId ?? Get.arguments?['formId'] as int?;
-    if (formIdToLoad == null) return;
-
-    final form = await formController.getFormById(formIdToLoad);
-    if (form != null && form.data != null) {
-      setState(() {
-        if (form.patient != null) {
-          _currentPatient = form.patient as Patient;
-          _currentPatientId = form.patient!.id;
-        }
-        _formData.addAll(form.data!);
-      });
-    }
+    _currentPatient = widget.patient ?? Get.arguments?['patient'] as Patient?;
+    _currentPatientId = _currentPatient?.id ?? Get.arguments?['patientId'] as int?;
+    initializeForm();
   }
 
   @override
@@ -124,7 +79,7 @@ class _ResumeKegawatdaruratanFormViewState
         _currentSection++;
       });
     } else {
-      _submitForm();
+      submitForm();
     }
   }
 
@@ -133,93 +88,6 @@ class _ResumeKegawatdaruratanFormViewState
       setState(() {
         _currentSection--;
       });
-    }
-  }
-
-  Future<void> _saveDraft() async {
-    final patient = _currentPatient ?? widget.patient ?? Get.arguments?['patient'] as Patient?;
-    final patientId = _currentPatientId ?? patient?.id ?? Get.arguments?['patientId'] as int?;
-
-    if (patient == null || patientId == null) {
-      Get.snackbar('Error', 'Patient information is required to save draft');
-      return;
-    }
-
-    try {
-      final form = FormModel(
-        id: widget.formId ?? DateTime.now().millisecondsSinceEpoch,
-        type: 'resume_kegawatdaruratan',
-        userId: 0,
-        patientId: patientId,
-        status: 'draft',
-        data: _formData,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-        genogram: null,
-      );
-
-      await HiveService.saveDraftForm(form);
-      Get.snackbar('Success', 'Draft saved locally');
-      // Return to previous route and provide the saved draft as result
-      Get.back(result: form);
-    } catch (e) {
-      Get.snackbar('Error', 'Failed to save draft: $e');
-    }
-  }
-
-  Future<void> _submitForm() async {
-    final patient = _currentPatient ?? widget.patient ?? Get.arguments?['patient'] as Patient?;
-    final patientId = _currentPatientId ?? patient?.id ?? Get.arguments?['patientId'] as int?;
-
-    // Check if patient is available
-    if (patient == null || patientId == null) {
-      Get.snackbar('Error', 'Patient information is required to submit form');
-      return;
-    }
-
-    try {
-      // Try to submit to server
-      final resultForm = widget.formId != null
-          ? await formController.updateForm(
-              id: widget.formId!,
-              type: 'resume_kegawatdaruratan',
-              patientId: patientId,
-              data: _formData,
-              status: 'submitted',
-            )
-          : await formController.createForm(
-              type: 'resume_kegawatdaruratan',
-              patientId: patientId,
-              data: _formData,
-              status: 'submitted',
-            );
-
-      // If submission successful, remove any local draft
-      await HiveService.deleteDraftForm(
-        'resume_kegawatdaruratan',
-        widget.patient!.id,
-      );
-
-      Get.snackbar('Success', 'Form submitted successfully');
-      Get.back(result: resultForm);
-    } catch (e) {
-      // If submission fails, save as draft locally and notify user
-      Get.snackbar('Error', 'Submission failed. Form saved as draft locally.');
-
-      // Save to local storage as draft
-      final form = FormModel(
-        id: DateTime.now().millisecondsSinceEpoch,
-        type: 'resume_kegawatdaruratan',
-        userId: 0,
-        patientId: widget.patient!.id,
-        status: 'draft',
-        data: _formData,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-        genogram: null,
-      );
-
-      await HiveService.saveDraftForm(form);
     }
   }
 
@@ -262,60 +130,60 @@ class _ResumeKegawatdaruratanFormViewState
         ),
         const SizedBox(height: 16),
         TextFormField(
-          initialValue: _formData['identitas']['nama_lengkap'],
+          initialValue: formData['identitas']['nama_lengkap'],
           decoration: const InputDecoration(
             labelText: 'Nama Lengkap',
             border: OutlineInputBorder(),
           ),
           onChanged: (value) {
-            _formData['identitas']['nama_lengkap'] = value;
+            formData['identitas']['nama_lengkap'] = value;
           },
         ),
         const SizedBox(height: 16),
         TextFormField(
-          initialValue: _formData['identitas']['umur']?.toString(),
+          initialValue: formData['identitas']['umur']?.toString(),
           decoration: const InputDecoration(
             labelText: 'Umur',
             border: OutlineInputBorder(),
           ),
           keyboardType: TextInputType.number,
           onChanged: (value) {
-            _formData['identitas']['umur'] = value;
+            formData['identitas']['umur'] = value;
           },
         ),
         const SizedBox(height: 16),
         TextFormField(
-          initialValue: _formData['identitas']['jenis_kelamin'],
+          initialValue: formData['identitas']['jenis_kelamin'],
           decoration: const InputDecoration(
             labelText: 'Jenis Kelamin',
             border: OutlineInputBorder(),
           ),
           onChanged: (value) {
-            _formData['identitas']['jenis_kelamin'] = value;
+            formData['identitas']['jenis_kelamin'] = value;
           },
         ),
         const SizedBox(height: 16),
         TextFormField(
-          initialValue: _formData['identitas']['alamat'],
+          initialValue: formData['identitas']['alamat'],
           decoration: const InputDecoration(
             labelText: 'Alamat',
             border: OutlineInputBorder(),
           ),
           maxLines: 2,
           onChanged: (value) {
-            _formData['identitas']['alamat'] = value;
+            formData['identitas']['alamat'] = value;
           },
         ),
         const SizedBox(height: 16),
         TextFormField(
-          initialValue: _formData['identitas']['tanggal_masuk'],
+          initialValue: formData['identitas']['tanggal_masuk'],
           decoration: const InputDecoration(
             labelText: 'Tanggal Masuk',
             border: OutlineInputBorder(),
           ),
           keyboardType: TextInputType.datetime,
           onChanged: (value) {
-            _formData['identitas']['tanggal_masuk'] = value;
+            formData['identitas']['tanggal_masuk'] = value;
           },
         ),
       ],
@@ -332,39 +200,39 @@ class _ResumeKegawatdaruratanFormViewState
         ),
         const SizedBox(height: 16),
         TextFormField(
-          initialValue: _formData['riwayat_keluhan']['keluhan_utama'],
+          initialValue: formData['riwayat_keluhan']['keluhan_utama'],
           decoration: const InputDecoration(
             labelText: 'Keluhan Utama',
             border: OutlineInputBorder(),
           ),
           maxLines: 3,
           onChanged: (value) {
-            _formData['riwayat_keluhan']['keluhan_utama'] = value;
+            formData['riwayat_keluhan']['keluhan_utama'] = value;
           },
         ),
         const SizedBox(height: 16),
         TextFormField(
           initialValue:
-              _formData['riwayat_keluhan']['riwayat_penyakit_sekarang'],
+              formData['riwayat_keluhan']['riwayat_penyakit_sekarang'],
           decoration: const InputDecoration(
             labelText: 'Riwayat Penyakit Sekarang',
             border: OutlineInputBorder(),
           ),
           maxLines: 5,
           onChanged: (value) {
-            _formData['riwayat_keluhan']['riwayat_penyakit_sekarang'] = value;
+            formData['riwayat_keluhan']['riwayat_penyakit_sekarang'] = value;
           },
         ),
         const SizedBox(height: 16),
         TextFormField(
-          initialValue: _formData['riwayat_keluhan']['faktor_pencetus'],
+          initialValue: formData['riwayat_keluhan']['faktor_pencetus'],
           decoration: const InputDecoration(
             labelText: 'Faktor Pencetus',
             border: OutlineInputBorder(),
           ),
           maxLines: 3,
           onChanged: (value) {
-            _formData['riwayat_keluhan']['faktor_pencetus'] = value;
+            formData['riwayat_keluhan']['faktor_pencetus'] = value;
           },
         ),
       ],
@@ -381,37 +249,37 @@ class _ResumeKegawatdaruratanFormViewState
         ),
         const SizedBox(height: 16),
         TextFormField(
-          initialValue: _formData['pemeriksaan_fisik']['keadaan_umum'],
+          initialValue: formData['pemeriksaan_fisik']['keadaan_umum'],
           decoration: const InputDecoration(
             labelText: 'Keadaan Umum',
             border: OutlineInputBorder(),
           ),
           onChanged: (value) {
-            _formData['pemeriksaan_fisik']['keadaan_umum'] = value;
+            formData['pemeriksaan_fisik']['keadaan_umum'] = value;
           },
         ),
         const SizedBox(height: 16),
         TextFormField(
-          initialValue: _formData['pemeriksaan_fisik']['tanda_vital'],
+          initialValue: formData['pemeriksaan_fisik']['tanda_vital'],
           decoration: const InputDecoration(
             labelText: 'Tanda-tanda Vital',
             border: OutlineInputBorder(),
           ),
           maxLines: 3,
           onChanged: (value) {
-            _formData['pemeriksaan_fisik']['tanda_vital'] = value;
+            formData['pemeriksaan_fisik']['tanda_vital'] = value;
           },
         ),
         const SizedBox(height: 16),
         TextFormField(
-          initialValue: _formData['pemeriksaan_fisik']['pemeriksaan_lain'],
+          initialValue: formData['pemeriksaan_fisik']['pemeriksaan_lain'],
           decoration: const InputDecoration(
             labelText: 'Pemeriksaan Fisik Lain',
             border: OutlineInputBorder(),
           ),
           maxLines: 3,
           onChanged: (value) {
-            _formData['pemeriksaan_fisik']['pemeriksaan_lain'] = value;
+            formData['pemeriksaan_fisik']['pemeriksaan_lain'] = value;
           },
         ),
       ],
@@ -428,61 +296,61 @@ class _ResumeKegawatdaruratanFormViewState
         ),
         const SizedBox(height: 16),
         TextFormField(
-          initialValue: _formData['status_mental']['kesadaran'],
+          initialValue: formData['status_mental']['kesadaran'],
           decoration: const InputDecoration(
             labelText: 'Kesadaran',
             border: OutlineInputBorder(),
           ),
           onChanged: (value) {
-            _formData['status_mental']['kesadaran'] = value;
+            formData['status_mental']['kesadaran'] = value;
           },
         ),
         const SizedBox(height: 16),
         TextFormField(
-          initialValue: _formData['status_mental']['orientasi'],
+          initialValue: formData['status_mental']['orientasi'],
           decoration: const InputDecoration(
             labelText: 'Orientasi',
             border: OutlineInputBorder(),
           ),
           maxLines: 3,
           onChanged: (value) {
-            _formData['status_mental']['orientasi'] = value;
+            formData['status_mental']['orientasi'] = value;
           },
         ),
         const SizedBox(height: 16),
         TextFormField(
-          initialValue: _formData['status_mental']['bentuk_pemikiran'],
+          initialValue: formData['status_mental']['bentuk_pemikiran'],
           decoration: const InputDecoration(
             labelText: 'Bentuk Pemikiran',
             border: OutlineInputBorder(),
           ),
           maxLines: 3,
           onChanged: (value) {
-            _formData['status_mental']['bentuk_pemikiran'] = value;
+            formData['status_mental']['bentuk_pemikiran'] = value;
           },
         ),
         const SizedBox(height: 16),
         TextFormField(
-          initialValue: _formData['status_mental']['isi_pemikiran'],
+          initialValue: formData['status_mental']['isi_pemikiran'],
           decoration: const InputDecoration(
             labelText: 'Isi Pemikiran',
             border: OutlineInputBorder(),
           ),
           maxLines: 3,
           onChanged: (value) {
-            _formData['status_mental']['isi_pemikiran'] = value;
+            formData['status_mental']['isi_pemikiran'] = value;
           },
         ),
         const SizedBox(height: 16),
         TextFormField(
-          initialValue: _formData['status_mental']['persepsi'],
+          initialValue: formData['status_mental']['persepsi'],
           decoration: const InputDecoration(
             labelText: 'Persepsi',
             border: OutlineInputBorder(),
           ),
           maxLines: 3,
           onChanged: (value) {
-            _formData['status_mental']['persepsi'] = value;
+            formData['status_mental']['persepsi'] = value;
           },
         ),
       ],
@@ -499,38 +367,38 @@ class _ResumeKegawatdaruratanFormViewState
         ),
         const SizedBox(height: 16),
         TextFormField(
-          initialValue: _formData['diagnosis']['diagnosis_utama'],
+          initialValue: formData['diagnosis']['diagnosis_utama'],
           decoration: const InputDecoration(
             labelText: 'Diagnosis Utama',
             border: OutlineInputBorder(),
           ),
           maxLines: 3,
           onChanged: (value) {
-            _formData['diagnosis']['diagnosis_utama'] = value;
+            formData['diagnosis']['diagnosis_utama'] = value;
           },
         ),
         const SizedBox(height: 16),
         TextFormField(
-          initialValue: _formData['diagnosis']['diagnosis_banding'],
+          initialValue: formData['diagnosis']['diagnosis_banding'],
           decoration: const InputDecoration(
             labelText: 'Diagnosis Banding',
             border: OutlineInputBorder(),
           ),
           maxLines: 3,
           onChanged: (value) {
-            _formData['diagnosis']['diagnosis_banding'] = value;
+            formData['diagnosis']['diagnosis_banding'] = value;
           },
         ),
         const SizedBox(height: 16),
         TextFormField(
-          initialValue: _formData['diagnosis']['diagnosis_tambahan'],
+          initialValue: formData['diagnosis']['diagnosis_tambahan'],
           decoration: const InputDecoration(
             labelText: 'Diagnosis Tambahan',
             border: OutlineInputBorder(),
           ),
           maxLines: 3,
           onChanged: (value) {
-            _formData['diagnosis']['diagnosis_tambahan'] = value;
+            formData['diagnosis']['diagnosis_tambahan'] = value;
           },
         ),
       ],
@@ -547,38 +415,38 @@ class _ResumeKegawatdaruratanFormViewState
         ),
         const SizedBox(height: 16),
         TextFormField(
-          initialValue: _formData['tindakan']['tindakan_medis'],
+          initialValue: formData['tindakan']['tindakan_medis'],
           decoration: const InputDecoration(
             labelText: 'Tindakan Medis',
             border: OutlineInputBorder(),
           ),
           maxLines: 3,
           onChanged: (value) {
-            _formData['tindakan']['tindakan_medis'] = value;
+            formData['tindakan']['tindakan_medis'] = value;
           },
         ),
         const SizedBox(height: 16),
         TextFormField(
-          initialValue: _formData['tindakan']['tindakan_keperawatan'],
+          initialValue: formData['tindakan']['tindakan_keperawatan'],
           decoration: const InputDecoration(
             labelText: 'Tindakan Keperawatan',
             border: OutlineInputBorder(),
           ),
           maxLines: 3,
           onChanged: (value) {
-            _formData['tindakan']['tindakan_keperawatan'] = value;
+            formData['tindakan']['tindakan_keperawatan'] = value;
           },
         ),
         const SizedBox(height: 16),
         TextFormField(
-          initialValue: _formData['tindakan']['terapi_psikososial'],
+          initialValue: formData['tindakan']['terapi_psikososial'],
           decoration: const InputDecoration(
             labelText: 'Terapi Psikososial',
             border: OutlineInputBorder(),
           ),
           maxLines: 3,
           onChanged: (value) {
-            _formData['tindakan']['terapi_psikososial'] = value;
+            formData['tindakan']['terapi_psikososial'] = value;
           },
         ),
       ],
@@ -595,38 +463,38 @@ class _ResumeKegawatdaruratanFormViewState
         ),
         const SizedBox(height: 16),
         TextFormField(
-          initialValue: _formData['implementasi']['pelaksanaan_intervensi'],
+          initialValue: formData['implementasi']['pelaksanaan_intervensi'],
           decoration: const InputDecoration(
             labelText: 'Pelaksanaan Intervensi',
             border: OutlineInputBorder(),
           ),
           maxLines: 5,
           onChanged: (value) {
-            _formData['implementasi']['pelaksanaan_intervensi'] = value;
+            formData['implementasi']['pelaksanaan_intervensi'] = value;
           },
         ),
         const SizedBox(height: 16),
         TextFormField(
-          initialValue: _formData['implementasi']['kolaborasi_tim'],
+          initialValue: formData['implementasi']['kolaborasi_tim'],
           decoration: const InputDecoration(
             labelText: 'Kolaborasi dengan Tim Lain',
             border: OutlineInputBorder(),
           ),
           maxLines: 3,
           onChanged: (value) {
-            _formData['implementasi']['kolaborasi_tim'] = value;
+            formData['implementasi']['kolaborasi_tim'] = value;
           },
         ),
         const SizedBox(height: 16),
         TextFormField(
-          initialValue: _formData['implementasi']['edukasi'],
+          initialValue: formData['implementasi']['edukasi'],
           decoration: const InputDecoration(
             labelText: 'Edukasi yang Diberikan',
             border: OutlineInputBorder(),
           ),
           maxLines: 3,
           onChanged: (value) {
-            _formData['implementasi']['edukasi'] = value;
+            formData['implementasi']['edukasi'] = value;
           },
         ),
       ],
@@ -643,50 +511,50 @@ class _ResumeKegawatdaruratanFormViewState
         ),
         const SizedBox(height: 16),
         TextFormField(
-          initialValue: _formData['evaluasi']['respon_intervensi'],
+          initialValue: formData['evaluasi']['respon_intervensi'],
           decoration: const InputDecoration(
             labelText: 'Respon Terhadap Intervensi',
             border: OutlineInputBorder(),
           ),
           maxLines: 3,
           onChanged: (value) {
-            _formData['evaluasi']['respon_intervensi'] = value;
+            formData['evaluasi']['respon_intervensi'] = value;
           },
         ),
         const SizedBox(height: 16),
         TextFormField(
-          initialValue: _formData['evaluasi']['perubahan_klinis'],
+          initialValue: formData['evaluasi']['perubahan_klinis'],
           decoration: const InputDecoration(
             labelText: 'Perubahan Klinis',
             border: OutlineInputBorder(),
           ),
           maxLines: 3,
           onChanged: (value) {
-            _formData['evaluasi']['perubahan_klinis'] = value;
+            formData['evaluasi']['perubahan_klinis'] = value;
           },
         ),
         const SizedBox(height: 16),
         TextFormField(
-          initialValue: _formData['evaluasi']['tujuan_tercapai'],
+          initialValue: formData['evaluasi']['tujuan_tercapai'],
           decoration: const InputDecoration(
             labelText: 'Tujuan yang Telah Tercapai',
             border: OutlineInputBorder(),
           ),
           maxLines: 3,
           onChanged: (value) {
-            _formData['evaluasi']['tujuan_tercapai'] = value;
+            formData['evaluasi']['tujuan_tercapai'] = value;
           },
         ),
         const SizedBox(height: 16),
         TextFormField(
-          initialValue: _formData['evaluasi']['hambatan_perawatan'],
+          initialValue: formData['evaluasi']['hambatan_perawatan'],
           decoration: const InputDecoration(
             labelText: 'Hambatan dalam Perawatan',
             border: OutlineInputBorder(),
           ),
           maxLines: 3,
           onChanged: (value) {
-            _formData['evaluasi']['hambatan_perawatan'] = value;
+            formData['evaluasi']['hambatan_perawatan'] = value;
           },
         ),
       ],
@@ -703,38 +571,38 @@ class _ResumeKegawatdaruratanFormViewState
         ),
         const SizedBox(height: 16),
         TextFormField(
-          initialValue: _formData['rencana_lanjut']['rencana_medis'],
+          initialValue: formData['rencana_lanjut']['rencana_medis'],
           decoration: const InputDecoration(
             labelText: 'Rencana Medis Lanjutan',
             border: OutlineInputBorder(),
           ),
           maxLines: 3,
           onChanged: (value) {
-            _formData['rencana_lanjut']['rencana_medis'] = value;
+            formData['rencana_lanjut']['rencana_medis'] = value;
           },
         ),
         const SizedBox(height: 16),
         TextFormField(
-          initialValue: _formData['rencana_lanjut']['rencana_keperawatan'],
+          initialValue: formData['rencana_lanjut']['rencana_keperawatan'],
           decoration: const InputDecoration(
             labelText: 'Rencana Keperawatan Lanjutan',
             border: OutlineInputBorder(),
           ),
           maxLines: 3,
           onChanged: (value) {
-            _formData['rencana_lanjut']['rencana_keperawatan'] = value;
+            formData['rencana_lanjut']['rencana_keperawatan'] = value;
           },
         ),
         const SizedBox(height: 16),
         TextFormField(
-          initialValue: _formData['rencana_lanjut']['rencana_pemantauan'],
+          initialValue: formData['rencana_lanjut']['rencana_pemantauan'],
           decoration: const InputDecoration(
             labelText: 'Rencana Pemantauan',
             border: OutlineInputBorder(),
           ),
           maxLines: 3,
           onChanged: (value) {
-            _formData['rencana_lanjut']['rencana_pemantauan'] = value;
+            formData['rencana_lanjut']['rencana_pemantauan'] = value;
           },
         ),
       ],
@@ -751,38 +619,38 @@ class _ResumeKegawatdaruratanFormViewState
         ),
         const SizedBox(height: 16),
         TextFormField(
-          initialValue: _formData['rencana_keluarga']['keterlibatan_keluarga'],
+          initialValue: formData['rencana_keluarga']['keterlibatan_keluarga'],
           decoration: const InputDecoration(
             labelText: 'Keterlibatan Keluarga',
             border: OutlineInputBorder(),
           ),
           maxLines: 3,
           onChanged: (value) {
-            _formData['rencana_keluarga']['keterlibatan_keluarga'] = value;
+            formData['rencana_keluarga']['keterlibatan_keluarga'] = value;
           },
         ),
         const SizedBox(height: 16),
         TextFormField(
-          initialValue: _formData['rencana_keluarga']['edukasi_keluarga'],
+          initialValue: formData['rencana_keluarga']['edukasi_keluarga'],
           decoration: const InputDecoration(
             labelText: 'Edukasi untuk Keluarga',
             border: OutlineInputBorder(),
           ),
           maxLines: 3,
           onChanged: (value) {
-            _formData['rencana_keluarga']['edukasi_keluarga'] = value;
+            formData['rencana_keluarga']['edukasi_keluarga'] = value;
           },
         ),
         const SizedBox(height: 16),
         TextFormField(
-          initialValue: _formData['rencana_keluarga']['dukungan_keluarga'],
+          initialValue: formData['rencana_keluarga']['dukungan_keluarga'],
           decoration: const InputDecoration(
             labelText: 'Dukungan dari Keluarga',
             border: OutlineInputBorder(),
           ),
           maxLines: 3,
           onChanged: (value) {
-            _formData['rencana_keluarga']['dukungan_keluarga'] = value;
+            formData['rencana_keluarga']['dukungan_keluarga'] = value;
           },
         ),
       ],
@@ -823,9 +691,9 @@ class _ResumeKegawatdaruratanFormViewState
           return DropdownButtonFormField<int?>(
             decoration: const InputDecoration(border: OutlineInputBorder()),
             items: items.cast<DropdownMenuItem<int?>>(),
-            value: _formData['renpra']['diagnosis'] as int?,
+            value: formData['renpra']['diagnosis'] as int?,
             onChanged: (value) {
-              _formData['renpra']['diagnosis'] = value;
+              formData['renpra']['diagnosis'] = value;
             },
             hint: const Text('Pilih Diagnosis Keperawatan'),
           );
@@ -839,7 +707,7 @@ class _ResumeKegawatdaruratanFormViewState
           return Column(
             children: interventions.map((iv) {
               final currentInterventions =
-                  (_formData['renpra']['intervensi'] as List?) ?? <int>[];
+                  (formData['renpra']['intervensi'] as List?) ?? <int>[];
               final isChecked = currentInterventions.contains(iv.id);
               return CheckboxListTile(
                 title: Text(iv.name),
@@ -851,7 +719,7 @@ class _ResumeKegawatdaruratanFormViewState
                   } else {
                     intervensi.remove(iv.id);
                   }
-                  _formData['renpra']['intervensi'] = intervensi;
+                  formData['renpra']['intervensi'] = intervensi;
                   setState(() {});
                 },
               );
@@ -861,19 +729,19 @@ class _ResumeKegawatdaruratanFormViewState
         CheckboxListTile(
           title: const Text('Peningkatan Aktivitas'),
           value:
-              (_formData['renpra']['intervensi'] as List?)?.contains(
+              (formData['renpra']['intervensi'] as List?)?.contains(
                 'Peningkatan Aktivitas',
               ) ??
               false,
           onChanged: (bool? value) {
             final intervensi =
-                _formData['renpra']['intervensi'] as List? ?? <String>[];
+                formData['renpra']['intervensi'] as List? ?? <String>[];
             if (value == true) {
               intervensi.add('Peningkatan Aktivitas');
             } else {
               intervensi.remove('Peningkatan Aktivitas');
             }
-            _formData['renpra']['intervensi'] = intervensi;
+            formData['renpra']['intervensi'] = intervensi;
           },
         ),
         const SizedBox(height: 16),
@@ -884,7 +752,7 @@ class _ResumeKegawatdaruratanFormViewState
           ),
           maxLines: 3,
           onChanged: (value) {
-            _formData['renpra']['tujuan'] = value;
+            formData['renpra']['tujuan'] = value;
           },
         ),
         const SizedBox(height: 16),
@@ -895,7 +763,7 @@ class _ResumeKegawatdaruratanFormViewState
           ),
           maxLines: 3,
           onChanged: (value) {
-            _formData['renpra']['kriteria'] = value;
+            formData['renpra']['kriteria'] = value;
           },
         ),
         const SizedBox(height: 16),
@@ -906,7 +774,7 @@ class _ResumeKegawatdaruratanFormViewState
           ),
           maxLines: 3,
           onChanged: (value) {
-            _formData['renpra']['rasional'] = value;
+            formData['renpra']['rasional'] = value;
           },
         ),
         const SizedBox(height: 16),
@@ -917,7 +785,7 @@ class _ResumeKegawatdaruratanFormViewState
           ),
           maxLines: 3,
           onChanged: (value) {
-            _formData['renpra']['evaluasi'] = value;
+            formData['renpra']['evaluasi'] = value;
           },
         ),
       ],
@@ -934,15 +802,6 @@ class _ResumeKegawatdaruratanFormViewState
               : 'Edit Resume',
         ),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        actions: [
-          TextButton(
-            onPressed: _saveDraft,
-            child: const Text(
-              'Simpan Draft',
-              style: TextStyle(color: Colors.white),
-            ),
-          ),
-        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -974,10 +833,16 @@ class _ResumeKegawatdaruratanFormViewState
                 else
                   const SizedBox.shrink(),
 
-                ElevatedButton(
-                  onPressed: _nextSection,
-                  child: Text(_currentSection == 10 ? 'Simpan' : 'Selanjutnya'),
-                ),
+                if (_currentSection == 10)
+                  // Last section, show action buttons
+                  Expanded(
+                    child: buildActionButtons(),
+                  )
+                else
+                  ElevatedButton(
+                    onPressed: _nextSection,
+                    child: const Text('Selanjutnya'),
+                  ),
               ],
             ),
           ],

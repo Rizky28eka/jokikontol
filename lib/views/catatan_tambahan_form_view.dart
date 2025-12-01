@@ -3,10 +3,9 @@ import 'package:get/get.dart';
 import '../controllers/form_controller.dart';
 import '../controllers/patient_controller.dart';
 import '../models/patient_model.dart';
-import '../models/form_model.dart';
-import '../services/hive_service.dart';
 import '../services/nursing_data_global_service.dart';
 import '../controllers/nursing_intervention_controller.dart';
+import '../utils/form_base_mixin.dart';
 
 class CatatanTambahanFormView extends StatefulWidget {
   final Patient? patient;
@@ -19,171 +18,51 @@ class CatatanTambahanFormView extends StatefulWidget {
       _CatatanTambahanFormViewState();
 }
 
-class _CatatanTambahanFormViewState extends State<CatatanTambahanFormView> {
+class _CatatanTambahanFormViewState extends State<CatatanTambahanFormView>
+    with FormBaseMixin {
+  @override
   final FormController formController = Get.put(FormController());
+  @override
   final PatientController patientController = Get.find();
   final NursingInterventionController _interventionController = Get.put(NursingInterventionController());
 
   // Data structure for the catatan tambahan form
-  final Map<String, dynamic> _formData = {
+  @override
+  final Map<String, dynamic> formData = {
     'catatan': {}, // Contains the free text area content and optional renpra
   };
+  
+  @override
+  String get formType => 'catatan_tambahan';
+  
+  @override
+  int? get formId => widget.formId ?? Get.arguments?['formId'] as int?;
+  
   Patient? _currentPatient;
   int? _currentPatientId;
+  
+  @override
+  Patient? get currentPatient => _currentPatient;
+  
+  @override
+  int? get currentPatientId => _currentPatientId;
 
   @override
   void initState() {
     super.initState();
-
-    // Initialize Hive
-    HiveService.init();
-
-    // If editing existing form, load the data
-    final effectiveFormId = widget.formId ?? Get.arguments?['formId'] as int?;
-    if (effectiveFormId != null) {
-      _loadFormData(effectiveFormId);
-    } else {
-      // set current patient fallback
-      _currentPatient = widget.patient ?? Get.arguments?['patient'] as Patient?;
-      _currentPatientId = _currentPatient?.id ?? Get.arguments?['patientId'] as int?;
-      // Check for any existing draft forms to continue
-      _checkForDrafts();
-      _currentPatient = widget.patient ?? Get.arguments?['patient'] as Patient?;
-      _currentPatientId = _currentPatient?.id ?? Get.arguments?['patientId'] as int?;
-    }
-  }
-
-  Future<void> _checkForDrafts() async {
-    final patient = _currentPatient ?? widget.patient ?? Get.arguments?['patient'] as Patient?;
-    final patientId = _currentPatientId ?? patient?.id ?? Get.arguments?['patientId'] as int?;
-    if (patientId == null) return;
-
-    final draft = await HiveService.getDraftForm(
-      'catatan_tambahan',
-      widget.patient!.id,
+    _currentPatient = widget.patient ?? Get.arguments?['patient'] as Patient?;
+    _currentPatientId = _currentPatient?.id ?? Get.arguments?['patientId'] as int?;
+    
+    initializeForm(
+      patient: _currentPatient,
+      patientId: _currentPatientId,
+      formId: formId,
     );
-    if (draft != null) {
-      Get.defaultDialog(
-        title: 'Draft Ditemukan',
-        middleText:
-            'Apakah Anda ingin melanjutkan pengisian form dari draft yang tersimpan?',
-        textConfirm: 'Ya',
-        textCancel: 'Tidak',
-        confirmTextColor: Colors.white,
-        onConfirm: () {
-          Get.back();
-          setState(() {
-            _formData.addAll(draft.data ?? {});
-          });
-        },
-        onCancel: () {
-          // Optional: Delete draft if user chooses not to restore
-        },
-      );
-    }
-  }
-
-  Future<void> _loadFormData([int? id]) async {
-    final formIdToLoad = id ?? widget.formId ?? Get.arguments?['formId'] as int?;
-    if (formIdToLoad == null) return;
-
-    final form = await formController.getFormById(formIdToLoad);
-    if (form != null && form.data != null) {
-      setState(() {
-        if (form.patient != null) {
-          _currentPatient = form.patient as Patient;
-          _currentPatientId = form.patient!.id;
-        }
-        _formData.addAll(form.data!);
-      });
-    }
   }
 
   @override
   void dispose() {
     super.dispose();
-  }
-
-  Future<void> _saveDraft() async {
-    final patient = _currentPatient ?? widget.patient ?? Get.arguments?['patient'] as Patient?;
-    final patientId = _currentPatientId ?? patient?.id ?? Get.arguments?['patientId'] as int?;
-
-    if (patient == null || patientId == null) {
-      Get.snackbar('Error', 'Patient information is required to save draft');
-      return;
-    }
-
-    try {
-      final form = FormModel(
-        id: widget.formId ?? DateTime.now().millisecondsSinceEpoch,
-        type: 'catatan_tambahan',
-        userId: 0,
-        patientId: patientId,
-        status: 'draft',
-        data: _formData,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-        genogram: null,
-      );
-
-      await HiveService.saveDraftForm(form);
-      Get.snackbar('Success', 'Draft saved locally');
-      // Return to previous route and provide the saved draft as result
-      Get.back(result: form);
-    } catch (e) {
-      Get.snackbar('Error', 'Failed to save draft: $e');
-    }
-  }
-
-  Future<void> _submitForm() async {
-    final patient = _currentPatient ?? widget.patient ?? Get.arguments?['patient'] as Patient?;
-    final patientId = _currentPatientId ?? patient?.id ?? Get.arguments?['patientId'] as int?;
-
-    if (patient == null || patientId == null) {
-      Get.snackbar('Error', 'Patient information is required to submit form');
-      return;
-    }
-
-    try {
-      final resultForm = widget.formId != null
-          ? await formController.updateForm(
-              id: widget.formId!,
-              type: 'catatan_tambahan',
-              patientId: patientId,
-              data: _formData,
-              status: 'submitted',
-            )
-          : await formController.createForm(
-              type: 'catatan_tambahan',
-              patientId: widget.patient!.id,
-              data: _formData,
-              status: 'submitted',
-            );
-
-      // If submission successful, remove any local draft
-      await HiveService.deleteDraftForm('catatan_tambahan', widget.patient!.id);
-
-      Get.snackbar('Success', 'Form submitted successfully');
-      Get.back(result: resultForm);
-    } catch (e) {
-      // If submission fails, save as draft locally and notify user
-      Get.snackbar('Error', 'Submission failed. Form saved as draft locally.');
-
-      // Save to local storage as draft
-      final form = FormModel(
-        id: DateTime.now().millisecondsSinceEpoch,
-        type: 'catatan_tambahan',
-        userId: 0,
-        patientId: widget.patient!.id,
-        status: 'draft',
-        data: _formData,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-        genogram: null,
-      );
-
-      await HiveService.saveDraftForm(form);
-    }
   }
 
   @override
@@ -196,15 +75,6 @@ class _CatatanTambahanFormViewState extends State<CatatanTambahanFormView> {
               : 'Edit Catatan Tambahan',
         ),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        actions: [
-          TextButton(
-            onPressed: _saveDraft,
-            child: const Text(
-              'Simpan Draft',
-              style: TextStyle(color: Colors.white),
-            ),
-          ),
-        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -225,7 +95,7 @@ class _CatatanTambahanFormViewState extends State<CatatanTambahanFormView> {
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
-                      initialValue: _formData['catatan']['isi_catatan'],
+                      initialValue: formData['catatan']['isi_catatan'],
                       decoration: const InputDecoration(
                         labelText: 'Isi Catatan',
                         border: OutlineInputBorder(),
@@ -234,7 +104,7 @@ class _CatatanTambahanFormViewState extends State<CatatanTambahanFormView> {
                       maxLines: null, // Makes it expandable
                       keyboardType: TextInputType.multiline,
                       onChanged: (value) {
-                        _formData['catatan']['isi_catatan'] = value;
+                        formData['catatan']['isi_catatan'] = value;
                       },
                     ),
                     const SizedBox(height: 24),
@@ -279,14 +149,14 @@ class _CatatanTambahanFormViewState extends State<CatatanTambahanFormView> {
                           border: OutlineInputBorder(),
                         ),
                         items: items.cast<DropdownMenuItem<int?>>(),
-                        value: _formData['catatan']['renpra']?['diagnosis'] as int?,
+                        value: formData['catatan']['renpra']?['diagnosis'] as int?,
                         onChanged: (value) {
                           if (value == null) {
-                            _formData['catatan']['renpra'] = null;
+                            formData['catatan']['renpra'] = null;
                           } else {
-                            _formData['catatan']['renpra'] =
-                                _formData['catatan']['renpra'] ?? {};
-                            _formData['catatan']['renpra']['diagnosis'] = value;
+                            formData['catatan']['renpra'] =
+                                formData['catatan']['renpra'] ?? {};
+                            formData['catatan']['renpra']['diagnosis'] = value;
                           }
                         },
                         hint: const Text('Pilih Diagnosis atau Tidak Ada'),
@@ -295,8 +165,8 @@ class _CatatanTambahanFormViewState extends State<CatatanTambahanFormView> {
                     const SizedBox(height: 16),
 
                     // Intervensi checkboxes (only if renpra is selected)
-                    if (_formData['catatan']['renpra']?['diagnosis'] != null &&
-                        _formData['catatan']['renpra']?['diagnosis'] !=
+                    if (formData['catatan']['renpra']?['diagnosis'] != null &&
+                        formData['catatan']['renpra']?['diagnosis'] !=
                             'Tidak Ada') ...[
                       const Text('Intervensi'),
                       const SizedBox(height: 8),
@@ -305,9 +175,9 @@ class _CatatanTambahanFormViewState extends State<CatatanTambahanFormView> {
                         if (interventions.isEmpty) return const Text('Tidak ada intervensi tersedia');
                         return Column(
                           children: interventions.map((iv) {
-                            _formData['catatan']['renpra'] = _formData['catatan']['renpra'] ?? {};
+                            formData['catatan']['renpra'] = formData['catatan']['renpra'] ?? {};
                             final currentInterventions =
-                                (_formData['catatan']['renpra']?['intervensi'] as List?) ?? <int>[];
+                                (formData['catatan']['renpra']?['intervensi'] as List?) ?? <int>[];
                             final isChecked = currentInterventions.contains(iv.id);
                             return CheckboxListTile(
                               title: Text(iv.name),
@@ -319,7 +189,7 @@ class _CatatanTambahanFormViewState extends State<CatatanTambahanFormView> {
                                 } else {
                                   intervensi.remove(iv.id);
                                 }
-                                _formData['catatan']['renpra']?['intervensi'] = intervensi;
+                                formData['catatan']['renpra']?['intervensi'] = intervensi;
                                 setState(() {});
                               },
                             );
@@ -328,46 +198,46 @@ class _CatatanTambahanFormViewState extends State<CatatanTambahanFormView> {
                       }),
                       const SizedBox(height: 16),
                       TextFormField(
-                        initialValue: _formData['catatan']['renpra']?['tujuan'],
+                        initialValue: formData['catatan']['renpra']?['tujuan'],
                         decoration: const InputDecoration(
                           labelText: 'Tujuan',
                           border: OutlineInputBorder(),
                         ),
                         maxLines: 3,
                         onChanged: (value) {
-                          _formData['catatan']['renpra'] =
-                              _formData['catatan']['renpra'] ?? {};
-                          _formData['catatan']['renpra']['tujuan'] = value;
+                          formData['catatan']['renpra'] =
+                              formData['catatan']['renpra'] ?? {};
+                          formData['catatan']['renpra']['tujuan'] = value;
                         },
                       ),
                       const SizedBox(height: 16),
                       TextFormField(
                         initialValue:
-                            _formData['catatan']['renpra']?['kriteria'],
+                            formData['catatan']['renpra']?['kriteria'],
                         decoration: const InputDecoration(
                           labelText: 'Kriteria',
                           border: OutlineInputBorder(),
                         ),
                         maxLines: 3,
                         onChanged: (value) {
-                          _formData['catatan']['renpra'] =
-                              _formData['catatan']['renpra'] ?? {};
-                          _formData['catatan']['renpra']['kriteria'] = value;
+                          formData['catatan']['renpra'] =
+                              formData['catatan']['renpra'] ?? {};
+                          formData['catatan']['renpra']['kriteria'] = value;
                         },
                       ),
                       const SizedBox(height: 16),
                       TextFormField(
                         initialValue:
-                            _formData['catatan']['renpra']?['rasional'],
+                            formData['catatan']['renpra']?['rasional'],
                         decoration: const InputDecoration(
                           labelText: 'Rasional',
                           border: OutlineInputBorder(),
                         ),
                         maxLines: 3,
                         onChanged: (value) {
-                          _formData['catatan']['renpra'] =
-                              _formData['catatan']['renpra'] ?? {};
-                          _formData['catatan']['renpra']['rasional'] = value;
+                          formData['catatan']['renpra'] =
+                              formData['catatan']['renpra'] ?? {};
+                          formData['catatan']['renpra']['rasional'] = value;
                         },
                       ),
                     ],
@@ -376,17 +246,8 @@ class _CatatanTambahanFormViewState extends State<CatatanTambahanFormView> {
               ),
             ),
 
-            // Submit button
-            const SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                ElevatedButton(
-                  onPressed: _submitForm,
-                  child: const Text('Simpan'),
-                ),
-              ],
-            ),
+            // Action buttons from mixin
+            buildActionButtons(),
           ],
         ),
       ),

@@ -10,8 +10,7 @@ import '../controllers/nursing_intervention_controller.dart';
 import '../controllers/patient_controller.dart';
 import '../services/nursing_data_global_service.dart';
 import '../models/patient_model.dart';
-import '../models/form_model.dart';
-import '../services/hive_service.dart';
+import '../utils/form_base_mixin.dart';
 
 class SapFormView extends StatefulWidget {
   final Patient? patient;
@@ -23,15 +22,33 @@ class SapFormView extends StatefulWidget {
   State<SapFormView> createState() => _SapFormViewState();
 }
 
-class _SapFormViewState extends State<SapFormView> {
+class _SapFormViewState extends State<SapFormView> with FormBaseMixin {
+  @override
   final FormController formController = Get.put(FormController());
-  final NursingInterventionController _interventionController = Get.put(NursingInterventionController());
+  @override
   final PatientController patientController = Get.find();
+  final NursingInterventionController _interventionController = Get.put(NursingInterventionController());
 
   int _currentSection = 0;
 
+  @override
+  String get formType => 'sap';
+  
+  @override
+  int? get formId => widget.formId ?? Get.arguments?['formId'] as int?;
+  
+  Patient? _currentPatient;
+  int? _currentPatientId;
+  
+  @override
+  Patient? get currentPatient => _currentPatient;
+  
+  @override
+  int? get currentPatientId => _currentPatientId;
+
   // Data structure for the SAP form
-  final Map<String, dynamic> _formData = {
+  @override
+  final Map<String, dynamic> formData = {
     'identitas': {}, // Topik, sasaran, waktu, tempat
     'tujuan': {}, // Tujuan umum & khusus
     'materi_dan_metode': {}, // Materi, metode
@@ -43,9 +60,6 @@ class _SapFormViewState extends State<SapFormView> {
     'feedback': {}, // Pertanyaan & saran peserta
     'renpra': {}, // Renpra opsional di akhir
   };
-  Patient? _currentPatient;
-  int? _currentPatientId;
-
   // Lists for file uploads
   final List<String> _materiFiles = [];
   final List<String> _fotoFiles = [];
@@ -53,66 +67,14 @@ class _SapFormViewState extends State<SapFormView> {
   @override
   void initState() {
     super.initState();
-
-    // Initialize Hive
-    HiveService.init();
-
-    // If editing existing form, load the data
-    final effectiveFormId = widget.formId ?? Get.arguments?['formId'] as int?;
-    if (effectiveFormId != null) {
-      _loadFormData(effectiveFormId);
-    } else {
-      // set current patient for fallback
-      _currentPatient = widget.patient ?? Get.arguments?['patient'] as Patient?;
-      _currentPatientId = _currentPatient?.id ?? Get.arguments?['patientId'] as int?;
-      // Check for any existing draft forms to continue
-      _checkForDrafts();
-      _currentPatient = widget.patient ?? Get.arguments?['patient'] as Patient?;
-      _currentPatientId = _currentPatient?.id ?? Get.arguments?['patientId'] as int?;
-    }
-  }
-
-  Future<void> _checkForDrafts() async {
-    final patient = _currentPatient ?? widget.patient ?? Get.arguments?['patient'] as Patient?;
-    final patientId = _currentPatientId ?? patient?.id ?? Get.arguments?['patientId'] as int?;
-    if (patientId == null) return;
-
-    final draft = await HiveService.getDraftForm('sap', widget.patient!.id);
-    if (draft != null) {
-      Get.defaultDialog(
-        title: 'Draft Ditemukan',
-        middleText:
-            'Apakah Anda ingin melanjutkan pengisian form dari draft yang tersimpan?',
-        textConfirm: 'Ya',
-        textCancel: 'Tidak',
-        confirmTextColor: Colors.white,
-        onConfirm: () {
-          Get.back();
-          setState(() {
-              _formData.addAll(draft.data ?? {});
-            });
-        },
-        onCancel: () {
-          // Optional: Delete draft if user chooses not to restore
-        },
-      );
-    }
-  }
-
-  Future<void> _loadFormData([int? id]) async {
-    final formIdToLoad = id ?? widget.formId ?? Get.arguments?['formId'] as int?;
-    if (formIdToLoad == null) return;
-
-    final form = await formController.getFormById(formIdToLoad);
-    if (form != null && form.data != null) {
-      setState(() {
-        if (form.patient != null) {
-          _currentPatient = form.patient as Patient;
-          _currentPatientId = form.patient!.id;
-        }
-        _formData.addAll(form.data!);
-      });
-    }
+    _currentPatient = widget.patient ?? Get.arguments?['patient'] as Patient?;
+    _currentPatientId = _currentPatient?.id ?? Get.arguments?['patientId'] as int?;
+    
+    initializeForm(
+      patient: _currentPatient,
+      patientId: _currentPatientId,
+      formId: formId,
+    );
   }
 
   @override
@@ -126,7 +88,7 @@ class _SapFormViewState extends State<SapFormView> {
         _currentSection++;
       });
     } else {
-      _submitForm();
+      submitForm();
     }
   }
 
@@ -135,97 +97,6 @@ class _SapFormViewState extends State<SapFormView> {
       setState(() {
         _currentSection--;
       });
-    }
-  }
-
-  Future<void> _saveDraft() async {
-    final patient = _currentPatient ?? widget.patient ?? Get.arguments?['patient'] as Patient?;
-    final patientId = _currentPatientId ?? patient?.id ?? Get.arguments?['patientId'] as int?;
-
-    if (patient == null || patientId == null) {
-      Get.snackbar('Error', 'Patient information is required to save draft');
-      return;
-    }
-
-    try {
-      final form = FormModel(
-        id: widget.formId ?? DateTime.now().millisecondsSinceEpoch,
-        type: 'sap',
-        userId: 0,
-        patientId: patientId,
-        status: 'draft',
-        data: _formData,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-        genogram: null,
-      );
-
-      await HiveService.saveDraftForm(form);
-      Get.snackbar('Success', 'Draft saved locally');
-      // Return to previous route and provide the saved draft as result
-      Get.back(result: form);
-    } catch (e) {
-      Get.snackbar('Error', 'Failed to save draft: $e');
-    }
-  }
-
-  Future<void> _submitForm() async {
-    try {
-      // Check if patient is available
-      final patient = _currentPatient ?? widget.patient ?? Get.arguments?['patient'] as Patient?;
-      final patientId = _currentPatientId ?? patient?.id ?? Get.arguments?['patientId'] as int?;
-
-      if (patient == null || patientId == null) {
-        Get.snackbar('Error', 'Patient information is required to submit form');
-        return;
-      }
-
-      FormModel? resultForm;
-      if (widget.formId != null) {
-        // If editing existing form, update it
-        resultForm = await formController.updateForm(
-          id: widget.formId!,
-          type: 'sap',
-          patientId: patientId,
-          data: _formData,
-          status: 'submitted',
-        );
-      } else {
-        // If creating new form, create it
-        resultForm = await formController.createForm(
-          type: 'sap',
-          patientId: patientId,
-          data: _formData,
-          status: 'submitted',
-        );
-      }
-
-      // If submission successful, remove any local draft
-      await HiveService.deleteDraftForm('sap', widget.patient!.id);
-
-      Get.snackbar('Success', 'Form submitted successfully');
-      Get.back(result: resultForm);
-    } catch (e) {
-      // If submission fails, save as draft locally and notify user
-      Get.snackbar('Error', 'Submission failed. Form saved as draft locally.');
-
-      // Save to local storage as draft
-      if (widget.patient != null) {
-        // Only save if patient is available
-        final form = FormModel(
-          id: widget.formId ?? DateTime.now().millisecondsSinceEpoch,
-          type: 'sap',
-          userId: 0,
-          patientId: widget.patient!.id,
-          status: 'draft',
-          data: _formData,
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-          genogram: null,
-        );
-
-        await HiveService.saveDraftForm(form);
-      }
     }
   }
 
@@ -264,46 +135,46 @@ class _SapFormViewState extends State<SapFormView> {
         ),
         const SizedBox(height: 16),
         TextFormField(
-          initialValue: _formData['identitas']['topik'],
+          initialValue: formData['identitas']['topik'],
           decoration: const InputDecoration(
             labelText: 'Topik',
             border: OutlineInputBorder(),
           ),
           onChanged: (value) {
-            _formData['identitas']['topik'] = value;
+            formData['identitas']['topik'] = value;
           },
         ),
         const SizedBox(height: 16),
         TextFormField(
-          initialValue: _formData['identitas']['sasaran'],
+          initialValue: formData['identitas']['sasaran'],
           decoration: const InputDecoration(
             labelText: 'Sasaran',
             border: OutlineInputBorder(),
           ),
           onChanged: (value) {
-            _formData['identitas']['sasaran'] = value;
+            formData['identitas']['sasaran'] = value;
           },
         ),
         const SizedBox(height: 16),
         TextFormField(
-          initialValue: _formData['identitas']['waktu'],
+          initialValue: formData['identitas']['waktu'],
           decoration: const InputDecoration(
             labelText: 'Waktu',
             border: OutlineInputBorder(),
           ),
           onChanged: (value) {
-            _formData['identitas']['waktu'] = value;
+            formData['identitas']['waktu'] = value;
           },
         ),
         const SizedBox(height: 16),
         TextFormField(
-          initialValue: _formData['identitas']['tempat'],
+          initialValue: formData['identitas']['tempat'],
           decoration: const InputDecoration(
             labelText: 'Tempat',
             border: OutlineInputBorder(),
           ),
           onChanged: (value) {
-            _formData['identitas']['tempat'] = value;
+            formData['identitas']['tempat'] = value;
           },
         ),
       ],
@@ -324,11 +195,11 @@ class _SapFormViewState extends State<SapFormView> {
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         TextFormField(
-          initialValue: _formData['tujuan']['umum'],
+          initialValue: formData['tujuan']['umum'],
           decoration: const InputDecoration(border: OutlineInputBorder()),
           maxLines: 3,
           onChanged: (value) {
-            _formData['tujuan']['umum'] = value;
+            formData['tujuan']['umum'] = value;
           },
         ),
         const SizedBox(height: 16),
@@ -337,11 +208,11 @@ class _SapFormViewState extends State<SapFormView> {
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         TextFormField(
-          initialValue: _formData['tujuan']['khusus'],
+          initialValue: formData['tujuan']['khusus'],
           decoration: const InputDecoration(border: OutlineInputBorder()),
           maxLines: 5,
           onChanged: (value) {
-            _formData['tujuan']['khusus'] = value;
+            formData['tujuan']['khusus'] = value;
           },
         ),
       ],
@@ -359,21 +230,21 @@ class _SapFormViewState extends State<SapFormView> {
         const SizedBox(height: 16),
         const Text('Materi', style: TextStyle(fontWeight: FontWeight.bold)),
         TextFormField(
-          initialValue: _formData['materi_dan_metode']['materi'],
+          initialValue: formData['materi_dan_metode']['materi'],
           decoration: const InputDecoration(border: OutlineInputBorder()),
           maxLines: 5,
           onChanged: (value) {
-            _formData['materi_dan_metode']['materi'] = value;
+            formData['materi_dan_metode']['materi'] = value;
           },
         ),
         const SizedBox(height: 16),
         const Text('Metode', style: TextStyle(fontWeight: FontWeight.bold)),
         TextFormField(
-          initialValue: _formData['materi_dan_metode']['metode'],
+          initialValue: formData['materi_dan_metode']['metode'],
           decoration: const InputDecoration(border: OutlineInputBorder()),
           maxLines: 3,
           onChanged: (value) {
-            _formData['materi_dan_metode']['metode'] = value;
+            formData['materi_dan_metode']['metode'] = value;
           },
         ),
       ],
@@ -393,102 +264,102 @@ class _SapFormViewState extends State<SapFormView> {
         CheckboxListTile(
           title: const Text('Penyuluh'),
           value:
-              (_formData['joblist']['roles'] as List?)?.contains('Penyuluh') ??
+              (formData['joblist']['roles'] as List?)?.contains('Penyuluh') ??
               false,
           onChanged: (bool? value) {
-            final roles = _formData['joblist']['roles'] as List? ?? <String>[];
+            final roles = formData['joblist']['roles'] as List? ?? <String>[];
             if (value == true) {
               roles.add('Penyuluh');
             } else {
               roles.remove('Penyuluh');
             }
-            _formData['joblist']['roles'] = roles;
+            formData['joblist']['roles'] = roles;
           },
         ),
         // Moderator
         CheckboxListTile(
           title: const Text('Moderator'),
           value:
-              (_formData['joblist']['roles'] as List?)?.contains('Moderator') ??
+              (formData['joblist']['roles'] as List?)?.contains('Moderator') ??
               false,
           onChanged: (bool? value) {
-            final roles = _formData['joblist']['roles'] as List? ?? <String>[];
+            final roles = formData['joblist']['roles'] as List? ?? <String>[];
             if (value == true) {
               roles.add('Moderator');
             } else {
               roles.remove('Moderator');
             }
-            _formData['joblist']['roles'] = roles;
+            formData['joblist']['roles'] = roles;
           },
         ),
         // Fasilitator
         CheckboxListTile(
           title: const Text('Fasilitator'),
           value:
-              (_formData['joblist']['roles'] as List?)?.contains(
+              (formData['joblist']['roles'] as List?)?.contains(
                 'Fasilitator',
               ) ??
               false,
           onChanged: (bool? value) {
-            final roles = _formData['joblist']['roles'] as List? ?? <String>[];
+            final roles = formData['joblist']['roles'] as List? ?? <String>[];
             if (value == true) {
               roles.add('Fasilitator');
             } else {
               roles.remove('Fasilitator');
             }
-            _formData['joblist']['roles'] = roles;
+            formData['joblist']['roles'] = roles;
           },
         ),
         // Time Keeper
         CheckboxListTile(
           title: const Text('Time Keeper'),
           value:
-              (_formData['joblist']['roles'] as List?)?.contains(
+              (formData['joblist']['roles'] as List?)?.contains(
                 'Time Keeper',
               ) ??
               false,
           onChanged: (bool? value) {
-            final roles = _formData['joblist']['roles'] as List? ?? <String>[];
+            final roles = formData['joblist']['roles'] as List? ?? <String>[];
             if (value == true) {
               roles.add('Time Keeper');
             } else {
               roles.remove('Time Keeper');
             }
-            _formData['joblist']['roles'] = roles;
+            formData['joblist']['roles'] = roles;
           },
         ),
         // Dokumentator
         CheckboxListTile(
           title: const Text('Dokumentator'),
           value:
-              (_formData['joblist']['roles'] as List?)?.contains(
+              (formData['joblist']['roles'] as List?)?.contains(
                 'Dokumentator',
               ) ??
               false,
           onChanged: (bool? value) {
-            final roles = _formData['joblist']['roles'] as List? ?? <String>[];
+            final roles = formData['joblist']['roles'] as List? ?? <String>[];
             if (value == true) {
               roles.add('Dokumentator');
             } else {
               roles.remove('Dokumentator');
             }
-            _formData['joblist']['roles'] = roles;
+            formData['joblist']['roles'] = roles;
           },
         ),
         // Observer
         CheckboxListTile(
           title: const Text('Observer'),
           value:
-              (_formData['joblist']['roles'] as List?)?.contains('Observer') ??
+              (formData['joblist']['roles'] as List?)?.contains('Observer') ??
               false,
           onChanged: (bool? value) {
-            final roles = _formData['joblist']['roles'] as List? ?? <String>[];
+            final roles = formData['joblist']['roles'] as List? ?? <String>[];
             if (value == true) {
               roles.add('Observer');
             } else {
               roles.remove('Observer');
             }
-            _formData['joblist']['roles'] = roles;
+            formData['joblist']['roles'] = roles;
           },
         ),
       ],
@@ -505,68 +376,68 @@ class _SapFormViewState extends State<SapFormView> {
         ),
         const SizedBox(height: 16),
         TextFormField(
-          initialValue: _formData['pengorganisasian']['penyuluh'],
+          initialValue: formData['pengorganisasian']['penyuluh'],
           decoration: const InputDecoration(
             labelText: 'Nama Penyuluh',
             border: OutlineInputBorder(),
           ),
           onChanged: (value) {
-            _formData['pengorganisasian']['penyuluh'] = value;
+            formData['pengorganisasian']['penyuluh'] = value;
           },
         ),
         const SizedBox(height: 16),
         TextFormField(
-          initialValue: _formData['pengorganisasian']['moderator'],
+          initialValue: formData['pengorganisasian']['moderator'],
           decoration: const InputDecoration(
             labelText: 'Nama Moderator',
             border: OutlineInputBorder(),
           ),
           onChanged: (value) {
-            _formData['pengorganisasian']['moderator'] = value;
+            formData['pengorganisasian']['moderator'] = value;
           },
         ),
         const SizedBox(height: 16),
         TextFormField(
-          initialValue: _formData['pengorganisasian']['fasilitator'],
+          initialValue: formData['pengorganisasian']['fasilitator'],
           decoration: const InputDecoration(
             labelText: 'Nama Fasilitator',
             border: OutlineInputBorder(),
           ),
           onChanged: (value) {
-            _formData['pengorganisasian']['fasilitator'] = value;
+            formData['pengorganisasian']['fasilitator'] = value;
           },
         ),
         const SizedBox(height: 16),
         TextFormField(
-          initialValue: _formData['pengorganisasian']['time_keeper'],
+          initialValue: formData['pengorganisasian']['time_keeper'],
           decoration: const InputDecoration(
             labelText: 'Nama Time Keeper',
             border: OutlineInputBorder(),
           ),
           onChanged: (value) {
-            _formData['pengorganisasian']['time_keeper'] = value;
+            formData['pengorganisasian']['time_keeper'] = value;
           },
         ),
         const SizedBox(height: 16),
         TextFormField(
-          initialValue: _formData['pengorganisasian']['dokumentator'],
+          initialValue: formData['pengorganisasian']['dokumentator'],
           decoration: const InputDecoration(
             labelText: 'Nama Dokumentator',
             border: OutlineInputBorder(),
           ),
           onChanged: (value) {
-            _formData['pengorganisasian']['dokumentator'] = value;
+            formData['pengorganisasian']['dokumentator'] = value;
           },
         ),
         const SizedBox(height: 16),
         TextFormField(
-          initialValue: _formData['pengorganisasian']['observer'],
+          initialValue: formData['pengorganisasian']['observer'],
           decoration: const InputDecoration(
             labelText: 'Nama Observer',
             border: OutlineInputBorder(),
           ),
           onChanged: (value) {
-            _formData['pengorganisasian']['observer'] = value;
+            formData['pengorganisasian']['observer'] = value;
           },
         ),
       ],
@@ -589,14 +460,14 @@ class _SapFormViewState extends State<SapFormView> {
           child: const Text('Tambah Kegiatan'),
         ),
         const SizedBox(height: 16),
-        _formData['tabel_kegiatan'] != null &&
-                _formData['tabel_kegiatan'] is List
+        formData['tabel_kegiatan'] != null &&
+                formData['tabel_kegiatan'] is List
             ? ListView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                itemCount: (_formData['tabel_kegiatan'] as List).length,
+                itemCount: (formData['tabel_kegiatan'] as List).length,
                 itemBuilder: (context, index) {
-                  final kegiatan = (_formData['tabel_kegiatan'] as List)[index];
+                  final kegiatan = (formData['tabel_kegiatan'] as List)[index];
                   return Card(
                     child: Padding(
                       padding: const EdgeInsets.all(8.0),
@@ -620,7 +491,7 @@ class _SapFormViewState extends State<SapFormView> {
                           TextButton(
                             onPressed: () {
                               setState(() {
-                                (_formData['tabel_kegiatan'] as List).removeAt(
+                                (formData['tabel_kegiatan'] as List).removeAt(
                                   index,
                                 );
                               });
@@ -692,10 +563,10 @@ class _SapFormViewState extends State<SapFormView> {
 
               if (existingData != null && index != null) {
                 // Update existing item
-                (_formData['tabel_kegiatan'] as List)[index] = newKegiatan;
+                (formData['tabel_kegiatan'] as List)[index] = newKegiatan;
               } else {
                 // Add new item
-                (_formData['tabel_kegiatan'] as List).add(newKegiatan);
+                (formData['tabel_kegiatan'] as List).add(newKegiatan);
               }
 
               Navigator.of(context).pop();
@@ -726,11 +597,11 @@ class _SapFormViewState extends State<SapFormView> {
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         TextFormField(
-          initialValue: _formData['evaluasi']['input'],
+          initialValue: formData['evaluasi']['input'],
           decoration: const InputDecoration(border: OutlineInputBorder()),
           maxLines: 3,
           onChanged: (value) {
-            _formData['evaluasi']['input'] = value;
+            formData['evaluasi']['input'] = value;
           },
         ),
         const SizedBox(height: 16),
@@ -739,11 +610,11 @@ class _SapFormViewState extends State<SapFormView> {
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         TextFormField(
-          initialValue: _formData['evaluasi']['proses'],
+          initialValue: formData['evaluasi']['proses'],
           decoration: const InputDecoration(border: OutlineInputBorder()),
           maxLines: 3,
           onChanged: (value) {
-            _formData['evaluasi']['proses'] = value;
+            formData['evaluasi']['proses'] = value;
           },
         ),
         const SizedBox(height: 16),
@@ -752,11 +623,11 @@ class _SapFormViewState extends State<SapFormView> {
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         TextFormField(
-          initialValue: _formData['evaluasi']['hasil'],
+          initialValue: formData['evaluasi']['hasil'],
           decoration: const InputDecoration(border: OutlineInputBorder()),
           maxLines: 3,
           onChanged: (value) {
-            _formData['evaluasi']['hasil'] = value;
+            formData['evaluasi']['hasil'] = value;
           },
         ),
       ],
@@ -773,26 +644,26 @@ class _SapFormViewState extends State<SapFormView> {
         ),
         const SizedBox(height: 16),
         TextFormField(
-          initialValue: _formData['feedback']['pertanyaan'],
+          initialValue: formData['feedback']['pertanyaan'],
           decoration: const InputDecoration(
             labelText: 'Pertanyaan Peserta',
             border: OutlineInputBorder(),
           ),
           maxLines: 3,
           onChanged: (value) {
-            _formData['feedback']['pertanyaan'] = value;
+            formData['feedback']['pertanyaan'] = value;
           },
         ),
         const SizedBox(height: 16),
         TextFormField(
-          initialValue: _formData['feedback']['saran'],
+          initialValue: formData['feedback']['saran'],
           decoration: const InputDecoration(
             labelText: 'Saran Peserta',
             border: OutlineInputBorder(),
           ),
           maxLines: 3,
           onChanged: (value) {
-            _formData['feedback']['saran'] = value;
+            formData['feedback']['saran'] = value;
           },
         ),
       ],
@@ -817,11 +688,11 @@ class _SapFormViewState extends State<SapFormView> {
           if (diagnoses.isEmpty) return const Text('Tidak ada diagnosis tersedia');
           final items = diagnoses.map((diag) => DropdownMenuItem(value: diag.id, child: Text(diag.name))).toList();
           return DropdownButtonFormField<int?>(
-            value: _formData['renpra']['diagnosis'] as int?,
+            value: formData['renpra']['diagnosis'] as int?,
             decoration: const InputDecoration(border: OutlineInputBorder()),
             items: items,
             onChanged: (value) {
-              _formData['renpra']['diagnosis'] = value;
+              formData['renpra']['diagnosis'] = value;
             },
             hint: const Text('Pilih Diagnosis'),
           );
@@ -838,7 +709,7 @@ class _SapFormViewState extends State<SapFormView> {
           return Column(
             children: interventions.map((iv) {
               final currentInterventions =
-                  (_formData['renpra']['intervensi'] as List?) ?? <int>[];
+                  (formData['renpra']['intervensi'] as List?) ?? <int>[];
               final isChecked = currentInterventions.contains(iv.id);
               return CheckboxListTile(
                 title: Text(iv.name),
@@ -850,7 +721,7 @@ class _SapFormViewState extends State<SapFormView> {
                   } else {
                     intervensi.remove(iv.id);
                   }
-                  _formData['renpra']['intervensi'] = intervensi;
+                  formData['renpra']['intervensi'] = intervensi;
                   setState(() {});
                 },
               );
@@ -859,26 +730,26 @@ class _SapFormViewState extends State<SapFormView> {
         }),
         const SizedBox(height: 16),
         TextFormField(
-          initialValue: _formData['renpra']['tujuan'],
+          initialValue: formData['renpra']['tujuan'],
           decoration: const InputDecoration(
             labelText: 'Tujuan',
             border: OutlineInputBorder(),
           ),
           maxLines: 3,
           onChanged: (value) {
-            _formData['renpra']['tujuan'] = value;
+            formData['renpra']['tujuan'] = value;
           },
         ),
         const SizedBox(height: 16),
         TextFormField(
-          initialValue: _formData['renpra']['kriteria'],
+          initialValue: formData['renpra']['kriteria'],
           decoration: const InputDecoration(
             labelText: 'Kriteria',
             border: OutlineInputBorder(),
           ),
           maxLines: 3,
           onChanged: (value) {
-            _formData['renpra']['kriteria'] = value;
+            formData['renpra']['kriteria'] = value;
           },
         ),
         const SizedBox(height: 16),
@@ -889,7 +760,7 @@ class _SapFormViewState extends State<SapFormView> {
           ),
           maxLines: 3,
           onChanged: (value) {
-            _formData['renpra']['rasional'] = value;
+            formData['renpra']['rasional'] = value;
           },
         ),
         const SizedBox(height: 16),
@@ -1048,15 +919,6 @@ class _SapFormViewState extends State<SapFormView> {
               : 'Edit SAP',
         ),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        actions: [
-          TextButton(
-            onPressed: _saveDraft,
-            child: const Text(
-              'Simpan Draft',
-              style: TextStyle(color: Colors.white),
-            ),
-          ),
-        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -1088,10 +950,16 @@ class _SapFormViewState extends State<SapFormView> {
                 else
                   const SizedBox.shrink(),
 
-                ElevatedButton(
-                  onPressed: _nextSection,
-                  child: Text(_currentSection == 8 ? 'Simpan' : 'Selanjutnya'),
-                ),
+                if (_currentSection == 8)
+                  // Last section, show action buttons
+                  Expanded(
+                    child: buildActionButtons(),
+                  )
+                else
+                  ElevatedButton(
+                    onPressed: _nextSection,
+                    child: const Text('Selanjutnya'),
+                  ),
               ],
             ),
           ],

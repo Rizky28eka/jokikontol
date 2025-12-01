@@ -1,10 +1,15 @@
 class ApiConfig {
   // Base URL for the API - can be changed based on environment
+  // NOTE: If you encounter "Failed to fetch" errors with antivirus (Kaspersky):
+  // 1. Use localhost instead of IP: 'http://localhost:8000/api'
+  // 2. Add exception in antivirus settings for this app
+  // 3. Or temporarily disable web protection during development
   static const String baseUrl =
-      'http://10.100.184.125:8000/api'; // Update this with your backend URL
+      'http://10.129.123.124:8000/api'; // Update this with your backend URL
 
   // Environment-based configurations
-  static const String developmentBaseUrl = 'http://10.100.184.125:8000/api';
+  static const String developmentBaseUrl = 'http://10.129.123.124:8000/api';
+  static const String localhostBaseUrl = 'http://localhost:8000/api'; // Use this if antivirus blocks IP
   static const String productionBaseUrl = 'https://your-production-api.com/api';
   static const String stagingBaseUrl = 'https://staging.your-api.com/api';
 
@@ -12,6 +17,7 @@ class ApiConfig {
   static String get currentBaseUrl {
     // In a real application, you might check for debug mode or build flavor
     // For now, we'll use the development URL
+    // TIP: Change to localhostBaseUrl if you get connection errors
     return const bool.fromEnvironment('dart.vm.product')
         ? productionBaseUrl
         : developmentBaseUrl;

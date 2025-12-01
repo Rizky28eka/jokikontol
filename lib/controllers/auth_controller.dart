@@ -6,6 +6,7 @@ import '../models/user_model.dart';
 import '../constants/app_routes.dart';
 import '../constants/api_config.dart';
 import '../services/logger_service.dart';
+import '../views/main_shell.dart';
 
 class AuthController extends GetxController {
   static AuthController get to => Get.find();
@@ -29,19 +30,28 @@ class AuthController extends GetxController {
       final storedLoginTime = prefs.getString('login_time');
       final storedUser = prefs.getString('user_data');
 
-      if (storedToken != null && storedLoginTime != null && storedUser != null) {
+      if (storedToken != null &&
+          storedLoginTime != null &&
+          storedUser != null) {
         _token.value = storedToken;
         _loginTime = DateTime.parse(storedLoginTime);
         _user.value = UserModel.fromJson(json.decode(storedUser));
-        _logger.info('Loaded stored authentication', context: {
-          'hasToken': _token.value.isNotEmpty,
-          'user': _user.value?.email
-        });
+        _logger.info(
+          'Loaded stored authentication',
+          context: {
+            'hasToken': _token.value.isNotEmpty,
+            'user': _user.value?.email,
+          },
+        );
       } else {
         _logger.warning('No stored authentication found');
       }
     } catch (e, stackTrace) {
-      _logger.error('Failed to load stored auth', error: e, stackTrace: stackTrace);
+      _logger.error(
+        'Failed to load stored auth',
+        error: e,
+        stackTrace: stackTrace,
+      );
     }
   }
 
@@ -64,7 +74,7 @@ class AuthController extends GetxController {
       _logger.warning('Token is empty');
       return false;
     }
-    
+
     if (_loginTime == null) {
       _logger.warning('Login time is null, but token exists - assuming valid');
       return true; // Token exists but no login time, assume valid
@@ -206,7 +216,8 @@ class AuthController extends GetxController {
         if (user.role == 'dosen') {
           Get.offAllNamed(AppRoutes.dosenDashboard);
         } else {
-          Get.offAllNamed(AppRoutes.mahasiswaDashboard);
+          // Navigate mahasiswa to main shell with bottom navigation using direct widget to avoid missing named route
+          Get.offAll(() => const MainShell());
         }
       } else {
         final message = data['message'] ?? 'Invalid credentials';
@@ -380,7 +391,13 @@ class AuthController extends GetxController {
     return null;
   }
 
-  Future<void> updateProfile({String? name, String? password, String? username, String? phoneNumber, String? profilePhotoPath}) async {
+  Future<void> updateProfile({
+    String? name,
+    String? password,
+    String? username,
+    String? phoneNumber,
+    String? profilePhotoPath,
+  }) async {
     _logger.info(
       'Attempting to update profile...',
       context: {'userId': _user.value?.id},
@@ -412,7 +429,9 @@ class AuthController extends GetxController {
 
       http.Response response;
       if (profilePhotoPath != null && profilePhotoPath.isNotEmpty) {
-        final uri = Uri.parse('${ApiConfig.currentBaseUrl}${ApiConfig.userProfile}');
+        final uri = Uri.parse(
+          '${ApiConfig.currentBaseUrl}${ApiConfig.userProfile}',
+        );
         final request = http.MultipartRequest('PUT', uri);
         request.headers['Authorization'] = 'Bearer ${_token.value}';
         // Add text fields
@@ -420,7 +439,10 @@ class AuthController extends GetxController {
           request.fields[key] = value.toString();
         });
         // Add file
-        final file = await http.MultipartFile.fromPath('profile_photo', profilePhotoPath);
+        final file = await http.MultipartFile.fromPath(
+          'profile_photo',
+          profilePhotoPath,
+        );
         request.files.add(file);
         final streamedResponse = await request.send();
         response = await http.Response.fromStream(streamedResponse);
@@ -466,7 +488,22 @@ class AuthController extends GetxController {
         stackTrace: stackTrace,
         context: {'userId': _user.value?.id.toString()},
       );
-      Get.snackbar('Error', 'Connection error: $e');
+      
+      String errorMessage = 'Connection error occurred.';
+      if (e.toString().contains('Failed to fetch') || e.toString().contains('ClientException')) {
+        errorMessage = 'Tidak dapat terhubung ke server.\n\nPastikan:\n• Backend server berjalan\n• Antivirus/Firewall tidak memblokir (Kaspersky terdeteksi)\n• Gunakan http://localhost:8000 jika memungkinkan';
+      } else if (e.toString().contains('SocketException')) {
+        errorMessage = 'Server tidak dapat dijangkau. Cek koneksi jaringan.';
+      } else if (e.toString().contains('TimeoutException')) {
+        errorMessage = 'Request timeout. Server terlalu lama merespon.';
+      }
+      
+      Get.snackbar(
+        'Gagal Update Profile',
+        errorMessage,
+        duration: const Duration(seconds: 6),
+        snackPosition: SnackPosition.TOP,
+      );
     } finally {
       isLoading.value = false;
     }

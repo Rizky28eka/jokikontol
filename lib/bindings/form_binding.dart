@@ -8,17 +8,17 @@ class FormBinding implements Bindings {
   void dependencies() {
     // Check if FormController is already registered to avoid duplication
     if (!Get.isRegistered<FormController>()) {
-      Get.lazyPut<FormController>(() => FormController());
+      Get.lazyPut<FormController>(() => FormController(), fenix: true);
     }
 
     // Check if PatientController is already registered to avoid duplication
     if (!Get.isRegistered<PatientController>()) {
-      Get.lazyPut<PatientController>(() => PatientController());
+      Get.lazyPut<PatientController>(() => PatientController(), fenix: true);
     }
 
     // Check if NursingDataGlobalService is already registered to avoid duplication
     if (!Get.isRegistered<NursingDataGlobalService>()) {
-      Get.lazyPut<NursingDataGlobalService>(() => NursingDataGlobalService());
+      Get.lazyPut<NursingDataGlobalService>(() => NursingDataGlobalService(), fenix: true);
     }
   }
 }

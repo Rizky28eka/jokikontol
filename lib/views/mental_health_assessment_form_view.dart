@@ -6,11 +6,10 @@ import '../controllers/patient_controller.dart';
 import '../controllers/pdf_controller.dart';
 import '../controllers/nursing_intervention_controller.dart';
 import '../models/patient_model.dart';
-import '../models/form_model.dart';
-import '../services/hive_service.dart';
 import '../services/nursing_data_global_service.dart';
 import '../widgets/form_text_field.dart';
 import '../widgets/form_section_header.dart';
+import '../utils/form_base_mixin.dart';
 
 class MentalHealthAssessmentFormView extends StatefulWidget {
   final Patient? patient;
@@ -24,8 +23,10 @@ class MentalHealthAssessmentFormView extends StatefulWidget {
 }
 
 class _MentalHealthAssessmentFormViewState
-    extends State<MentalHealthAssessmentFormView> {
+    extends State<MentalHealthAssessmentFormView> with FormBaseMixin {
+  @override
   final FormController formController = Get.put(FormController());
+  @override
   final PatientController patientController = Get.find();
   final NursingInterventionController _interventionController = Get.put(
     NursingInterventionController(),
@@ -39,8 +40,24 @@ class _MentalHealthAssessmentFormViewState
     (index) => TextEditingController(),
   );
 
+  @override
+  String get formType => 'pengkajian';
+  
+  @override
+  int? get formId => widget.formId ?? Get.arguments?['formId'] as int?;
+  
+  Patient? _currentPatient;
+  int? _currentPatientId;
+  
+  @override
+  Patient? get currentPatient => _currentPatient;
+  
+  @override
+  int? get currentPatientId => _currentPatientId;
+
   // Data structure for the form
-  final Map<String, dynamic> _formData = {
+  @override
+  final Map<String, dynamic> formData = {
     'section_1': {}, // Identitas Klien
     'section_2': {}, // Riwayat Kehidupan
     'section_3': {}, // Riwayat Psikososial
@@ -53,38 +70,27 @@ class _MentalHealthAssessmentFormViewState
     'section_10': {}, // Renpra (Rencana Perawatan)
     'section_11': {}, // Penutup
   };
-  Patient? _currentPatient;
-  int? _currentPatientId;
 
   @override
   void initState() {
     super.initState();
-
-    HiveService.init();
-
     _currentPatient = widget.patient ?? Get.arguments?['patient'] as Patient?;
     _currentPatientId = _currentPatient?.id ?? Get.arguments?['patientId'] as int?;
-
-    final effectiveFormId = widget.formId ?? Get.arguments?['formId'] as int?;
-    final formData = Get.arguments?['formData'] as Map<String, dynamic>?;
     
-    if (effectiveFormId != null) {
-      if (formData != null) {
-        setState(() {
-          _formData.addAll(formData);
-          _populateControllers();
-        });
-      } else {
-        _loadFormData(effectiveFormId);
-      }
-    } else {
-      _checkForDrafts();
-      Future.microtask(() async {
-        if (_currentPatientId != null) {
-          await _prefillGenogramFromPatient(_currentPatientId!);
-        }
-      });
+    final formDataArg = Get.arguments?['formData'] as Map<String, dynamic>?;
+    if (formDataArg != null) {
+      formData.addAll(formDataArg);
+      _populateControllers();
     }
+    
+    initializeForm();
+    
+    // Prefill genogram from patient's previous forms
+    Future.microtask(() async {
+      if (_currentPatientId != null) {
+        await _prefillGenogramFromPatient(_currentPatientId!);
+      }
+    });
   }
 
   Future<void> _prefillGenogramFromPatient(int patientId) async {
@@ -96,8 +102,8 @@ class _MentalHealthAssessmentFormViewState
         final latest = formsWithGenogram.first;
         if (latest.genogram?.structure != null) {
           setState(() {
-            _formData['section_9'] = {'structure': latest.genogram!.structure, 'notes': latest.genogram!.notes};
-            _formData['genogram'] = {'structure': latest.genogram!.structure, 'notes': latest.genogram!.notes};
+            formData['section_9'] = {'structure': latest.genogram!.structure, 'notes': latest.genogram!.notes};
+            formData['genogram'] = {'structure': latest.genogram!.structure, 'notes': latest.genogram!.notes};
           });
         }
       }
@@ -106,151 +112,90 @@ class _MentalHealthAssessmentFormViewState
     }
   }
 
-  Future<void> _checkForDrafts() async {
-    final patient = _currentPatient ?? widget.patient ?? Get.arguments?['patient'] as Patient?;
-    final patientId = _currentPatientId ?? patient?.id ?? Get.arguments?['patientId'] as int?;
-    
-    if (patientId == null) return;
-
-    final draft = await HiveService.getDraftForm(
-      'pengkajian',
-      patientId,
-    );
-    if (draft != null) {
-      Get.defaultDialog(
-        title: 'Draft Ditemukan',
-        middleText:
-            'Apakah Anda ingin melanjutkan pengisian form dari draft yang tersimpan?',
-        textConfirm: 'Ya',
-        textCancel: 'Tidak',
-        confirmTextColor: Colors.white,
-        onConfirm: () {
-          Get.back();
-          setState(() {
-            _formData.addAll(draft.data ?? {});
-            _populateControllers();
-          });
-        },
-        onCancel: () {
-          // Optional: Delete draft if user chooses not to restore
-          // HiveService.deleteDraftForm('pengkajian', widget.patient!.id);
-        },
-      );
-    }
-  }
-
-  Future<void> _loadFormData([int? id]) async {
-    final formIdToLoad = id ?? widget.formId ?? Get.arguments?['formId'] as int?;
-    if (formIdToLoad == null) return;
-
-    final form = await formController.getFormById(formIdToLoad);
-    if (form != null && form.data != null) {
-      setState(() {
-        if (form.patient != null) {
-          _currentPatient = form.patient as Patient;
-          _currentPatientId = form.patient!.id;
-        }
-        _formData.addAll(form.data!);
-        // If genogram exists as a related resource, add it under section_9
-        if (form.genogram != null) {
-          _formData['section_9'] = _formData['section_9'] ?? {};
-          _formData['section_9']['structure'] = form.genogram!.structure;
-          _formData['section_9']['notes'] = form.genogram!.notes;
-          // ensure we also set a top-level genogram payload expected by backend
-          _formData['genogram'] = {
-            'structure': form.genogram!.structure,
-            'notes': form.genogram!.notes,
-          };
-        }
-        _populateControllers();
-      });
-    }
-  }
-
   void _populateControllers() {
     // Section 1: Identitas Klien (0-3)
-    if (_formData['section_1'] != null) {
-      _controllers[0].text = _formData['section_1']['nama_lengkap'] ?? '';
-      _controllers[1].text = _formData['section_1']['umur']?.toString() ?? '';
+    if (formData['section_1'] != null) {
+      _controllers[0].text = formData['section_1']['nama_lengkap'] ?? '';
+      _controllers[1].text = formData['section_1']['umur']?.toString() ?? '';
       // populate text controllers if legacy data present
-      _controllers[2].text = _formData['section_1']['jenis_kelamin'] ?? '';
-      _controllers[3].text = _formData['section_1']['status_perkawinan'] ?? '';
-      // ensure _formData has dropdown values set if loaded from controllers
-      if ((_formData['section_1']['jenis_kelamin'] ?? '').isEmpty &&
+      _controllers[2].text = formData['section_1']['jenis_kelamin'] ?? '';
+      _controllers[3].text = formData['section_1']['status_perkawinan'] ?? '';
+      // ensure formData has dropdown values set if loaded from controllers
+      if ((formData['section_1']['jenis_kelamin'] ?? '').isEmpty &&
           _controllers[2].text.isNotEmpty) {
-        _formData['section_1']['jenis_kelamin'] = _controllers[2].text;
+        formData['section_1']['jenis_kelamin'] = _controllers[2].text;
       }
-      if ((_formData['section_1']['status_perkawinan'] ?? '').isEmpty &&
+      if ((formData['section_1']['status_perkawinan'] ?? '').isEmpty &&
           _controllers[3].text.isNotEmpty) {
-        _formData['section_1']['status_perkawinan'] = _controllers[3].text;
+        formData['section_1']['status_perkawinan'] = _controllers[3].text;
       }
     }
 
     // Section 2: Riwayat Kehidupan (4-6)
-    if (_formData['section_2'] != null) {
-      _controllers[4].text = _formData['section_2']['riwayat_pendidikan'] ?? '';
-      _controllers[5].text = _formData['section_2']['pekerjaan'] ?? '';
-      _controllers[6].text = _formData['section_2']['riwayat_keluarga'] ?? '';
+    if (formData['section_2'] != null) {
+      _controllers[4].text = formData['section_2']['riwayat_pendidikan'] ?? '';
+      _controllers[5].text = formData['section_2']['pekerjaan'] ?? '';
+      _controllers[6].text = formData['section_2']['riwayat_keluarga'] ?? '';
     }
 
     // Section 3: Riwayat Psikososial (7-9)
-    if (_formData['section_3'] != null) {
-      _controllers[7].text = _formData['section_3']['hubungan_sosial'] ?? '';
-      _controllers[8].text = _formData['section_3']['dukungan_sosial'] ?? '';
+    if (formData['section_3'] != null) {
+      _controllers[7].text = formData['section_3']['hubungan_sosial'] ?? '';
+      _controllers[8].text = formData['section_3']['dukungan_sosial'] ?? '';
       _controllers[9].text =
-          _formData['section_3']['stresor_psikososial'] ?? '';
+          formData['section_3']['stresor_psikososial'] ?? '';
     }
 
     // Section 4: Riwayat Psikiatri (10)
-    if (_formData['section_4'] != null) {
+    if (formData['section_4'] != null) {
       _controllers[10].text =
-          _formData['section_4']['riwayat_gangguan_psikiatri'] ?? '';
+          formData['section_4']['riwayat_gangguan_psikiatri'] ?? '';
     }
 
     // Section 5: Pemeriksaan Psikologis (11-13)
-    if (_formData['section_5'] != null) {
-      _controllers[11].text = _formData['section_5']['kesadaran'] ?? '';
-      _controllers[12].text = _formData['section_5']['orientasi'] ?? '';
-      _controllers[13].text = _formData['section_5']['penampilan'] ?? '';
-      if ((_formData['section_5']['kesadaran'] ?? '').isEmpty &&
+    if (formData['section_5'] != null) {
+      _controllers[11].text = formData['section_5']['kesadaran'] ?? '';
+      _controllers[12].text = formData['section_5']['orientasi'] ?? '';
+      _controllers[13].text = formData['section_5']['penampilan'] ?? '';
+      if ((formData['section_5']['kesadaran'] ?? '').isEmpty &&
           _controllers[11].text.isNotEmpty) {
-        _formData['section_5']['kesadaran'] = _controllers[11].text;
+        formData['section_5']['kesadaran'] = _controllers[11].text;
       }
-      if ((_formData['section_5']['orientasi'] ?? '').isEmpty &&
+      if ((formData['section_5']['orientasi'] ?? '').isEmpty &&
           _controllers[12].text.isNotEmpty) {
-        _formData['section_5']['orientasi'] = _controllers[12].text;
+        formData['section_5']['orientasi'] = _controllers[12].text;
       }
     }
 
     // Section 6: Fungsi Psikologis (14-16)
-    if (_formData['section_6'] != null) {
-      _controllers[14].text = _formData['section_6']['mood'] ?? '';
-      _controllers[15].text = _formData['section_6']['afect'] ?? '';
-      _controllers[16].text = _formData['section_6']['alam_pikiran'] ?? '';
-      if ((_formData['section_6']['mood'] ?? '').isEmpty &&
+    if (formData['section_6'] != null) {
+      _controllers[14].text = formData['section_6']['mood'] ?? '';
+      _controllers[15].text = formData['section_6']['afect'] ?? '';
+      _controllers[16].text = formData['section_6']['alam_pikiran'] ?? '';
+      if ((formData['section_6']['mood'] ?? '').isEmpty &&
           _controllers[14].text.isNotEmpty) {
-        _formData['section_6']['mood'] = _controllers[14].text;
+        formData['section_6']['mood'] = _controllers[14].text;
       }
-      if ((_formData['section_6']['afect'] ?? '').isEmpty &&
+      if ((formData['section_6']['afect'] ?? '').isEmpty &&
           _controllers[15].text.isNotEmpty) {
-        _formData['section_6']['afect'] = _controllers[15].text;
+        formData['section_6']['afect'] = _controllers[15].text;
       }
     }
 
     // Section 7: Fungsi Sosial (17)
-    if (_formData['section_7'] != null) {
-      _controllers[17].text = _formData['section_7']['fungsi_sosial'] ?? '';
+    if (formData['section_7'] != null) {
+      _controllers[17].text = formData['section_7']['fungsi_sosial'] ?? '';
     }
 
     // Section 8: Fungsi Spiritual (18-19)
-    if (_formData['section_8'] != null) {
-      _controllers[18].text = _formData['section_8']['kepercayaan'] ?? '';
-      _controllers[19].text = _formData['section_8']['praktik_ibadah'] ?? '';
+    if (formData['section_8'] != null) {
+      _controllers[18].text = formData['section_8']['kepercayaan'] ?? '';
+      _controllers[19].text = formData['section_8']['praktik_ibadah'] ?? '';
     }
 
     // Section 11: Penutup (20)
-    if (_formData['section_11'] != null) {
-      _controllers[20].text = _formData['section_11']['catatan_tambahan'] ?? '';
+    if (formData['section_11'] != null) {
+      _controllers[20].text = formData['section_11']['catatan_tambahan'] ?? '';
     }
   }
 
@@ -268,7 +213,7 @@ class _MentalHealthAssessmentFormViewState
         _currentSection++;
       });
     } else {
-      _submitForm();
+      _submitFormWithValidation();
     }
   }
 
@@ -280,38 +225,35 @@ class _MentalHealthAssessmentFormViewState
     }
   }
 
-  Future<void> _saveDraft() async {
-    final patient = _currentPatient ?? widget.patient ?? Get.arguments?['patient'] as Patient?;
-    final patientId = _currentPatientId ?? patient?.id ?? Get.arguments?['patientId'] as int?;
-    
-    if (patient == null || patientId == null) {
-      Get.snackbar('Error', 'Patient information is required to save draft');
+  // Custom validation before submit
+  Future<void> _submitFormWithValidation() async {
+    // Basic validation: ensure required fields exist
+    if ((formData['section_1']['jenis_kelamin'] ?? '').toString().isEmpty) {
+      Get.snackbar('Validation', 'Jenis Kelamin harus dipilih');
+      return;
+    }
+    if ((formData['section_1']['status_perkawinan'] ?? '').toString().isEmpty) {
+      Get.snackbar('Validation', 'Status Perkawinan harus dipilih');
       return;
     }
 
+    // Ensure genogram payload is present for backend if we have a section_9 structure
+    if ((formData['section_9'] ?? {})['structure'] != null) {
+      formData['genogram'] = {
+        'structure': formData['section_9']['structure'],
+        'notes': formData['section_9']['notes'] ?? '',
+      };
+    }
+
+    // Call mixin's submitForm
+    await submitForm();
+    
+    // Refresh form list after successful submission
     try {
-      if (widget.formId != null) {
-        await formController.updateForm(
-          id: widget.formId!,
-          data: _formData,
-          status: 'draft',
-        );
-      } else {
-        await formController.createForm(
-          type: 'pengkajian',
-          patientId: patientId,
-          data: _formData,
-          status: 'draft',
-        );
-      }
-      Get.snackbar(
-        'Success',
-        'Draft saved successfully',
-        snackPosition: SnackPosition.TOP,
-      );
-      Get.back();
+      final formSelectionController = Get.find<FormSelectionController>();
+      await formSelectionController.fetchForms();
     } catch (e) {
-      Get.snackbar('Error', 'Failed to save draft: $e');
+      // FormSelectionController not found, ignore
     }
   }
 
@@ -331,84 +273,6 @@ class _MentalHealthAssessmentFormViewState
       // Open the PDF in a new window or download it
       Get.snackbar('Success', 'PDF generated successfully. URL: $pdfUrl');
       // In a real implementation, you might open the PDF viewer here
-    }
-  }
-
-  Future<void> _submitForm() async {
-    // Get patient from widget/args/current patient
-    final patient = _currentPatient ?? widget.patient ?? Get.arguments?['patient'] as Patient?;
-    final patientId = _currentPatientId ?? patient?.id ?? Get.arguments?['patientId'] as int?;
-
-    if (patient == null || patientId == null) {
-      Get.snackbar('Error', 'Patient information is required to submit form');
-      return;
-    }
-
-    // Basic validation: ensure required fields exist
-    if ((_formData['section_1']['jenis_kelamin'] ?? '').toString().isEmpty) {
-      Get.snackbar('Validation', 'Jenis Kelamin harus dipilih');
-      return;
-    }
-    if ((_formData['section_1']['status_perkawinan'] ?? '').toString().isEmpty) {
-      Get.snackbar('Validation', 'Status Perkawinan harus dipilih');
-      return;
-    }
-
-    try {
-      // ensure genogram payload is present for backend if we have a section_9 structure
-      if ((_formData['section_9'] ?? {})['structure'] != null) {
-        _formData['genogram'] = {
-          'structure': _formData['section_9']['structure'],
-          'notes': _formData['section_9']['notes'] ?? '',
-        };
-      }
-      // Try to submit to server
-      final resultForm = widget.formId != null
-          ? await formController.updateForm(
-              id: widget.formId!,
-              type: 'pengkajian',
-              patientId: patientId,
-              data: _formData,
-              status: 'submitted',
-            )
-          : await formController.createForm(
-              type: 'pengkajian',
-              patientId: patientId,
-              data: _formData,
-              status: 'submitted',
-            );
-
-      // If submission successful, remove any local draft
-      await HiveService.deleteDraftForm('pengkajian', patientId);
-
-      Get.snackbar('Success', 'Form submitted successfully');
-
-      // Refresh form list before going back (FormController already fetches)
-      try {
-        final formSelectionController = Get.find<FormSelectionController>();
-        await formSelectionController.fetchForms();
-      } catch (e) {
-        // Controller might not exist, ignore
-      }
-      Get.back(result: resultForm);
-    } catch (e) {
-      // If submission fails, save as draft locally and notify user
-      Get.snackbar('Error', 'Submission failed. Form saved as draft locally.');
-
-      // Save to local storage as draft
-      final form = FormModel(
-        id: DateTime.now().millisecondsSinceEpoch,
-        type: 'pengkajian',
-        userId: 0,
-        patientId: patientId,
-        status: 'draft',
-        data: _formData,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-        genogram: null,
-      );
-
-      await HiveService.saveDraftForm(form);
     }
   }
 
@@ -450,34 +314,40 @@ class _MentalHealthAssessmentFormViewState
         FormTextField(
           controller: _controllers[0],
           labelText: 'Nama Lengkap',
-          onChanged: (value) => _formData['section_1']['nama_lengkap'] = value,
+            onChanged: (value) {
+              formData['section_1']['nama_lengkap'] = value;
+            },
         ),
         const SizedBox(height: 16),
         FormTextField(
           controller: _controllers[1],
           labelText: 'Umur',
           keyboardType: TextInputType.number,
-          onChanged: (value) => _formData['section_1']['umur'] = value,
+            onChanged: (value) {
+              formData['section_1']['umur'] = value;
+            },
         ),
         const SizedBox(height: 16),
         // Jenis Kelamin (Dropdown)
         DropdownButtonFormField<String>(
-          value: _formData['section_1']['jenis_kelamin'] as String?,
+          value: formData['section_1']['jenis_kelamin'] as String?,
           decoration: const InputDecoration(border: OutlineInputBorder()),
           items: const [
             DropdownMenuItem(value: 'L', child: Text('Laki-laki')),
             DropdownMenuItem(value: 'P', child: Text('Perempuan')),
             DropdownMenuItem(value: 'O', child: Text('Lainnya')),
           ],
-          onChanged: (value) => setState(() {
-            _formData['section_1']['jenis_kelamin'] = value;
-          }),
+            onChanged: (value) {
+              setState(() {
+                formData['section_1']['jenis_kelamin'] = value;
+              });
+            },
           hint: const Text('Pilih Jenis Kelamin'),
         ),
         const SizedBox(height: 16),
         // Status Perkawinan (Dropdown)
         DropdownButtonFormField<String>(
-          value: _formData['section_1']['status_perkawinan'] as String?,
+          value: formData['section_1']['status_perkawinan'] as String?,
           decoration: const InputDecoration(border: OutlineInputBorder()),
           items: const [
             DropdownMenuItem(value: 'belum_kawin', child: Text('Belum Kawin')),
@@ -487,9 +357,11 @@ class _MentalHealthAssessmentFormViewState
             DropdownMenuItem(value: 'duda', child: Text('Duda')),
             DropdownMenuItem(value: 'janda', child: Text('Janda')),
           ],
-          onChanged: (value) => setState(() {
-            _formData['section_1']['status_perkawinan'] = value;
-          }),
+            onChanged: (value) {
+              setState(() {
+                formData['section_1']['status_perkawinan'] = value;
+              });
+            },
           hint: const Text('Pilih Status Perkawinan'),
         ),
       ],
@@ -506,22 +378,26 @@ class _MentalHealthAssessmentFormViewState
           controller: _controllers[4],
           labelText: 'Riwayat Pendidikan',
           maxLines: 3,
-          onChanged: (value) =>
-              _formData['section_2']['riwayat_pendidikan'] = value,
+            onChanged: (value) {
+              formData['section_2']['riwayat_pendidikan'] = value;
+            },
         ),
         const SizedBox(height: 16),
         FormTextField(
           controller: _controllers[5],
           labelText: 'Pekerjaan',
-          onChanged: (value) => _formData['section_2']['pekerjaan'] = value,
+            onChanged: (value) {
+              formData['section_2']['pekerjaan'] = value;
+            },
         ),
         const SizedBox(height: 16),
         FormTextField(
           controller: _controllers[6],
           labelText: 'Riwayat Keluarga',
           maxLines: 3,
-          onChanged: (value) =>
-              _formData['section_2']['riwayat_keluarga'] = value,
+            onChanged: (value) {
+              formData['section_2']['riwayat_keluarga'] = value;
+            },
         ),
       ],
     );
@@ -537,24 +413,27 @@ class _MentalHealthAssessmentFormViewState
           controller: _controllers[7],
           labelText: 'Hubungan Sosial',
           maxLines: 3,
-          onChanged: (value) =>
-              _formData['section_3']['hubungan_sosial'] = value,
+            onChanged: (value) {
+              formData['section_3']['hubungan_sosial'] = value;
+            },
         ),
         const SizedBox(height: 16),
         FormTextField(
           controller: _controllers[8],
           labelText: 'Dukungan Sosial',
           maxLines: 3,
-          onChanged: (value) =>
-              _formData['section_3']['dukungan_sosial'] = value,
+            onChanged: (value) {
+              formData['section_3']['dukungan_sosial'] = value;
+            },
         ),
         const SizedBox(height: 16),
         FormTextField(
           controller: _controllers[9],
           labelText: 'Stresor Psikososial',
           maxLines: 3,
-          onChanged: (value) =>
-              _formData['section_3']['stresor_psikososial'] = value,
+            onChanged: (value) {
+              formData['section_3']['stresor_psikososial'] = value;
+            },
         ),
       ],
     );
@@ -570,8 +449,9 @@ class _MentalHealthAssessmentFormViewState
           controller: _controllers[10],
           labelText: 'Riwayat Gangguan Psikiatri',
           maxLines: 3,
-          onChanged: (value) =>
-              _formData['section_4']['riwayat_gangguan_psikiatri'] = value,
+            onChanged: (value) {
+              formData['section_4']['riwayat_gangguan_psikiatri'] = value;
+            },
         ),
       ],
     );
@@ -585,7 +465,7 @@ class _MentalHealthAssessmentFormViewState
         const SizedBox(height: 16),
         // Kesadaran (Dropdown)
         DropdownButtonFormField<String>(
-          value: _formData['section_5']['kesadaran'] as String?,
+          value: formData['section_5']['kesadaran'] as String?,
           decoration: const InputDecoration(border: OutlineInputBorder()),
           items: const [
             DropdownMenuItem(value: 'sadar_penuh', child: Text('Sadar Penuh')),
@@ -593,30 +473,36 @@ class _MentalHealthAssessmentFormViewState
             DropdownMenuItem(value: 'stupor', child: Text('Stupor')),
             DropdownMenuItem(value: 'coma', child: Text('Coma')),
           ],
-          onChanged: (value) => setState(() {
-            _formData['section_5']['kesadaran'] = value;
-          }),
+            onChanged: (value) {
+              setState(() {
+                formData['section_5']['kesadaran'] = value;
+              });
+            },
           hint: const Text('Pilih Kesadaran'),
         ),
         const SizedBox(height: 16),
         // Orientasi (Dropdown)
         DropdownButtonFormField<String>(
-          value: _formData['section_5']['orientasi'] as String?,
+          value: formData['section_5']['orientasi'] as String?,
           decoration: const InputDecoration(border: OutlineInputBorder()),
           items: const [
             DropdownMenuItem(value: 'utuh', child: Text('Utuh')),
             DropdownMenuItem(value: 'gangguan', child: Text('Gangguan')),
           ],
-          onChanged: (value) => setState(() {
-            _formData['section_5']['orientasi'] = value;
-          }),
+            onChanged: (value) {
+              setState(() {
+                formData['section_5']['orientasi'] = value;
+              });
+            },
           hint: const Text('Pilih Orientasi'),
         ),
         const SizedBox(height: 16),
         FormTextField(
           controller: _controllers[13],
           labelText: 'Penampilan',
-          onChanged: (value) => _formData['section_5']['penampilan'] = value,
+            onChanged: (value) {
+              formData['section_5']['penampilan'] = value;
+            },
         ),
       ],
     );
@@ -630,7 +516,7 @@ class _MentalHealthAssessmentFormViewState
         const SizedBox(height: 16),
         // Mood (Dropdown)
         DropdownButtonFormField<String>(
-          value: _formData['section_6']['mood'] as String?,
+          value: formData['section_6']['mood'] as String?,
           decoration: const InputDecoration(border: OutlineInputBorder()),
           items: const [
             DropdownMenuItem(value: 'normal', child: Text('Normal')),
@@ -639,15 +525,17 @@ class _MentalHealthAssessmentFormViewState
             DropdownMenuItem(value: 'iritabel', child: Text('Iritabel')),
             DropdownMenuItem(value: 'labil', child: Text('Labil')),
           ],
-          onChanged: (value) => setState(() {
-            _formData['section_6']['mood'] = value;
-          }),
+            onChanged: (value) {
+              setState(() {
+                formData['section_6']['mood'] = value;
+              });
+            },
           hint: const Text('Pilih Mood'),
         ),
         const SizedBox(height: 16),
         // Afect (Dropdown)
         DropdownButtonFormField<String>(
-          value: _formData['section_6']['afect'] as String?,
+          value: formData['section_6']['afect'] as String?,
           decoration: const InputDecoration(border: OutlineInputBorder()),
           items: const [
             DropdownMenuItem(value: 'normal', child: Text('Normal')),
@@ -656,16 +544,20 @@ class _MentalHealthAssessmentFormViewState
             DropdownMenuItem(value: 'labil', child: Text('Labil')),
             DropdownMenuItem(value: 'iritabel', child: Text('Iritabel')),
           ],
-          onChanged: (value) => setState(() {
-            _formData['section_6']['afect'] = value;
-          }),
+            onChanged: (value) {
+              setState(() {
+                formData['section_6']['afect'] = value;
+              });
+            },
           hint: const Text('Pilih Afect'),
         ),
         const SizedBox(height: 16),
         FormTextField(
           controller: _controllers[16],
           labelText: 'Alam pikiran',
-          onChanged: (value) => _formData['section_6']['alam_pikiran'] = value,
+            onChanged: (value) {
+              formData['section_6']['alam_pikiran'] = value;
+            },
         ),
       ],
     );
@@ -681,7 +573,9 @@ class _MentalHealthAssessmentFormViewState
           controller: _controllers[17],
           labelText: 'Fungsi Sosial',
           maxLines: 3,
-          onChanged: (value) => _formData['section_7']['fungsi_sosial'] = value,
+            onChanged: (value) {
+              formData['section_7']['fungsi_sosial'] = value;
+            },
         ),
       ],
     );
@@ -696,14 +590,17 @@ class _MentalHealthAssessmentFormViewState
         FormTextField(
           controller: _controllers[18],
           labelText: 'Kepercayaan',
-          onChanged: (value) => _formData['section_8']['kepercayaan'] = value,
+            onChanged: (value) {
+              formData['section_8']['kepercayaan'] = value;
+            },
         ),
         const SizedBox(height: 16),
         FormTextField(
           controller: _controllers[19],
           labelText: 'Praktik Ibadah',
-          onChanged: (value) =>
-              _formData['section_8']['praktik_ibadah'] = value,
+            onChanged: (value) {
+              formData['section_8']['praktik_ibadah'] = value;
+            },
         ),
       ],
     );
@@ -719,7 +616,7 @@ class _MentalHealthAssessmentFormViewState
         const SizedBox(height: 12),
         // Inline preview of current genogram members (if any)
         Builder(builder: (context) {
-          final structure = (_formData['section_9'] ?? {})['structure'] ?? (_formData['genogram'] ?? {})['structure'];
+          final structure = (formData['section_9'] ?? {})['structure'] ?? (formData['genogram'] ?? {})['structure'];
           final List members = structure != null && structure is Map ? (structure['members'] ?? []) as List : <dynamic>[];
           final List connections = structure != null && structure is Map ? (structure['connections'] ?? []) as List : <dynamic>[];
           if (members.isEmpty) {
@@ -750,21 +647,21 @@ class _MentalHealthAssessmentFormViewState
         const SizedBox(height: 8),
         ElevatedButton(
           onPressed: () async {
-            final genogramStructure = (_formData['section_9'] ?? {})['structure'] ?? {'members': [], 'connections': []};
-            final genogramNotes = (_formData['section_9'] ?? {})['notes'] ?? '';
+            final genogramStructure = (formData['section_9'] ?? {})['structure'] ?? {'members': [], 'connections': []};
+            final genogramNotes = (formData['section_9'] ?? {})['notes'] ?? '';
             final result = await Get.toNamed('/genogram-builder', arguments: {
               'structure': genogramStructure,
               'notes': genogramNotes,
             });
             if (result != null && result is Map<String, dynamic>) {
               setState(() {
-                _formData['section_9'] = {};
-                _formData['section_9']['structure'] = result['structure'] ?? result;
-                _formData['section_9']['notes'] = result['notes'] ?? result['structure']?['notes'] ?? '';
+                formData['section_9'] = {};
+                formData['section_9']['structure'] = result['structure'] ?? result;
+                formData['section_9']['notes'] = result['notes'] ?? result['structure']?['notes'] ?? '';
                 // Mirror to top-level genogram key so backend can persist it
-                _formData['genogram'] = {
-                  'structure': _formData['section_9']['structure'],
-                  'notes': _formData['section_9']['notes'],
+                formData['genogram'] = {
+                  'structure': formData['section_9']['structure'],
+                  'notes': formData['section_9']['notes'],
                 };
               });
             }
@@ -805,8 +702,10 @@ class _MentalHealthAssessmentFormViewState
           return DropdownButtonFormField<int>(
             decoration: const InputDecoration(border: OutlineInputBorder()),
             items: items,
-            value: _formData['section_10']['diagnosis'] as int?,
-            onChanged: (value) => _formData['section_10']['diagnosis'] = value,
+            value: formData['section_10']['diagnosis'] as int?,
+              onChanged: (value) {
+                formData['section_10']['diagnosis'] = value;
+              },
             hint: const Text('Pilih Diagnosis'),
           );
         }),
@@ -819,21 +718,21 @@ class _MentalHealthAssessmentFormViewState
           return Column(
             children: interventions.map((iv) {
               final currentInterventions =
-                  (_formData['section_10']['intervensi'] as List?) ?? <int>[];
+                  (formData['section_10']['intervensi'] as List?) ?? <int>[];
               final isChecked = currentInterventions.contains(iv.id);
               return CheckboxListTile(
                 title: Text(iv.name),
                 value: isChecked,
-                onChanged: (bool? value) {
-                  final intervensi = List<int>.from(currentInterventions);
-                  if (value == true) {
-                    if (!intervensi.contains(iv.id)) intervensi.add(iv.id);
-                  } else {
-                    intervensi.remove(iv.id);
-                  }
-                  _formData['section_10']['intervensi'] = intervensi;
-                  setState(() {});
-                },
+                  onChanged: (bool? value) {
+                    final intervensi = List<int>.from(currentInterventions);
+                    if (value == true) {
+                      if (!intervensi.contains(iv.id)) intervensi.add(iv.id);
+                    } else {
+                      intervensi.remove(iv.id);
+                    }
+                    formData['section_10']['intervensi'] = intervensi;
+                    setState(() {});
+                  },
               );
             }).toList(),
           );
@@ -842,19 +741,25 @@ class _MentalHealthAssessmentFormViewState
         FormTextField(
           labelText: 'Tujuan',
           maxLines: 3,
-          onChanged: (value) => _formData['section_10']['tujuan'] = value,
+            onChanged: (value) {
+              formData['section_10']['tujuan'] = value;
+            },
         ),
         const SizedBox(height: 16),
         FormTextField(
           labelText: 'Kriteria',
           maxLines: 3,
-          onChanged: (value) => _formData['section_10']['kriteria'] = value,
+            onChanged: (value) {
+              formData['section_10']['kriteria'] = value;
+            },
         ),
         const SizedBox(height: 16),
         FormTextField(
           labelText: 'Rasional',
           maxLines: 3,
-          onChanged: (value) => _formData['section_10']['rasional'] = value,
+            onChanged: (value) {
+              formData['section_10']['rasional'] = value;
+            },
         ),
       ],
     );
@@ -870,8 +775,9 @@ class _MentalHealthAssessmentFormViewState
           controller: _controllers[20],
           labelText: 'Catatan Tambahan',
           maxLines: 5,
-          onChanged: (value) =>
-              _formData['section_11']['catatan_tambahan'] = value,
+            onChanged: (value) {
+              formData['section_11']['catatan_tambahan'] = value;
+            },
         ),
         const SizedBox(height: 16),
         const Text('Tanggal Pengisian:'),
@@ -885,14 +791,14 @@ class _MentalHealthAssessmentFormViewState
             );
             if (pickedDate != null) {
               setState(() {
-                _formData['section_11']['tanggal_pengisian'] = pickedDate
+                formData['section_11']['tanggal_pengisian'] = pickedDate
                     .toIso8601String();
               });
             }
           },
           child: Text(
-            _formData['section_11']['tanggal_pengisian'] != null
-                ? _formData['section_11']['tanggal_pengisian']
+            formData['section_11']['tanggal_pengisian'] != null
+                ? formData['section_11']['tanggal_pengisian']
                       .toString()
                       .substring(0, 10)
                 : 'Pilih Tanggal',
@@ -906,6 +812,10 @@ class _MentalHealthAssessmentFormViewState
   Widget build(BuildContext context) {
     return WillPopScope(
       onWillPop: () async {
+        // Simpan draft jika belum submit
+        if (formId == null || (formData['status'] != 'submitted')) {
+          await saveDraft();
+        }
         try {
           final formSelectionController = Get.find<FormSelectionController>();
           await formSelectionController.fetchForms();
@@ -926,13 +836,6 @@ class _MentalHealthAssessmentFormViewState
             TextButton(
               onPressed: _exportToPdf,
               child: const Text('PDF', style: TextStyle(color: Colors.white)),
-            ),
-            TextButton(
-              onPressed: _saveDraft,
-              child: const Text(
-                'Simpan Draft',
-                style: TextStyle(color: Colors.white),
-              ),
             ),
           ],
         ),
@@ -960,12 +863,16 @@ class _MentalHealthAssessmentFormViewState
                     )
                   else
                     const SizedBox.shrink(),
-                  ElevatedButton(
-                    onPressed: _nextSection,
-                    child: Text(
-                      _currentSection == 10 ? 'Simpan' : 'Selanjutnya',
+                  if (_currentSection == 10)
+                    // Last section, show action buttons
+                    Expanded(
+                      child: buildActionButtons(),
+                    )
+                  else
+                    ElevatedButton(
+                      onPressed: _nextSection,
+                      child: const Text('Selanjutnya'),
                     ),
-                  ),
                 ],
               ),
             ],

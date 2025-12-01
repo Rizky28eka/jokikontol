@@ -9,6 +9,7 @@ import 'views/register_page.dart';
 import 'views/profile_view.dart';
 import 'views/dosen_dashboard_view.dart';
 import 'views/mahasiswa_dashboard_view.dart';
+import 'views/main_shell.dart';
 import 'views/patient_form_view.dart';
 import 'views/mental_health_assessment_form_view.dart';
 import 'views/resume_kegawatdaruratan_form_view.dart';
@@ -23,6 +24,7 @@ import 'views/genogram_builder_view.dart';
 import 'bindings/auth_binding.dart';
 import 'bindings/patient_binding.dart';
 import 'bindings/form_binding.dart';
+import 'bindings/main_shell_binding.dart';
 
 class AppPages {
   static final pages = [
@@ -55,6 +57,11 @@ class AppPages {
       name: AppRoutes.mahasiswaDashboard,
       page: () => MahasiswaDashboardView(),
       binding: AuthBinding(),
+    ),
+    GetPage(
+      name: AppRoutes.mainShell,
+      page: () => const MainShell(),
+      binding: MainShellBinding(),
     ),
     GetPage(
       name: '/patient-form',
