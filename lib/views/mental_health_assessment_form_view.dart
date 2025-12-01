@@ -209,7 +209,7 @@ class _MentalHealthAssessmentFormViewState
       };
     }
 
-    return result;
+    return super.transformFormData(result);
   }
 
   void _nextSection() {
@@ -521,6 +521,14 @@ class _MentalHealthAssessmentFormViewState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        FormBuilderField<Map<String, dynamic>>(
+          name: 'genogram_structure',
+          builder: (field) => const SizedBox.shrink(),
+        ),
+        FormBuilderField<String>(
+          name: 'genogram_notes',
+          builder: (field) => const SizedBox.shrink(),
+        ),
         const Text(
           'Section 9: Genogram',
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),

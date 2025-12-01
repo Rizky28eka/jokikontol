@@ -12,16 +12,15 @@ class GenogramController extends GetxController {
   final RxString selectedMemberId = ''.obs;
   
   final graph.Graph graphInstance = graph.Graph();
-  final graph.BuchheimWalkerConfiguration builder = graph.BuchheimWalkerConfiguration();
+  final graph.SugiyamaConfiguration builder = graph.SugiyamaConfiguration();
 
   @override
   void onInit() {
     super.onInit();
     builder
-      ..siblingSeparation = 200
-      ..levelSeparation = 200
-      ..subtreeSeparation = 200
-      ..orientation = BuchheimWalkerConfiguration.ORIENTATION_TOP_BOTTOM;
+      ..nodeSeparation = (150)
+      ..levelSeparation = (200)
+      ..orientation = (SugiyamaConfiguration.ORIENTATION_TOP_BOTTOM);
     _logger.info('GenogramController initialized');
   }
 
@@ -92,9 +91,7 @@ class GenogramController extends GetxController {
     for (var rel in relationships) {
       final fromNode = graphInstance.getNodeUsingId(rel.fromId);
       final toNode = graphInstance.getNodeUsingId(rel.toId);
-      if (fromNode != null && toNode != null) {
-        graphInstance.addEdge(fromNode, toNode);
-      }
+      graphInstance.addEdge(fromNode, toNode);
     }
     
     update(['graph_view']);

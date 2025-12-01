@@ -101,7 +101,7 @@ class _ResumePoliklinikFormViewState extends State<ResumePoliklinikFormView>
 
   @override
   Map<String, dynamic> transformFormData(Map<String, dynamic> formData) {
-    return {
+    final result = {
       'section_1': {
         'nama_lengkap': formData['nama_lengkap'],
         'umur': formData['umur'],
@@ -154,6 +154,7 @@ class _ResumePoliklinikFormViewState extends State<ResumePoliklinikFormView>
         'tanggal_pengisian': formData['tanggal_pengisian'],
       },
     };
+    return super.transformFormData(result);
   }
 
   void _nextSection() {

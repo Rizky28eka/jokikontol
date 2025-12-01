@@ -31,7 +31,24 @@ mixin FormBuilderMixin<T extends StatefulWidget> on State<T> {
   String get formSubmittedMessage => 'Form berhasil disubmit';
   
   /// Optional: Override to transform form data before saving/submitting
-  Map<String, dynamic> transformFormData(Map<String, dynamic> formData) => formData;
+  Map<String, dynamic> transformFormData(Map<String, dynamic> formData) {
+    // Convert DateTime objects to ISO8601 strings for JSON serialization
+    return _convertDateTimeToString(formData) as Map<String, dynamic>;
+  }
+
+  /// Recursively convert DateTime objects to ISO8601 strings
+  dynamic _convertDateTimeToString(dynamic value) {
+    if (value is DateTime) {
+      return value.toIso8601String();
+    } else if (value is Map) {
+      return Map<String, dynamic>.from(
+        value.map((key, val) => MapEntry(key.toString(), _convertDateTimeToString(val)))
+      );
+    } else if (value is List) {
+      return value.map((item) => _convertDateTimeToString(item)).toList();
+    }
+    return value;
+  }
 
   /// Optional: Override to transform initial data before patching to form
   Map<String, dynamic> transformInitialData(Map<String, dynamic> data) => data;
@@ -123,17 +140,13 @@ mixin FormBuilderMixin<T extends StatefulWidget> on State<T> {
       }
 
       if (mounted) {
+        Get.back(result: true);
         Get.snackbar(
           'Sukses',
           formSubmittedMessage,
           backgroundColor: Colors.green,
           colorText: Colors.white,
         );
-        
-        // Navigate back after short delay
-        Future.delayed(const Duration(milliseconds: 500), () {
-          if (mounted) Get.back();
-        });
       }
     } catch (e) {
       _logger.error('Error submitting form', error: e);

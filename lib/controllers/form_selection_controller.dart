@@ -81,7 +81,7 @@ class FormSelectionController extends GetxController {
 
       String route = getFormRoute(formType);
       if (route.isNotEmpty) {
-        await Get.toNamed(
+        final result = await Get.toNamed(
           route,
           arguments: {
             'patient': selectedPatient,
@@ -91,8 +91,10 @@ class FormSelectionController extends GetxController {
           },
         );
 
-        // Always refresh to reflect any potential changes
-        await fetchForms();
+        // Refresh if form was submitted successfully
+        if (result == true) {
+          await fetchForms();
+        }
       } else {
         _logger.warning(
           'Unknown form type selected',
@@ -133,7 +135,7 @@ class FormSelectionController extends GetxController {
       
       final fullForm = await _formController.getFormById(form.id);
       Map<String, dynamic>? formData = fullForm?.data;
-      await Get.toNamed(
+      final result = await Get.toNamed(
         route,
         arguments: {
           'formId': fullForm?.id,
@@ -145,8 +147,10 @@ class FormSelectionController extends GetxController {
         },
       );
 
-      // Refresh forms after editing
-      await fetchForms();
+      // Refresh if form was submitted successfully
+      if (result == true) {
+        await fetchForms();
+      }
     } else {
       _logger.warning(
         'Unknown form type for existing form',

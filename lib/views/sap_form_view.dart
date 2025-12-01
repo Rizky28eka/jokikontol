@@ -102,7 +102,7 @@ class _SapFormViewState extends State<SapFormView> with FormBuilderMixin {
 
   @override
   Map<String, dynamic> transformFormData(Map<String, dynamic> formData) {
-    return {
+    final result = {
       'identitas': {
         'topik': formData['topik'],
         'sasaran': formData['sasaran'],
@@ -143,9 +143,11 @@ class _SapFormViewState extends State<SapFormView> with FormBuilderMixin {
               'tujuan': formData['tujuan'],
               'kriteria': formData['kriteria'],
               'rasional': formData['rasional'],
+              'evaluasi': formData['evaluasi_renpra'],
             }
           : null,
     };
+    return super.transformFormData(result);
   }
 
   void _nextSection() {

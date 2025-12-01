@@ -126,7 +126,7 @@ class _ResumeKegawatdaruratanFormViewState
 
   @override
   Map<String, dynamic> transformFormData(Map<String, dynamic> formData) {
-    return {
+    final result = {
       'identitas': {
         'nama_lengkap': formData['nama_lengkap'],
         'umur': formData['umur'],
@@ -193,6 +193,7 @@ class _ResumeKegawatdaruratanFormViewState
             }
           : null,
     };
+    return super.transformFormData(result);
   }
 
   void _nextSection() {

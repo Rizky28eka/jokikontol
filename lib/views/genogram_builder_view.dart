@@ -65,10 +65,7 @@ class GenogramBuilderView extends StatelessWidget {
                   maxScale: 5.0,
                   child: GraphView(
                     graph: ctrl.graphInstance,
-                    algorithm: BuchheimWalkerAlgorithm(
-                      ctrl.builder,
-                      TreeEdgeRenderer(ctrl.builder),
-                    ),
+                    algorithm: SugiyamaAlgorithm(ctrl.builder),
                     paint: Paint()
                       ..color = Colors.black
                       ..strokeWidth = 1.5

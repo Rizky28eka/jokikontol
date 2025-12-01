@@ -88,7 +88,7 @@ class _CatatanTambahanFormViewState extends State<CatatanTambahanFormView>
 
   @override
   Map<String, dynamic> transformFormData(Map<String, dynamic> formData) {
-    return {
+    final result = {
       'catatan': {
         'isi_catatan': formData['isi_catatan'],
         'renpra': formData['diagnosis'] != null
@@ -102,6 +102,8 @@ class _CatatanTambahanFormViewState extends State<CatatanTambahanFormView>
             : null,
       },
     };
+    // Call super to convert DateTime objects to strings
+    return super.transformFormData(result);
   }
 
   @override
