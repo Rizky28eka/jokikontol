@@ -10,6 +10,7 @@ import '../utils/form_builder_mixin.dart';
 import '../widgets/form_components/custom_text_field.dart';
 import '../widgets/form_components/custom_dropdown.dart';
 import '../widgets/form_components/custom_checkbox_group.dart';
+import '../widgets/form_components/custom_date_time_picker.dart';
 
 class ResumePoliklinikFormView extends StatefulWidget {
   final Patient? patient;
@@ -156,38 +157,56 @@ class _ResumePoliklinikFormViewState extends State<ResumePoliklinikFormView>
   }
 
   void _nextSection() {
+    updateFormData();
     if (_currentSection < 9) setState(() => _currentSection++);
   }
 
   void _previousSection() {
+    updateFormData();
     if (_currentSection > 0) setState(() => _currentSection--);
   }
 
   Widget _buildSection(int sectionNumber) {
+    Widget sectionContent;
     switch (sectionNumber) {
       case 0:
-        return _buildIdentitasKlienSection();
+        sectionContent = _buildIdentitasKlienSection();
+        break;
       case 1:
-        return _buildRiwayatKehidupanSection();
+        sectionContent = _buildRiwayatKehidupanSection();
+        break;
       case 2:
-        return _buildRiwayatPsikososialSection();
+        sectionContent = _buildRiwayatPsikososialSection();
+        break;
       case 3:
-        return _buildRiwayatPsikiatriSection();
+        sectionContent = _buildRiwayatPsikiatriSection();
+        break;
       case 4:
-        return _buildPemeriksaanPsikologisSection();
+        sectionContent = _buildPemeriksaanPsikologisSection();
+        break;
       case 5:
-        return _buildFungsiPsikologisSection();
+        sectionContent = _buildFungsiPsikologisSection();
+        break;
       case 6:
-        return _buildFungsiSosialSection();
+        sectionContent = _buildFungsiSosialSection();
+        break;
       case 7:
-        return _buildFungsiSpiritualSection();
+        sectionContent = _buildFungsiSpiritualSection();
+        break;
       case 8:
-        return _buildRenpraSection();
+        sectionContent = _buildRenpraSection();
+        break;
       case 9:
-        return _buildPenutupSection();
+        sectionContent = _buildPenutupSection();
+        break;
       default:
-        return const SizedBox();
+        sectionContent = const SizedBox();
     }
+
+    return KeyedSubtree(
+      key: ValueKey('section_$sectionNumber'),
+      child: sectionContent,
+    );
   }
 
   Widget _buildIdentitasKlienSection() {
@@ -207,11 +226,29 @@ class _ResumePoliklinikFormViewState extends State<ResumePoliklinikFormView>
           keyboardType: TextInputType.number,
         ),
         const SizedBox(height: 16),
-        const CustomTextField(name: 'jenis_kelamin', label: 'Jenis Kelamin'),
+        CustomDropdown<String>(
+          name: 'jenis_kelamin',
+          label: 'Jenis Kelamin',
+          items: const [
+            DropdownMenuItem(value: 'L', child: Text('Laki-laki')),
+            DropdownMenuItem(value: 'P', child: Text('Perempuan')),
+            DropdownMenuItem(value: 'O', child: Text('Lainnya')),
+          ],
+          hint: 'Pilih Jenis Kelamin',
+        ),
         const SizedBox(height: 16),
-        const CustomTextField(
+        CustomDropdown<String>(
           name: 'status_perkawinan',
           label: 'Status Perkawinan',
+          items: const [
+            DropdownMenuItem(value: 'belum_kawin', child: Text('Belum Kawin')),
+            DropdownMenuItem(value: 'menikah', child: Text('Menikah')),
+            DropdownMenuItem(value: 'cerai_hidup', child: Text('Cerai Hidup')),
+            DropdownMenuItem(value: 'cerai_mati', child: Text('Cerai Mati')),
+            DropdownMenuItem(value: 'duda', child: Text('Duda')),
+            DropdownMenuItem(value: 'janda', child: Text('Janda')),
+          ],
+          hint: 'Pilih Status Perkawinan',
         ),
       ],
     );
@@ -306,9 +343,27 @@ class _ResumePoliklinikFormViewState extends State<ResumePoliklinikFormView>
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
-        const CustomTextField(name: 'kesadaran', label: 'Kesadaran'),
+        CustomDropdown<String>(
+          name: 'kesadaran',
+          label: 'Kesadaran',
+          items: const [
+            DropdownMenuItem(value: 'sadar_penuh', child: Text('Sadar Penuh')),
+            DropdownMenuItem(value: 'somnolent', child: Text('Somnolent')),
+            DropdownMenuItem(value: 'stupor', child: Text('Stupor')),
+            DropdownMenuItem(value: 'coma', child: Text('Coma')),
+          ],
+          hint: 'Pilih Kesadaran',
+        ),
         const SizedBox(height: 16),
-        const CustomTextField(name: 'orientasi', label: 'Orientasi'),
+        CustomDropdown<String>(
+          name: 'orientasi',
+          label: 'Orientasi',
+          items: const [
+            DropdownMenuItem(value: 'utuh', child: Text('Utuh')),
+            DropdownMenuItem(value: 'gangguan', child: Text('Gangguan')),
+          ],
+          hint: 'Pilih Orientasi',
+        ),
         const SizedBox(height: 16),
         const CustomTextField(name: 'penampilan', label: 'Penampilan'),
       ],
@@ -324,9 +379,31 @@ class _ResumePoliklinikFormViewState extends State<ResumePoliklinikFormView>
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
-        const CustomTextField(name: 'mood', label: 'Mood'),
+        CustomDropdown<String>(
+          name: 'mood',
+          label: 'Mood',
+          items: const [
+            DropdownMenuItem(value: 'normal', child: Text('Normal')),
+            DropdownMenuItem(value: 'depresi', child: Text('Depresi')),
+            DropdownMenuItem(value: 'ansietas', child: Text('Ansietas')),
+            DropdownMenuItem(value: 'iritabel', child: Text('Iritabel')),
+            DropdownMenuItem(value: 'labil', child: Text('Labil')),
+          ],
+          hint: 'Pilih Mood',
+        ),
         const SizedBox(height: 16),
-        const CustomTextField(name: 'afect', label: 'Afect'),
+        CustomDropdown<String>(
+          name: 'afect',
+          label: 'Afect',
+          items: const [
+            DropdownMenuItem(value: 'normal', child: Text('Normal')),
+            DropdownMenuItem(value: 'flat', child: Text('Flat')),
+            DropdownMenuItem(value: 'terhambat', child: Text('Terhambat')),
+            DropdownMenuItem(value: 'labil', child: Text('Labil')),
+            DropdownMenuItem(value: 'iritabel', child: Text('Iritabel')),
+          ],
+          hint: 'Pilih Afect',
+        ),
         const SizedBox(height: 16),
         const CustomTextField(name: 'alam_pikiran', label: 'Alam Pikiran'),
       ],
@@ -385,8 +462,9 @@ class _ResumePoliklinikFormViewState extends State<ResumePoliklinikFormView>
         Obx(() {
           final nursingService = Get.find<NursingDataGlobalService>();
           final diagnoses = nursingService.diagnoses;
-          if (diagnoses.isEmpty)
+          if (diagnoses.isEmpty) {
             return const Text('Tidak ada diagnosis tersedia');
+          }
 
           return CustomDropdown<int>(
             name: 'diagnosis',
@@ -403,8 +481,9 @@ class _ResumePoliklinikFormViewState extends State<ResumePoliklinikFormView>
         const SizedBox(height: 16),
         Obx(() {
           final interventions = _interventionController.interventions;
-          if (interventions.isEmpty)
+          if (interventions.isEmpty) {
             return const Text('Tidak ada intervensi tersedia');
+          }
 
           return CustomCheckboxGroup<int>(
             name: 'intervensi',
@@ -444,13 +523,10 @@ class _ResumePoliklinikFormViewState extends State<ResumePoliklinikFormView>
           maxLines: 5,
         ),
         const SizedBox(height: 16),
-        FormBuilderDateTimePicker(
+        CustomDateTimePicker(
           name: 'tanggal_pengisian',
+          label: 'Tanggal Pengisian',
           inputType: InputType.date,
-          decoration: const InputDecoration(
-            labelText: 'Tanggal Pengisian',
-            border: OutlineInputBorder(),
-          ),
           initialDate: DateTime.now(),
           firstDate: DateTime(2000),
           lastDate: DateTime.now(),
@@ -470,7 +546,7 @@ class _ResumePoliklinikFormViewState extends State<ResumePoliklinikFormView>
         ),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
       ),
-      body: Padding(
+        body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [

@@ -28,20 +28,22 @@ class _CatatanTambahanFormViewState extends State<CatatanTambahanFormView>
   final FormController formController = Get.put(FormController());
   @override
   final PatientController patientController = Get.find();
-  final NursingInterventionController _interventionController = Get.put(NursingInterventionController());
+  final NursingInterventionController _interventionController = Get.put(
+    NursingInterventionController(),
+  );
 
   @override
   String get formType => 'catatan_tambahan';
-  
+
   @override
   int? get formId => widget.formId ?? Get.arguments?['formId'] as int?;
-  
+
   Patient? _currentPatient;
   int? _currentPatientId;
-  
+
   @override
   Patient? get currentPatient => _currentPatient;
-  
+
   @override
   int? get currentPatientId => _currentPatientId;
 
@@ -52,8 +54,9 @@ class _CatatanTambahanFormViewState extends State<CatatanTambahanFormView>
   void initState() {
     super.initState();
     _currentPatient = widget.patient ?? Get.arguments?['patient'] as Patient?;
-    _currentPatientId = _currentPatient?.id ?? Get.arguments?['patientId'] as int?;
-    
+    _currentPatientId =
+        _currentPatient?.id ?? Get.arguments?['patientId'] as int?;
+
     initializeForm(
       patient: _currentPatient,
       patientId: _currentPatientId,
@@ -65,7 +68,7 @@ class _CatatanTambahanFormViewState extends State<CatatanTambahanFormView>
   Map<String, dynamic> transformInitialData(Map<String, dynamic> data) {
     final catatan = data['catatan'] ?? {};
     final renpra = catatan['renpra'] ?? {};
-    
+
     // Set initial selected diagnosis for UI state
     if (renpra['diagnosis'] != null) {
       _selectedDiagnosis = renpra['diagnosis'];
@@ -74,7 +77,9 @@ class _CatatanTambahanFormViewState extends State<CatatanTambahanFormView>
     return {
       'isi_catatan': catatan['isi_catatan'],
       'diagnosis': renpra['diagnosis'],
-      'intervensi': renpra['intervensi'] != null ? List<int>.from(renpra['intervensi']) : [],
+      'intervensi': renpra['intervensi'] != null
+          ? List<int>.from(renpra['intervensi'])
+          : [],
       'tujuan': renpra['tujuan'],
       'kriteria': renpra['kriteria'],
       'rasional': renpra['rasional'],
@@ -86,14 +91,16 @@ class _CatatanTambahanFormViewState extends State<CatatanTambahanFormView>
     return {
       'catatan': {
         'isi_catatan': formData['isi_catatan'],
-        'renpra': formData['diagnosis'] != null ? {
-          'diagnosis': formData['diagnosis'],
-          'intervensi': formData['intervensi'],
-          'tujuan': formData['tujuan'],
-          'kriteria': formData['kriteria'],
-          'rasional': formData['rasional'],
-        } : null,
-      }
+        'renpra': formData['diagnosis'] != null
+            ? {
+                'diagnosis': formData['diagnosis'],
+                'intervensi': formData['intervensi'],
+                'tujuan': formData['tujuan'],
+                'kriteria': formData['kriteria'],
+                'rasional': formData['rasional'],
+              }
+            : null,
+      },
     };
   }
 
@@ -148,7 +155,8 @@ class _CatatanTambahanFormViewState extends State<CatatanTambahanFormView>
 
                       // Diagnosis dropdown
                       Obx(() {
-                        final nursingService = Get.find<NursingDataGlobalService>();
+                        final nursingService =
+                            Get.find<NursingDataGlobalService>();
                         final diagnoses = nursingService.diagnoses;
 
                         final items = diagnoses
@@ -174,10 +182,14 @@ class _CatatanTambahanFormViewState extends State<CatatanTambahanFormView>
                               _selectedDiagnosis = value;
                               // Clear dependent fields if diagnosis is cleared
                               if (value == null) {
-                                formKey.currentState?.fields['intervensi']?.didChange([]);
-                                formKey.currentState?.fields['tujuan']?.didChange(null);
-                                formKey.currentState?.fields['kriteria']?.didChange(null);
-                                formKey.currentState?.fields['rasional']?.didChange(null);
+                                formKey.currentState?.fields['intervensi']
+                                    ?.didChange([]);
+                                formKey.currentState?.fields['tujuan']
+                                    ?.didChange(null);
+                                formKey.currentState?.fields['kriteria']
+                                    ?.didChange(null);
+                                formKey.currentState?.fields['rasional']
+                                    ?.didChange(null);
                               }
                             });
                           },
@@ -190,16 +202,23 @@ class _CatatanTambahanFormViewState extends State<CatatanTambahanFormView>
                         const Text('Intervensi'),
                         const SizedBox(height: 8),
                         Obx(() {
-                          final interventions = _interventionController.interventions;
-                          if (interventions.isEmpty) return const Text('Tidak ada intervensi tersedia');
-                          
+                          final interventions =
+                              _interventionController.interventions;
+                          if (interventions.isEmpty) {
+                            return const Text('Tidak ada intervensi tersedia');
+                          }
+
                           return CustomCheckboxGroup<int>(
                             name: 'intervensi',
                             label: 'Intervensi',
-                            options: interventions.map((iv) => FormBuilderFieldOption(
-                              value: iv.id,
-                              child: Text(iv.name),
-                            )).toList(),
+                            options: interventions
+                                .map(
+                                  (iv) => FormBuilderFieldOption(
+                                    value: iv.id,
+                                    child: Text(iv.name),
+                                  ),
+                                )
+                                .toList(),
                           );
                         }),
                         const SizedBox(height: 16),

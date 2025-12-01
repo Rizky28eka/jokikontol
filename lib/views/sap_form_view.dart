@@ -149,40 +149,57 @@ class _SapFormViewState extends State<SapFormView> with FormBuilderMixin {
   }
 
   void _nextSection() {
+    updateFormData();
     if (_currentSection < 8) {
       setState(() => _currentSection++);
     }
   }
 
   void _previousSection() {
+    updateFormData();
     if (_currentSection > 0) {
       setState(() => _currentSection--);
     }
   }
 
   Widget _buildSection(int sectionNumber) {
+    Widget sectionContent;
     switch (sectionNumber) {
       case 0:
-        return _buildIdentitasSection();
+        sectionContent = _buildIdentitasSection();
+        break;
       case 1:
-        return _buildTujuanSection();
+        sectionContent = _buildTujuanSection();
+        break;
       case 2:
-        return _buildMateriMetodeSection();
+        sectionContent = _buildMateriMetodeSection();
+        break;
       case 3:
-        return _buildJoblistSection();
+        sectionContent = _buildJoblistSection();
+        break;
       case 4:
-        return _buildPengorganisasianSection();
+        sectionContent = _buildPengorganisasianSection();
+        break;
       case 5:
-        return _buildTabelKegiatanSection();
+        sectionContent = _buildTabelKegiatanSection();
+        break;
       case 6:
-        return _buildEvaluasiSection();
+        sectionContent = _buildEvaluasiSection();
+        break;
       case 7:
-        return _buildFeedbackSection();
+        sectionContent = _buildFeedbackSection();
+        break;
       case 8:
-        return _buildRenpraSection();
+        sectionContent = _buildRenpraSection();
+        break;
       default:
-        return const SizedBox();
+        sectionContent = const SizedBox();
     }
+
+    return KeyedSubtree(
+      key: ValueKey('section_$sectionNumber'),
+      child: sectionContent,
+    );
   }
 
   Widget _buildIdentitasSection() {
@@ -511,8 +528,9 @@ class _SapFormViewState extends State<SapFormView> with FormBuilderMixin {
         Obx(() {
           final nursingService = Get.find<NursingDataGlobalService>();
           final diagnoses = nursingService.diagnoses;
-          if (diagnoses.isEmpty)
+          if (diagnoses.isEmpty) {
             return const Text('Tidak ada diagnosis tersedia');
+          }
 
           return CustomDropdown<int>(
             name: 'diagnosis',
@@ -529,8 +547,9 @@ class _SapFormViewState extends State<SapFormView> with FormBuilderMixin {
         const SizedBox(height: 16),
         Obx(() {
           final interventions = _interventionController.interventions;
-          if (interventions.isEmpty)
+          if (interventions.isEmpty) {
             return const Text('Tidak ada intervensi tersedia');
+          }
 
           return CustomCheckboxGroup<int>(
             name: 'intervensi',
@@ -683,7 +702,7 @@ class _SapFormViewState extends State<SapFormView> with FormBuilderMixin {
         ),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
       ),
-      body: Padding(
+        body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [

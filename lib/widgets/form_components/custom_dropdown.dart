@@ -27,6 +27,7 @@ class CustomDropdown<T> extends StatelessWidget {
         name: name,
         decoration: InputDecoration(
           labelText: label,
+          hintText: hint,
           border: const OutlineInputBorder(),
         ),
         items: items,
@@ -37,7 +38,8 @@ class CustomDropdown<T> extends StatelessWidget {
           return null;
         },
         onChanged: onChanged,
-        hint: hint != null ? Text(hint!) : null,
+        isExpanded: true,
+        menuMaxHeight: 300,
       ),
     );
   }

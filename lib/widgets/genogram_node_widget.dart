@@ -58,21 +58,30 @@ class GenogramNodeWidget extends StatelessWidget {
               size: const Size(80, 80),
               painter: CrossPainter(),
             ),
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                member.name,
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              Text(
-                '${member.age} th',
-                style: const TextStyle(fontSize: 10),
-              ),
-            ],
+          Padding(
+            padding: const EdgeInsets.all(4.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  member.name,
+                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (member.relationship != null)
+                  Text(
+                    member.relationship!,
+                    style: const TextStyle(fontSize: 9, fontStyle: FontStyle.italic),
+                    textAlign: TextAlign.center,
+                  ),
+                Text(
+                  '${member.age} th',
+                  style: const TextStyle(fontSize: 9),
+                ),
+              ],
+            ),
           ),
           if (member.isClient)
             Positioned(

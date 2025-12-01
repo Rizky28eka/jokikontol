@@ -15,8 +15,12 @@ class FormReviewView extends StatefulWidget {
 
 class _FormReviewViewState extends State<FormReviewView> {
   final FormController formController = Get.put(FormController());
-  final NursingDiagnosisController _diagnosisController = Get.put(NursingDiagnosisController());
-  final NursingInterventionController _interventionController = Get.put(NursingInterventionController());
+  final NursingDiagnosisController _diagnosisController = Get.put(
+    NursingDiagnosisController(),
+  );
+  final NursingInterventionController _interventionController = Get.put(
+    NursingInterventionController(),
+  );
   final TextEditingController _commentController = TextEditingController();
   final RxString _status = 'submitted'.obs;
   late int formId;
@@ -42,16 +46,17 @@ class _FormReviewViewState extends State<FormReviewView> {
       title: 'Konfirmasi',
       middleText: 'Apakah Anda yakin ingin $status form ini?',
       actions: [
-        TextButton(
-          onPressed: () => Get.back(),
-          child: const Text('Batal'),
-        ),
+        TextButton(onPressed: () => Get.back(), child: const Text('Batal')),
         TextButton(
           onPressed: () async {
             Get.back(); // Close dialog
             // Call the backend API to review the form
             final reviewController = Get.find<ReviewController>();
-            await reviewController.reviewForm(formId, status, _commentController.text);
+            await reviewController.reviewForm(
+              formId,
+              status,
+              _commentController.text,
+            );
 
             if (status == 'approved') {
               Get.snackbar('Success', 'Form berhasil disetujui');
@@ -91,25 +96,52 @@ class _FormReviewViewState extends State<FormReviewView> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Form Pengkajian Kesehatan Jiwa', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        const Text(
+          'Form Pengkajian Kesehatan Jiwa',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
         const SizedBox(height: 16),
         if (data['section_1'] != null) ...[
-          const Text('Identitas Klien', style: TextStyle(fontWeight: FontWeight.bold)),
-          _buildReadOnlyField('Nama Lengkap', data['section_1']['nama_lengkap']),
+          const Text(
+            'Identitas Klien',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          _buildReadOnlyField(
+            'Nama Lengkap',
+            data['section_1']['nama_lengkap'],
+          ),
           _buildReadOnlyField('Umur', data['section_1']['umur']),
-          _buildReadOnlyField('Jenis Kelamin', data['section_1']['jenis_kelamin']),
-          _buildReadOnlyField('Status Perkawinan', data['section_1']['status_perkawinan']),
+          _buildReadOnlyField(
+            'Jenis Kelamin',
+            data['section_1']['jenis_kelamin'],
+          ),
+          _buildReadOnlyField(
+            'Status Perkawinan',
+            data['section_1']['status_perkawinan'],
+          ),
           const SizedBox(height: 16),
         ],
         if (data['section_2'] != null) ...[
-          const Text('Riwayat Kehidupan', style: TextStyle(fontWeight: FontWeight.bold)),
-          _buildReadOnlyField('Riwayat Pendidikan', data['section_2']['riwayat_pendidikan']),
+          const Text(
+            'Riwayat Kehidupan',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          _buildReadOnlyField(
+            'Riwayat Pendidikan',
+            data['section_2']['riwayat_pendidikan'],
+          ),
           _buildReadOnlyField('Pekerjaan', data['section_2']['pekerjaan']),
-          _buildReadOnlyField('Riwayat Keluarga', data['section_2']['riwayat_keluarga']),
+          _buildReadOnlyField(
+            'Riwayat Keluarga',
+            data['section_2']['riwayat_keluarga'],
+          ),
           const SizedBox(height: 16),
         ],
         if (data['section_10'] != null) ...[
-          const Text('Rencana Perawatan', style: TextStyle(fontWeight: FontWeight.bold)),
+          const Text(
+            'Rencana Perawatan',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
           _buildReadOnlyField('Diagnosis', data['section_10']['diagnosis']),
           _buildReadOnlyField('Tujuan', data['section_10']['tujuan']),
           _buildReadOnlyField('Kriteria', data['section_10']['kriteria']),
@@ -126,19 +158,37 @@ class _FormReviewViewState extends State<FormReviewView> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Resume Kegawatdaruratan Psikiatri', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        const Text(
+          'Resume Kegawatdaruratan Psikiatri',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
         const SizedBox(height: 16),
         if (data['identitas'] != null) ...[
-          const Text('Identitas', style: TextStyle(fontWeight: FontWeight.bold)),
-          _buildReadOnlyField('Nama Lengkap', data['identitas']['nama_lengkap']),
+          const Text(
+            'Identitas',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          _buildReadOnlyField(
+            'Nama Lengkap',
+            data['identitas']['nama_lengkap'],
+          ),
           _buildReadOnlyField('Umur', data['identitas']['umur']),
-          _buildReadOnlyField('Jenis Kelamin', data['identitas']['jenis_kelamin']),
+          _buildReadOnlyField(
+            'Jenis Kelamin',
+            data['identitas']['jenis_kelamin'],
+          ),
           _buildReadOnlyField('Alamat', data['identitas']['alamat']),
-          _buildReadOnlyField('Tanggal Masuk', data['identitas']['tanggal_masuk']),
+          _buildReadOnlyField(
+            'Tanggal Masuk',
+            data['identitas']['tanggal_masuk'],
+          ),
           const SizedBox(height: 16),
         ],
         if (data['renpra'] != null) ...[
-          const Text('Renpra (Rencana Perawatan)', style: TextStyle(fontWeight: FontWeight.bold)),
+          const Text(
+            'Renpra (Rencana Perawatan)',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
           _buildReadOnlyField('Diagnosis', data['renpra']['diagnosis']),
           _buildReadOnlyField('Tujuan', data['renpra']['tujuan']),
           _buildReadOnlyField('Kriteria', data['renpra']['kriteria']),
@@ -156,18 +206,36 @@ class _FormReviewViewState extends State<FormReviewView> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Resume Poliklinik', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        const Text(
+          'Resume Poliklinik',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
         const SizedBox(height: 16),
         if (data['section_1'] != null) ...[
-          const Text('Identitas Klien', style: TextStyle(fontWeight: FontWeight.bold)),
-          _buildReadOnlyField('Nama Lengkap', data['section_1']['nama_lengkap']),
+          const Text(
+            'Identitas Klien',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          _buildReadOnlyField(
+            'Nama Lengkap',
+            data['section_1']['nama_lengkap'],
+          ),
           _buildReadOnlyField('Umur', data['section_1']['umur']),
-          _buildReadOnlyField('Jenis Kelamin', data['section_1']['jenis_kelamin']),
-          _buildReadOnlyField('Status Perkawinan', data['section_1']['status_perkawinan']),
+          _buildReadOnlyField(
+            'Jenis Kelamin',
+            data['section_1']['jenis_kelamin'],
+          ),
+          _buildReadOnlyField(
+            'Status Perkawinan',
+            data['section_1']['status_perkawinan'],
+          ),
           const SizedBox(height: 16),
         ],
         if (data['section_9'] != null) ...[
-          const Text('Renpra (Rencana Perawatan)', style: TextStyle(fontWeight: FontWeight.bold)),
+          const Text(
+            'Renpra (Rencana Perawatan)',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
           _buildReadOnlyField('Diagnosis', data['section_9']['diagnosis']),
           _buildReadOnlyField('Tujuan', data['section_9']['tujuan']),
           _buildReadOnlyField('Kriteria', data['section_9']['kriteria']),
@@ -184,10 +252,16 @@ class _FormReviewViewState extends State<FormReviewView> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Form SAP (Satuan Acara Penyuluhan)', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        const Text(
+          'Form SAP (Satuan Acara Penyuluhan)',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
         const SizedBox(height: 16),
         if (data['identitas'] != null) ...[
-          const Text('Identitas Kegiatan', style: TextStyle(fontWeight: FontWeight.bold)),
+          const Text(
+            'Identitas Kegiatan',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
           _buildReadOnlyField('Topik', data['identitas']['topik']),
           _buildReadOnlyField('Sasaran', data['identitas']['sasaran']),
           _buildReadOnlyField('Waktu', data['identitas']['waktu']),
@@ -201,7 +275,10 @@ class _FormReviewViewState extends State<FormReviewView> {
           const SizedBox(height: 16),
         ],
         if (data['renpra'] != null) ...[
-          const Text('Renpra (Opsional)', style: TextStyle(fontWeight: FontWeight.bold)),
+          const Text(
+            'Renpra (Opsional)',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
           _buildReadOnlyField('Diagnosis', data['renpra']['diagnosis']),
           _buildReadOnlyField('Tujuan', data['renpra']['tujuan']),
           _buildReadOnlyField('Kriteria', data['renpra']['kriteria']),
@@ -218,7 +295,10 @@ class _FormReviewViewState extends State<FormReviewView> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Catatan Tambahan', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        const Text(
+          'Catatan Tambahan',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
         const SizedBox(height: 16),
         if (data['catatan'] != null) ...[
           const Text('Catatan', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -226,11 +306,23 @@ class _FormReviewViewState extends State<FormReviewView> {
           const SizedBox(height: 16),
         ],
         if (data['catatan'] != null && data['catatan']['renpra'] != null) ...[
-          const Text('Renpra (Opsional)', style: TextStyle(fontWeight: FontWeight.bold)),
-          _buildReadOnlyField('Diagnosis', data['catatan']['renpra']['diagnosis']),
+          const Text(
+            'Renpra (Opsional)',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          _buildReadOnlyField(
+            'Diagnosis',
+            data['catatan']['renpra']['diagnosis'],
+          ),
           _buildReadOnlyField('Tujuan', data['catatan']['renpra']['tujuan']),
-          _buildReadOnlyField('Kriteria', data['catatan']['renpra']['kriteria']),
-          _buildReadOnlyField('Rasional', data['catatan']['renpra']['rasional']),
+          _buildReadOnlyField(
+            'Kriteria',
+            data['catatan']['renpra']['kriteria'],
+          ),
+          _buildReadOnlyField(
+            'Rasional',
+            data['catatan']['renpra']['rasional'],
+          ),
           const SizedBox(height: 16),
         ],
         // Add more sections as needed
@@ -243,9 +335,14 @@ class _FormReviewViewState extends State<FormReviewView> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Form Type: ${form.type}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        Text(
+          'Form Type: ${form.type}',
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
         const SizedBox(height: 16),
-        Text('Form Data: ${data.toString()}'), // Fallback for unknown form types
+        Text(
+          'Form Data: ${data.toString()}',
+        ), // Fallback for unknown form types
       ],
     );
   }
@@ -274,7 +371,7 @@ class _FormReviewViewState extends State<FormReviewView> {
     if (value == null) return null;
     final lower = label.toLowerCase();
     // Friendly display mapping for common select fields
-      if (lower.contains('jenis kelamin')) {
+    if (lower.contains('jenis kelamin')) {
       if (value is String) {
         switch (value.toLowerCase()) {
           case 'l':
@@ -291,7 +388,7 @@ class _FormReviewViewState extends State<FormReviewView> {
         }
       }
     }
-      if (lower.contains('status perkawinan')) {
+    if (lower.contains('status perkawinan')) {
       if (value is String) {
         switch (value.toLowerCase()) {
           case 'belum_kawin':
@@ -314,75 +411,77 @@ class _FormReviewViewState extends State<FormReviewView> {
         }
       }
     }
-      if (lower.contains('kesadaran')) {
-        if (value is String) {
-          switch (value.toLowerCase()) {
-            case 'sadar_penuh':
-            case 'sadar penuh':
-              return 'Sadar Penuh';
-            case 'somnolent':
-              return 'Somnolent';
-            case 'stupor':
-              return 'Stupor';
-            case 'coma':
-              return 'Coma';
-            default:
-              return value.toString();
-          }
+    if (lower.contains('kesadaran')) {
+      if (value is String) {
+        switch (value.toLowerCase()) {
+          case 'sadar_penuh':
+          case 'sadar penuh':
+            return 'Sadar Penuh';
+          case 'somnolent':
+            return 'Somnolent';
+          case 'stupor':
+            return 'Stupor';
+          case 'coma':
+            return 'Coma';
+          default:
+            return value.toString();
         }
       }
-      if (lower.contains('orientasi')) {
-        if (value is String) {
-          switch (value.toLowerCase()) {
-            case 'utuh':
-              return 'Utuh';
-            case 'gangguan':
-              return 'Gangguan';
-            default:
-              return value.toString();
-          }
+    }
+    if (lower.contains('orientasi')) {
+      if (value is String) {
+        switch (value.toLowerCase()) {
+          case 'utuh':
+            return 'Utuh';
+          case 'gangguan':
+            return 'Gangguan';
+          default:
+            return value.toString();
         }
       }
-      if (lower.contains('mood')) {
-        if (value is String) {
-          switch (value.toLowerCase()) {
-            case 'normal':
-              return 'Normal';
-            case 'depresi':
-              return 'Depresi';
-            case 'ansietas':
-              return 'Ansietas';
-            case 'iritabel':
-              return 'Iritabel';
-            case 'labil':
-              return 'Labil';
-            default:
-              return value.toString();
-          }
+    }
+    if (lower.contains('mood')) {
+      if (value is String) {
+        switch (value.toLowerCase()) {
+          case 'normal':
+            return 'Normal';
+          case 'depresi':
+            return 'Depresi';
+          case 'ansietas':
+            return 'Ansietas';
+          case 'iritabel':
+            return 'Iritabel';
+          case 'labil':
+            return 'Labil';
+          default:
+            return value.toString();
         }
       }
-      if (lower.contains('afect') || lower.contains('affect')) {
-        if (value is String) {
-          switch (value.toLowerCase()) {
-            case 'normal':
-              return 'Normal';
-            case 'flat':
-              return 'Flat';
-            case 'terhambat':
-              return 'Terhambat';
-            case 'labil':
-              return 'Labil';
-            case 'iritabel':
-              return 'Iritabel';
-            default:
-              return value.toString();
-          }
+    }
+    if (lower.contains('afect') || lower.contains('affect')) {
+      if (value is String) {
+        switch (value.toLowerCase()) {
+          case 'normal':
+            return 'Normal';
+          case 'flat':
+            return 'Flat';
+          case 'terhambat':
+            return 'Terhambat';
+          case 'labil':
+            return 'Labil';
+          case 'iritabel':
+            return 'Iritabel';
+          default:
+            return value.toString();
         }
       }
+    }
     if (lower.contains('intervensi') || lower.contains('intervention')) {
       if (value is List) {
         final names = value.map((id) {
-          final found = _interventionController.interventions.where((it) => it.id == id).toList();
+          final found = _interventionController.interventions
+              .where((it) => it.id == id)
+              .toList();
           final item = found.isNotEmpty ? found.first : null;
           return item != null ? item.name : id.toString();
         }).toList();
@@ -392,14 +491,18 @@ class _FormReviewViewState extends State<FormReviewView> {
 
     if (lower.contains('diagnosis')) {
       if (value is int) {
-        final found = _diagnosisController.diagnoses.where((d) => d.id == value).toList();
+        final found = _diagnosisController.diagnoses
+            .where((d) => d.id == value)
+            .toList();
         final item = found.isNotEmpty ? found.first : null;
         return item != null ? item.name : value.toString();
       }
       // If it's a list (maybe multiple diagnoses), map names
       if (value is List) {
         final names = value.map((id) {
-          final found = _diagnosisController.diagnoses.where((d) => d.id == id).toList();
+          final found = _diagnosisController.diagnoses
+              .where((d) => d.id == id)
+              .toList();
           final item = found.isNotEmpty ? found.first : null;
           return item != null ? item.name : id.toString();
         }).toList();
@@ -435,15 +538,16 @@ class _FormReviewViewState extends State<FormReviewView> {
                   }
 
                   final form = snapshot.data!;
-                  return SingleChildScrollView(
-                    child: _buildFormContent(form),
-                  );
+                  return SingleChildScrollView(child: _buildFormContent(form));
                 },
               ),
             ),
             const SizedBox(height: 16),
             // Comment section
-            const Text('Komentar Review', style: TextStyle(fontWeight: FontWeight.bold)),
+            const Text(
+              'Komentar Review',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
             TextField(
               controller: _commentController,
               decoration: const InputDecoration(
@@ -457,27 +561,31 @@ class _FormReviewViewState extends State<FormReviewView> {
             Row(
               children: [
                 Expanded(
-                  child: Obx(() => ElevatedButton(
-                    onPressed: _status.value == 'submitted' 
-                        ? () => _reviewForm('revised') 
-                        : null,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.orange,
+                  child: Obx(
+                    () => ElevatedButton(
+                      onPressed: _status.value == 'submitted'
+                          ? () => _reviewForm('revised')
+                          : null,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orange,
+                      ),
+                      child: const Text('Minta Revisi'),
                     ),
-                    child: const Text('Minta Revisi'),
-                  )),
+                  ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Obx(() => ElevatedButton(
-                    onPressed: _status.value == 'submitted' 
-                        ? () => _reviewForm('approved') 
-                        : null,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
+                  child: Obx(
+                    () => ElevatedButton(
+                      onPressed: _status.value == 'submitted'
+                          ? () => _reviewForm('approved')
+                          : null,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                      ),
+                      child: const Text('Setujui'),
                     ),
-                    child: const Text('Setujui'),
-                  )),
+                  ),
                 ),
               ],
             ),

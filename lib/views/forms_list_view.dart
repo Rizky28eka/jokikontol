@@ -36,7 +36,6 @@ class FormsListViewState extends State<FormsListView>
 
   final List<Map<String, String>> _statuses = const [
     {'value': '', 'label': 'Semua'},
-    {'value': 'draft', 'label': 'Draft'},
     {'value': 'submitted', 'label': 'Menunggu Review'},
     {'value': 'revised', 'label': 'Perlu Revisi'},
     {'value': 'approved', 'label': 'Disetujui'},
@@ -85,10 +84,11 @@ class FormsListViewState extends State<FormsListView>
       _error = e.toString();
       _logger.error('Error loading forms', error: e);
     } finally {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _loading = false;
         });
+      }
     }
   }
 
@@ -108,7 +108,7 @@ class FormsListViewState extends State<FormsListView>
               children: [
                 Expanded(
                   child: DropdownButtonFormField<String>(
-                    value: _selectedType,
+                    initialValue: _selectedType,
                     items: _types
                         .map(
                           (t) => DropdownMenuItem(
@@ -132,7 +132,7 @@ class FormsListViewState extends State<FormsListView>
                 const SizedBox(width: 8),
                 Expanded(
                   child: DropdownButtonFormField<String>(
-                    value: _selectedStatus,
+                    initialValue: _selectedStatus,
                     items: _statuses
                         .map(
                           (s) => DropdownMenuItem(
@@ -247,8 +247,6 @@ class FormsListViewState extends State<FormsListView>
   String _statusLabel(String? status) {
     if (status == null) return '-';
     switch (status.toLowerCase()) {
-      case 'draft':
-        return 'Draft';
       case 'submitted':
         return 'Menunggu Review';
       case 'revised':
@@ -268,12 +266,12 @@ class FormsListViewState extends State<FormsListView>
         return p['name'].toString();
       }
     }
-    
+
     // 2. Try flat fields
     if (f['patient_name'] != null && f['patient_name'].toString().isNotEmpty) {
       return f['patient_name'].toString();
     }
-    
+
     if (f['patientName'] != null && f['patientName'].toString().isNotEmpty) {
       return f['patientName'].toString();
     }

@@ -12,7 +12,8 @@ class InterventionsListView extends StatefulWidget {
   State<InterventionsListView> createState() => _InterventionsListViewState();
 }
 
-class _InterventionsListViewState extends State<InterventionsListView> with AutomaticKeepAliveClientMixin {
+class _InterventionsListViewState extends State<InterventionsListView>
+    with AutomaticKeepAliveClientMixin {
   final LoggerService _logger = LoggerService();
   bool _loading = true;
   String _error = '';
@@ -29,12 +30,20 @@ class _InterventionsListViewState extends State<InterventionsListView> with Auto
 
   Future<void> _fetch() async {
     if (!mounted) return;
-    setState(() { _loading = true; _error = ''; });
+    setState(() {
+      _loading = true;
+      _error = '';
+    });
     try {
       final res = await NursingService.listInterventions();
-      _logger.info('Fetched interventions list', context: {'statusCode': res.statusCode});
+      _logger.info(
+        'Fetched interventions list',
+        context: {'statusCode': res.statusCode},
+      );
       if (res.body.isEmpty) {
-        setState(() { _error = 'Empty response'; });
+        setState(() {
+          _error = 'Empty response';
+        });
         return;
       }
       final data = json.decode(res.body);
@@ -42,14 +51,19 @@ class _InterventionsListViewState extends State<InterventionsListView> with Auto
         final list = (data is List) ? data : (data['data'] ?? []);
         _items = List<Map<String, dynamic>>.from(list);
       } else {
-        _error = (data['error']?['message'] ?? data['message'] ?? 'Failed to load');
+        _error =
+            (data['error']?['message'] ?? data['message'] ?? 'Failed to load');
         _logger.error('Failed to load interventions', context: {'body': data});
       }
     } catch (e) {
       _error = e.toString();
       _logger.error('Error loading interventions', error: e);
     } finally {
-      if (mounted) setState(() { _loading = false; });
+      if (mounted) {
+        setState(() {
+          _loading = false;
+        });
+      }
     }
   }
 
@@ -63,37 +77,49 @@ class _InterventionsListViewState extends State<InterventionsListView> with Auto
       body: RefreshIndicator(
         onRefresh: _fetch,
         child: _loading
-            ? Center(child: CircularProgressIndicator(color: colorScheme.primary))
+            ? Center(
+                child: CircularProgressIndicator(color: colorScheme.primary),
+              )
             : _error.isNotEmpty
-                ? Center(child: Text('Error: $_error'))
-                : ListView.separated(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.all(12),
-                    itemCount: _items.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 8),
-                    itemBuilder: (context, index) {
-                      final item = _items[index];
-                      return Card(
-                        child: ListTile(
-                          title: Text(item['name'] ?? 'Tidak diketahui'),
-                          subtitle: Text(item['description'] ?? ''),
-                          trailing: isDosen
-                              ? Icon(Icons.edit, color: colorScheme.primary)
-                              : Icon(Icons.visibility, color: colorScheme.onSurfaceVariant),
-                          onTap: () {
-                            // Read-only for mahasiswa; show details dialog
-                            if (!isDosen) {
-                              Get.dialog(AlertDialog(
-                                title: Text(item['name'] ?? 'Detail'),
-                                content: Text(item['description'] ?? '—'),
-                                actions: [TextButton(onPressed: () => Get.back(), child: const Text('Tutup'))],
-                              ));
-                            }
-                          },
-                        ),
-                      );
-                    },
-                  ),
+            ? Center(child: Text('Error: $_error'))
+            : ListView.separated(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(12),
+                itemCount: _items.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 8),
+                itemBuilder: (context, index) {
+                  final item = _items[index];
+                  return Card(
+                    child: ListTile(
+                      title: Text(item['name'] ?? 'Tidak diketahui'),
+                      subtitle: Text(item['description'] ?? ''),
+                      trailing: isDosen
+                          ? Icon(Icons.edit, color: colorScheme.primary)
+                          : Icon(
+                              Icons.visibility,
+                              color: colorScheme.onSurfaceVariant,
+                            ),
+                      onTap: () {
+                        // Read-only for mahasiswa; show details dialog
+                        if (!isDosen) {
+                          Get.dialog(
+                            AlertDialog(
+                              title: Text(item['name'] ?? 'Detail'),
+                              content: Text(item['description'] ?? '—'),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Get.back(),
+                                  child: const Text('Tutup'),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+                      },
+                    ),
+                  );
+                },
+              ),
       ),
     );
   }

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_form_builder/flutter_form_builder.dart';
 import 'package:get/get.dart';
 import '../controllers/form_controller.dart';
-import '../controllers/form_selection_controller.dart';
 import '../controllers/patient_controller.dart';
 import '../controllers/pdf_controller.dart';
 import '../controllers/nursing_intervention_controller.dart';
@@ -12,6 +11,7 @@ import '../utils/form_builder_mixin.dart';
 import '../widgets/form_components/custom_text_field.dart';
 import '../widgets/form_components/custom_dropdown.dart';
 import '../widgets/form_components/custom_checkbox_group.dart';
+import '../widgets/form_components/custom_date_time_picker.dart';
 
 class MentalHealthAssessmentFormView extends StatefulWidget {
   final Patient? patient;
@@ -71,8 +71,9 @@ class _MentalHealthAssessmentFormViewState
     );
 
     Future.microtask(() async {
-      if (_currentPatientId != null)
+      if (_currentPatientId != null) {
         await _prefillGenogramFromPatient(_currentPatientId!);
+      }
     });
   }
 
@@ -86,12 +87,16 @@ class _MentalHealthAssessmentFormViewState
         final latest = formsWithGenogram.first;
         if (latest.genogram?.structure != null) {
           setState(() {
+            final structure = latest.genogram!.structure;
+            final notes = latest.genogram!.notes;
+
+            initialValues['genogram_structure'] = structure;
+            initialValues['genogram_notes'] = notes;
+
             formKey.currentState?.fields['genogram_structure']?.didChange(
-              latest.genogram!.structure,
+              structure,
             );
-            formKey.currentState?.fields['genogram_notes']?.didChange(
-              latest.genogram!.notes,
-            );
+            formKey.currentState?.fields['genogram_notes']?.didChange(notes);
           });
         }
       }
@@ -208,10 +213,12 @@ class _MentalHealthAssessmentFormViewState
   }
 
   void _nextSection() {
+    updateFormData(); // Save current section data before switching
     if (_currentSection < 10) setState(() => _currentSection++);
   }
 
   void _previousSection() {
+    updateFormData(); // Save current section data before switching
     if (_currentSection > 0) setState(() => _currentSection--);
   }
 
@@ -231,32 +238,49 @@ class _MentalHealthAssessmentFormViewState
   }
 
   Widget _buildSection(int sectionNumber) {
+    Widget sectionContent;
     switch (sectionNumber) {
       case 0:
-        return _buildIdentitasKlienSection();
+        sectionContent = _buildIdentitasKlienSection();
+        break;
       case 1:
-        return _buildRiwayatKehidupanSection();
+        sectionContent = _buildRiwayatKehidupanSection();
+        break;
       case 2:
-        return _buildRiwayatPsikososialSection();
+        sectionContent = _buildRiwayatPsikososialSection();
+        break;
       case 3:
-        return _buildRiwayatPsikiatriSection();
+        sectionContent = _buildRiwayatPsikiatriSection();
+        break;
       case 4:
-        return _buildPemeriksaanPsikologisSection();
+        sectionContent = _buildPemeriksaanPsikologisSection();
+        break;
       case 5:
-        return _buildFungsiPsikologisSection();
+        sectionContent = _buildFungsiPsikologisSection();
+        break;
       case 6:
-        return _buildFungsiSosialSection();
+        sectionContent = _buildFungsiSosialSection();
+        break;
       case 7:
-        return _buildFungsiSpiritualSection();
+        sectionContent = _buildFungsiSpiritualSection();
+        break;
       case 8:
-        return _buildGenogramSection();
+        sectionContent = _buildGenogramSection();
+        break;
       case 9:
-        return _buildRenpraSection();
+        sectionContent = _buildRenpraSection();
+        break;
       case 10:
-        return _buildPenutupSection();
+        sectionContent = _buildPenutupSection();
+        break;
       default:
-        return const SizedBox();
+        sectionContent = const SizedBox();
     }
+
+    return KeyedSubtree(
+      key: ValueKey('section_$sectionNumber'),
+      child: sectionContent,
+    );
   }
 
   Widget _buildIdentitasKlienSection() {
@@ -568,9 +592,9 @@ class _MentalHealthAssessmentFormViewState
         Obx(() {
           final nursingService = Get.find<NursingDataGlobalService>();
           final diagnoses = nursingService.diagnoses;
-          if (diagnoses.isEmpty)
+          if (diagnoses.isEmpty) {
             return const Text('Tidak ada diagnosis tersedia');
-
+          }
           return CustomDropdown<int>(
             name: 'diagnosis',
             label: 'Diagnosis',
@@ -586,8 +610,9 @@ class _MentalHealthAssessmentFormViewState
         const SizedBox(height: 16),
         Obx(() {
           final interventions = _interventionController.interventions;
-          if (interventions.isEmpty)
+          if (interventions.isEmpty) {
             return const Text('Tidak ada intervensi tersedia');
+          }
 
           return CustomCheckboxGroup<int>(
             name: 'intervensi',
@@ -627,13 +652,10 @@ class _MentalHealthAssessmentFormViewState
           maxLines: 5,
         ),
         const SizedBox(height: 16),
-        FormBuilderDateTimePicker(
+        CustomDateTimePicker(
           name: 'tanggal_pengisian',
+          label: 'Tanggal Pengisian',
           inputType: InputType.date,
-          decoration: const InputDecoration(
-            labelText: 'Tanggal Pengisian',
-            border: OutlineInputBorder(),
-          ),
           initialDate: DateTime.now(),
           firstDate: DateTime(2000),
           lastDate: DateTime.now(),
@@ -644,69 +666,59 @@ class _MentalHealthAssessmentFormViewState
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async {
-        if (formId == null) await saveDraft();
-        try {
-          final formSelectionController = Get.find<FormSelectionController>();
-          await formSelectionController.fetchForms();
-        } catch (e) {}
-        return true;
-      },
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(
-            widget.formId == null
-                ? 'Form Pengkajian Kesehatan Jiwa'
-                : 'Edit Form',
-          ),
-          backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-          actions: [
-            TextButton(
-              onPressed: _exportToPdf,
-              child: const Text('PDF', style: TextStyle(color: Colors.white)),
-            ),
-          ],
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          widget.formId == null
+              ? 'Form Pengkajian Kesehatan Jiwa'
+              : 'Edit Form',
         ),
-        body: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            children: [
-              LinearProgressIndicator(value: (_currentSection + 1) / 11),
-              const SizedBox(height: 16),
-              Text('Section ${_currentSection + 1} dari 11'),
-              const SizedBox(height: 16),
-              Expanded(
+        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        actions: [
+          TextButton(
+            onPressed: _exportToPdf,
+            child: const Text('PDF', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            LinearProgressIndicator(value: (_currentSection + 1) / 11),
+            const SizedBox(height: 16),
+            Text('Section ${_currentSection + 1} dari 11'),
+            const SizedBox(height: 16),
+            Expanded(
+              child: FormBuilder(
+                key: formKey,
+                initialValue: initialValues,
                 child: SingleChildScrollView(
-                  child: FormBuilder(
-                    key: formKey,
-                    initialValue: initialValues,
-                    child: _buildSection(_currentSection),
-                  ),
+                  child: _buildSection(_currentSection),
                 ),
               ),
-              const SizedBox(height: 24),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  if (_currentSection > 0)
-                    ElevatedButton(
-                      onPressed: _previousSection,
-                      child: const Text('Sebelumnya'),
-                    )
-                  else
-                    const SizedBox.shrink(),
-                  if (_currentSection == 10)
-                    Expanded(child: buildActionButtons())
-                  else
-                    ElevatedButton(
-                      onPressed: _nextSection,
-                      child: const Text('Selanjutnya'),
-                    ),
-                ],
-              ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                if (_currentSection > 0)
+                  ElevatedButton(
+                    onPressed: _previousSection,
+                    child: const Text('Sebelumnya'),
+                  )
+                else
+                  const SizedBox.shrink(),
+                if (_currentSection == 10)
+                  Expanded(child: buildActionButtons())
+                else
+                  ElevatedButton(
+                    onPressed: _nextSection,
+                    child: const Text('Selanjutnya'),
+                  ),
+              ],
+            ),
+          ],
         ),
       ),
     );

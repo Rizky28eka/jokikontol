@@ -71,7 +71,7 @@ class FormController extends GetxController {
     required String type,
     required int patientId,
     Map<String, dynamic>? data,
-    String status = 'draft',
+    String status = 'submitted',
   }) async {
     _isLoading.value = true;
     _errorMessage.value = '';
@@ -98,7 +98,6 @@ class FormController extends GetxController {
         final data = json.decode(response.body);
         final newForm = FormModel.fromJson(data['form']);
         await fetchForms(type: type); // Refresh the list
-        Get.snackbar('Success', 'Form created successfully');
         _logger.info('Form created successfully', context: {'type': type});
         return newForm;
       } else {

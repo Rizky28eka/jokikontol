@@ -118,8 +118,6 @@ class _FormDetailViewState extends State<FormDetailView> {
 
   Color _getStatusColor(String status) {
     switch (status) {
-      case 'draft':
-        return Colors.orange;
       case 'submitted':
         return Colors.blue;
       case 'approved':
@@ -133,8 +131,6 @@ class _FormDetailViewState extends State<FormDetailView> {
 
   String _getStatusText(String status) {
     switch (status) {
-      case 'draft':
-        return 'Draft';
       case 'submitted':
         return 'Menunggu Review';
       case 'approved':
@@ -175,8 +171,9 @@ class _FormDetailViewState extends State<FormDetailView> {
         content = Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: value.entries.map((e) {
-            if (e.value == null || e.value.toString().isEmpty)
+            if (e.value == null || e.value.toString().isEmpty) {
               return const SizedBox.shrink();
+            }
             return Padding(
               padding: const EdgeInsets.only(bottom: 8.0),
               child: Row(

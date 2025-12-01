@@ -97,12 +97,16 @@ class _PatientFormViewState extends State<PatientFormView> {
     if (patientId == null) return;
     try {
       await formController.fetchForms(patientId: patientId);
-      final formsWithGenogram = formController.forms.where((f) => f.patientId == patientId && f.genogram != null).toList();
+      final formsWithGenogram = formController.forms
+          .where((f) => f.patientId == patientId && f.genogram != null)
+          .toList();
       if (formsWithGenogram.isNotEmpty) {
         final latest = formsWithGenogram.first;
         if (latest.genogram?.structure != null) {
           setState(() {
-            _lastGenogramStructure = Map<String, dynamic>.from(latest.genogram!.structure!);
+            _lastGenogramStructure = Map<String, dynamic>.from(
+              latest.genogram!.structure!,
+            );
             _lastGenogramNotes = latest.genogram!.notes ?? '';
           });
         }
@@ -336,12 +340,12 @@ class _PatientFormViewState extends State<PatientFormView> {
               _addressController.text.isNotEmpty ||
               _rmNumberController.text.isNotEmpty
         : (widget.patient != null)
-            ? _nameController.text != widget.patient!.name ||
+        ? _nameController.text != widget.patient!.name ||
               _selectedGender != widget.patient!.gender ||
               _ageController.text != widget.patient!.age.toString() ||
               _addressController.text != widget.patient!.address ||
               _rmNumberController.text != widget.patient!.rmNumber
-            : _nameController.text.isNotEmpty ||
+        : _nameController.text.isNotEmpty ||
               _ageController.text.isNotEmpty ||
               _addressController.text.isNotEmpty ||
               _rmNumberController.text.isNotEmpty;
@@ -400,12 +404,14 @@ class _PatientFormViewState extends State<PatientFormView> {
       ),
       body: PopScope(
         canPop: false,
-        onPopInvoked: (didPop) async {
-          if (didPop) return; // If the pop already happened, do nothing
+        onPopInvokedWithResult: (didPop, result) async {
+          if (didPop) return;
 
           final shouldPop = await _onWillPop();
           if (shouldPop && mounted) {
-            Navigator.of(context).pop();
+            if (context.mounted) {
+              Navigator.of(context).pop();
+            }
           }
         },
         child: SafeArea(
@@ -434,20 +440,34 @@ class _PatientFormViewState extends State<PatientFormView> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Genogram Terakhir', style: Theme.of(context).textTheme.titleMedium),
+                            Text(
+                              'Genogram Terakhir',
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
                             const SizedBox(height: 8),
-                            if ((_lastGenogramStructure?['members'] as List?)?.isEmpty ?? true)
+                            if ((_lastGenogramStructure?['members'] as List?)
+                                    ?.isEmpty ??
+                                true)
                               const Text('Tidak ada anggota genogram.'),
-                            if ((_lastGenogramStructure?['members'] as List?)?.isNotEmpty ?? false)
+                            if ((_lastGenogramStructure?['members'] as List?)
+                                    ?.isNotEmpty ??
+                                false)
                               ListView.builder(
                                 shrinkWrap: true,
                                 physics: const NeverScrollableScrollPhysics(),
-                                itemCount: (_lastGenogramStructure?['members'] as List).length,
+                                itemCount:
+                                    (_lastGenogramStructure?['members'] as List)
+                                        .length,
                                 itemBuilder: (context, index) {
-                                  final m = (_lastGenogramStructure?['members'] as List)[index] as Map<String, dynamic>;
+                                  final m =
+                                      (_lastGenogramStructure?['members']
+                                              as List)[index]
+                                          as Map<String, dynamic>;
                                   return ListTile(
                                     title: Text(m['name'] ?? 'Unknown'),
-                                    subtitle: Text('${m['relationship'] ?? ''} • ${m['age'] ?? ''}'),
+                                    subtitle: Text(
+                                      '${m['relationship'] ?? ''} • ${m['age'] ?? ''}',
+                                    ),
                                   );
                                 },
                               ),
@@ -457,8 +477,18 @@ class _PatientFormViewState extends State<PatientFormView> {
                               children: [
                                 FilledButton.tonal(
                                   onPressed: () {
-                                    final struct = _lastGenogramStructure ?? {'members': [], 'connections': []};
-                                    Get.to(() => GenogramBuilderView(initialData: {'structure': struct, 'notes': _lastGenogramNotes}), arguments: {'readOnly': true});
+                                    final struct =
+                                        _lastGenogramStructure ??
+                                        {'members': [], 'connections': []};
+                                    Get.to(
+                                      () => GenogramBuilderView(
+                                        initialData: {
+                                          'structure': struct,
+                                          'notes': _lastGenogramNotes,
+                                        },
+                                      ),
+                                      arguments: {'readOnly': true},
+                                    );
                                   },
                                   child: const Text('View Genogram'),
                                 ),

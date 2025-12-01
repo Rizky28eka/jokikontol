@@ -2,7 +2,17 @@ import 'package:uuid/uuid.dart';
 
 enum Gender { male, female, other }
 enum LifeStatus { alive, deceased, unknown }
-enum RelType { parentChild, marriage, sibling, other }
+enum RelType { 
+  parentChild,    // Orang tua ke anak
+  marriage,       // Pernikahan
+  divorced,       // Cerai
+  separated,      // Pisah
+  sibling,        // Saudara kandung
+  twin,           // Kembar
+  adopted,        // Adopsi
+  foster,         // Anak asuh
+  other 
+}
 
 class GenogramMember {
   final String id;
@@ -11,6 +21,8 @@ class GenogramMember {
   final Gender gender;
   final LifeStatus status;
   final bool isClient;
+  final String? relationship; // Hubungan dengan klien (ayah, ibu, kakak, dll)
+  final int generation; // Generasi: 0=klien, -1=orang tua, -2=kakek/nenek, 1=anak, 2=cucu
 
   GenogramMember({
     String? id,
@@ -19,6 +31,8 @@ class GenogramMember {
     required this.gender,
     this.status = LifeStatus.alive,
     this.isClient = false,
+    this.relationship,
+    this.generation = 0,
   }) : id = id ?? const Uuid().v4();
 
   Map<String, dynamic> toJson() => {
@@ -28,6 +42,8 @@ class GenogramMember {
     'gender': gender.name,
     'status': status.name,
     'isClient': isClient,
+    'relationship': relationship,
+    'generation': generation,
   };
 
   factory GenogramMember.fromJson(Map<String, dynamic> json) => GenogramMember(
@@ -37,6 +53,8 @@ class GenogramMember {
     gender: Gender.values.firstWhere((e) => e.name == json['gender'], orElse: () => Gender.other),
     status: LifeStatus.values.firstWhere((e) => e.name == json['status'], orElse: () => LifeStatus.alive),
     isClient: json['isClient'] ?? false,
+    relationship: json['relationship'],
+    generation: json['generation'] ?? 0,
   );
 
   GenogramMember copyWith({
@@ -45,6 +63,8 @@ class GenogramMember {
     Gender? gender,
     LifeStatus? status,
     bool? isClient,
+    String? relationship,
+    int? generation,
   }) => GenogramMember(
     id: id,
     name: name ?? this.name,
@@ -52,6 +72,8 @@ class GenogramMember {
     gender: gender ?? this.gender,
     status: status ?? this.status,
     isClient: isClient ?? this.isClient,
+    relationship: relationship ?? this.relationship,
+    generation: generation ?? this.generation,
   );
 }
 

@@ -18,9 +18,9 @@ class GenogramController extends GetxController {
   void onInit() {
     super.onInit();
     builder
-      ..siblingSeparation = 100
-      ..levelSeparation = 150
-      ..subtreeSeparation = 150
+      ..siblingSeparation = 200
+      ..levelSeparation = 200
+      ..subtreeSeparation = 200
       ..orientation = BuchheimWalkerConfiguration.ORIENTATION_TOP_BOTTOM;
     _logger.info('GenogramController initialized');
   }
@@ -46,16 +46,18 @@ class GenogramController extends GetxController {
     }
   }
 
-  void addMember(String name, int age, Gender gender, LifeStatus status) {
+  void addMember(String name, int age, Gender gender, LifeStatus status, [String? relationship, int generation = 0]) {
     final member = GenogramMember(
       name: name,
       age: age,
       gender: gender,
       status: status,
+      relationship: relationship,
+      generation: generation,
     );
     members.add(member);
     _refreshGraph();
-    _logger.genogram(operation: 'add_member', metadata: {'name': name});
+    _logger.genogram(operation: 'add_member', metadata: {'name': name, 'generation': generation});
   }
 
   void deleteMember(String memberId) {

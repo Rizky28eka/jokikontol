@@ -113,10 +113,7 @@ class MahasiswaDashboardView extends GetView<DashboardController> {
             ),
             IconButton(
               onPressed: () => authController.logout(),
-              icon: Icon(
-                Icons.logout_rounded,
-                color: colorScheme.error,
-              ),
+              icon: Icon(Icons.logout_rounded, color: colorScheme.error),
               tooltip: 'Logout',
             ),
           ],
@@ -207,7 +204,10 @@ class MahasiswaDashboardView extends GetView<DashboardController> {
                   _buildStatCard(
                     context,
                     'Form Menunggu Review',
-                    (stats['form_menunggu_review'] ?? stats['form_menunggu'] ?? 0).toString(),
+                    (stats['form_menunggu_review'] ??
+                            stats['form_menunggu'] ??
+                            0)
+                        .toString(),
                     Icons.pending_actions_rounded,
                     Colors.orange.shade600,
                   ),
@@ -308,40 +308,42 @@ class MahasiswaDashboardView extends GetView<DashboardController> {
           ),
         ),
         const SizedBox(height: 16),
-        LayoutBuilder(builder: (context, constraints) {
-          int crossAxisCount = 1;
-          if (constraints.maxWidth > 900) {
-            crossAxisCount = 2;
-          } else if (constraints.maxWidth > 600) {
-            crossAxisCount = 2;
-          }
-          return GridView.count(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisCount: crossAxisCount,
-            mainAxisSpacing: 16,
-            crossAxisSpacing: 16,
-            childAspectRatio: isDesktop ? 3.2 : (isTablet ? 2.8 : 2.6),
-            children: [
-              _buildLibraryCard(
-                context,
-                title: 'Diagnoses Keperawatan',
-                subtitle: 'Lihat daftar diagnosis yang dikelola dosen',
-                icon: Icons.medical_services_rounded,
-                color: colorScheme.primary,
-                onTap: () => Get.to(() => const DiagnosesListView()),
-              ),
-              _buildLibraryCard(
-                context,
-                title: 'Intervensi Keperawatan',
-                subtitle: 'Lihat daftar intervensi yang dikelola dosen',
-                icon: Icons.volunteer_activism_rounded,
-                color: colorScheme.tertiary,
-                onTap: () => Get.to(() => const InterventionsListView()),
-              ),
-            ],
-          );
-        }),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            int crossAxisCount = 1;
+            if (constraints.maxWidth > 900) {
+              crossAxisCount = 2;
+            } else if (constraints.maxWidth > 600) {
+              crossAxisCount = 2;
+            }
+            return GridView.count(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              crossAxisCount: crossAxisCount,
+              mainAxisSpacing: 16,
+              crossAxisSpacing: 16,
+              childAspectRatio: isDesktop ? 3.2 : (isTablet ? 2.8 : 2.6),
+              children: [
+                _buildLibraryCard(
+                  context,
+                  title: 'Diagnoses Keperawatan',
+                  subtitle: 'Lihat daftar diagnosis yang dikelola dosen',
+                  icon: Icons.medical_services_rounded,
+                  color: colorScheme.primary,
+                  onTap: () => Get.to(() => const DiagnosesListView()),
+                ),
+                _buildLibraryCard(
+                  context,
+                  title: 'Intervensi Keperawatan',
+                  subtitle: 'Lihat daftar intervensi yang dikelola dosen',
+                  icon: Icons.volunteer_activism_rounded,
+                  color: colorScheme.tertiary,
+                  onTap: () => Get.to(() => const InterventionsListView()),
+                ),
+              ],
+            );
+          },
+        ),
       ],
     );
   }
@@ -400,7 +402,10 @@ class MahasiswaDashboardView extends GetView<DashboardController> {
                 ),
               ),
               const SizedBox(width: 8),
-              Icon(Icons.chevron_right_rounded, color: colorScheme.onSurfaceVariant),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: colorScheme.onSurfaceVariant,
+              ),
             ],
           ),
         ),

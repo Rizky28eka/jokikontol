@@ -10,6 +10,7 @@ import '../utils/form_builder_mixin.dart';
 import '../widgets/form_components/custom_text_field.dart';
 import '../widgets/form_components/custom_dropdown.dart';
 import '../widgets/form_components/custom_checkbox_group.dart';
+import '../widgets/form_components/custom_date_time_picker.dart';
 
 class ResumeKegawatdaruratanFormView extends StatefulWidget {
   final Patient? patient;
@@ -195,40 +196,59 @@ class _ResumeKegawatdaruratanFormViewState
   }
 
   void _nextSection() {
+    updateFormData();
     if (_currentSection < 10) setState(() => _currentSection++);
   }
 
   void _previousSection() {
+    updateFormData();
     if (_currentSection > 0) setState(() => _currentSection--);
   }
 
   Widget _buildSection(int sectionNumber) {
+    Widget sectionContent;
     switch (sectionNumber) {
       case 0:
-        return _buildIdentitasSection();
+        sectionContent = _buildIdentitasSection();
+        break;
       case 1:
-        return _buildRiwayatKeluhanSection();
+        sectionContent = _buildRiwayatKeluhanSection();
+        break;
       case 2:
-        return _buildPemeriksaanFisikSection();
+        sectionContent = _buildPemeriksaanFisikSection();
+        break;
       case 3:
-        return _buildStatusMentalSection();
+        sectionContent = _buildStatusMentalSection();
+        break;
       case 4:
-        return _buildDiagnosisSection();
+        sectionContent = _buildDiagnosisSection();
+        break;
       case 5:
-        return _buildTindakanSection();
+        sectionContent = _buildTindakanSection();
+        break;
       case 6:
-        return _buildImplementasiSection();
+        sectionContent = _buildImplementasiSection();
+        break;
       case 7:
-        return _buildEvaluasiSection();
+        sectionContent = _buildEvaluasiSection();
+        break;
       case 8:
-        return _buildRencanaLanjutSection();
+        sectionContent = _buildRencanaLanjutSection();
+        break;
       case 9:
-        return _buildRencanaKeluargaSection();
+        sectionContent = _buildRencanaKeluargaSection();
+        break;
       case 10:
-        return _buildRenpraSection();
+        sectionContent = _buildRenpraSection();
+        break;
       default:
-        return const SizedBox();
+        sectionContent = const SizedBox();
     }
+
+    return KeyedSubtree(
+      key: ValueKey('section_$sectionNumber'),
+      child: sectionContent,
+    );
   }
 
   Widget _buildIdentitasSection() {
@@ -248,14 +268,23 @@ class _ResumeKegawatdaruratanFormViewState
           keyboardType: TextInputType.number,
         ),
         const SizedBox(height: 16),
-        const CustomTextField(name: 'jenis_kelamin', label: 'Jenis Kelamin'),
+        CustomDropdown<String>(
+          name: 'jenis_kelamin',
+          label: 'Jenis Kelamin',
+          items: const [
+            DropdownMenuItem(value: 'L', child: Text('Laki-laki')),
+            DropdownMenuItem(value: 'P', child: Text('Perempuan')),
+            DropdownMenuItem(value: 'O', child: Text('Lainnya')),
+          ],
+          hint: 'Pilih Jenis Kelamin',
+        ),
         const SizedBox(height: 16),
         const CustomTextField(name: 'alamat', label: 'Alamat', maxLines: 2),
         const SizedBox(height: 16),
-        const CustomTextField(
+        CustomDateTimePicker(
           name: 'tanggal_masuk',
           label: 'Tanggal Masuk',
-          keyboardType: TextInputType.datetime,
+          inputType: InputType.date,
         ),
       ],
     );
@@ -326,12 +355,26 @@ class _ResumeKegawatdaruratanFormViewState
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
-        const CustomTextField(name: 'kesadaran', label: 'Kesadaran'),
+        CustomDropdown<String>(
+          name: 'kesadaran',
+          label: 'Kesadaran',
+          items: const [
+            DropdownMenuItem(value: 'sadar_penuh', child: Text('Sadar Penuh')),
+            DropdownMenuItem(value: 'somnolent', child: Text('Somnolent')),
+            DropdownMenuItem(value: 'stupor', child: Text('Stupor')),
+            DropdownMenuItem(value: 'coma', child: Text('Coma')),
+          ],
+          hint: 'Pilih Kesadaran',
+        ),
         const SizedBox(height: 16),
-        const CustomTextField(
+        CustomDropdown<String>(
           name: 'orientasi',
           label: 'Orientasi',
-          maxLines: 3,
+          items: const [
+            DropdownMenuItem(value: 'utuh', child: Text('Utuh')),
+            DropdownMenuItem(value: 'gangguan', child: Text('Gangguan')),
+          ],
+          hint: 'Pilih Orientasi',
         ),
         const SizedBox(height: 16),
         const CustomTextField(
@@ -549,8 +592,9 @@ class _ResumeKegawatdaruratanFormViewState
         Obx(() {
           final nursingService = Get.find<NursingDataGlobalService>();
           final diagnoses = nursingService.diagnoses;
-          if (diagnoses.isEmpty)
+          if (diagnoses.isEmpty) {
             return const Text('Tidak ada diagnosis tersedia');
+          }
 
           return CustomDropdown<int>(
             name: 'diagnosis',
@@ -567,8 +611,9 @@ class _ResumeKegawatdaruratanFormViewState
         const SizedBox(height: 16),
         Obx(() {
           final interventions = _interventionController.interventions;
-          if (interventions.isEmpty)
+          if (interventions.isEmpty) {
             return const Text('Tidak ada intervensi tersedia');
+          }
 
           return CustomCheckboxGroup<int>(
             name: 'intervensi',
@@ -610,7 +655,7 @@ class _ResumeKegawatdaruratanFormViewState
         ),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
       ),
-      body: Padding(
+        body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [

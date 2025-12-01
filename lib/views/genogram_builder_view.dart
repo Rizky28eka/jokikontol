@@ -19,7 +19,7 @@ class GenogramBuilderView extends StatelessWidget {
     final args = Get.arguments as Map<String, dynamic>?;
     final dataToLoad = initialData ?? args;
     final bool isReadOnly = args?['readOnly'] == true;
-    
+
     if (dataToLoad != null && dataToLoad['structure'] != null) {
       controller.loadInitialData(dataToLoad['structure']);
     }
@@ -35,10 +35,12 @@ class GenogramBuilderView extends StatelessWidget {
             ),
         ],
       ),
-      floatingActionButton: !isReadOnly ? FloatingActionButton(
-        child: const Icon(Icons.person_add),
-        onPressed: () => _showAddMemberDialog(context, controller),
-      ) : null,
+      floatingActionButton: !isReadOnly
+          ? FloatingActionButton(
+              child: const Icon(Icons.person_add),
+              onPressed: () => _showAddMemberDialog(context, controller),
+            )
+          : null,
       body: Column(
         children: [
           Container(
@@ -104,43 +106,85 @@ class GenogramBuilderView extends StatelessWidget {
   ) {
     final nameC = TextEditingController();
     final ageC = TextEditingController();
+    String? selectedRelation;
     Gender selectedGender = Gender.male;
     LifeStatus selectedStatus = LifeStatus.alive;
+    int selectedGeneration = 0;
 
     Get.defaultDialog(
       title: "Tambah Anggota",
       content: StatefulBuilder(
         builder: (context, setState) {
-          return Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameC,
-                decoration: const InputDecoration(labelText: "Nama"),
-              ),
-              TextField(
-                controller: ageC,
-                decoration: const InputDecoration(labelText: "Usia"),
-                keyboardType: TextInputType.number,
-              ),
-              const SizedBox(height: 10),
-              DropdownButton<Gender>(
-                value: selectedGender,
-                isExpanded: true,
-                items: Gender.values
-                    .map((g) => DropdownMenuItem(value: g, child: Text(g.name)))
-                    .toList(),
-                onChanged: (v) => setState(() => selectedGender = v!),
-              ),
-              DropdownButton<LifeStatus>(
-                value: selectedStatus,
-                isExpanded: true,
-                items: LifeStatus.values
-                    .map((s) => DropdownMenuItem(value: s, child: Text(s.name)))
-                    .toList(),
-                onChanged: (v) => setState(() => selectedStatus = v!),
-              ),
-            ],
+          return SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameC,
+                  decoration: const InputDecoration(labelText: "Nama"),
+                ),
+                TextField(
+                  controller: ageC,
+                  decoration: const InputDecoration(labelText: "Usia"),
+                  keyboardType: TextInputType.number,
+                ),
+                const SizedBox(height: 10),
+                DropdownButton<String>(
+                  value: selectedRelation,
+                  isExpanded: true,
+                  hint: const Text('Pilih Hubungan'),
+                  items: const [
+                    DropdownMenuItem(value: 'Ayah', child: Text('Ayah')),
+                    DropdownMenuItem(value: 'Ibu', child: Text('Ibu')),
+                    DropdownMenuItem(value: 'Kakek', child: Text('Kakek')),
+                    DropdownMenuItem(value: 'Nenek', child: Text('Nenek')),
+                    DropdownMenuItem(value: 'Suami', child: Text('Suami')),
+                    DropdownMenuItem(value: 'Istri', child: Text('Istri')),
+                    DropdownMenuItem(value: 'Kakak', child: Text('Kakak')),
+                    DropdownMenuItem(value: 'Adik', child: Text('Adik')),
+                    DropdownMenuItem(value: 'Anak', child: Text('Anak')),
+                    DropdownMenuItem(value: 'Cucu', child: Text('Cucu')),
+                    DropdownMenuItem(value: 'Paman', child: Text('Paman')),
+                    DropdownMenuItem(value: 'Bibi', child: Text('Bibi')),
+                    DropdownMenuItem(value: 'Keponakan', child: Text('Keponakan')),
+                  ],
+                  onChanged: (v) => setState(() => selectedRelation = v),
+                ),
+                const SizedBox(height: 10),
+                DropdownButton<Gender>(
+                  value: selectedGender,
+                  isExpanded: true,
+                  items: const [
+                    DropdownMenuItem(value: Gender.male, child: Text('Laki-laki')),
+                    DropdownMenuItem(value: Gender.female, child: Text('Perempuan')),
+                    DropdownMenuItem(value: Gender.other, child: Text('Lainnya')),
+                  ],
+                  onChanged: (v) => setState(() => selectedGender = v!),
+                ),
+                DropdownButton<LifeStatus>(
+                  value: selectedStatus,
+                  isExpanded: true,
+                  items: const [
+                    DropdownMenuItem(value: LifeStatus.alive, child: Text('Hidup')),
+                    DropdownMenuItem(value: LifeStatus.deceased, child: Text('Meninggal')),
+                    DropdownMenuItem(value: LifeStatus.unknown, child: Text('Tidak Diketahui')),
+                  ],
+                  onChanged: (v) => setState(() => selectedStatus = v!),
+                ),
+                DropdownButton<int>(
+                  value: selectedGeneration,
+                  isExpanded: true,
+                  items: const [
+                    DropdownMenuItem(value: -2, child: Text('Kakek/Nenek')),
+                    DropdownMenuItem(value: -1, child: Text('Orang Tua')),
+                    DropdownMenuItem(value: 0, child: Text('Klien/Saudara')),
+                    DropdownMenuItem(value: 1, child: Text('Anak')),
+                    DropdownMenuItem(value: 2, child: Text('Cucu')),
+                  ],
+                  onChanged: (v) => setState(() => selectedGeneration = v!),
+                ),
+              ],
+            ),
           );
         },
       ),
@@ -152,6 +196,8 @@ class GenogramBuilderView extends StatelessWidget {
           int.tryParse(ageC.text) ?? 0,
           selectedGender,
           selectedStatus,
+          selectedRelation,
+          selectedGeneration,
         );
         Get.back();
       },
@@ -213,6 +259,7 @@ class GenogramBuilderView extends StatelessWidget {
       return;
     }
 
+    final fromMember = ctrl.members.firstWhere((m) => m.id == fromId);
     String? selectedTargetId = potentialTargets.first.id;
     RelType selectedType = RelType.parentChild;
 
@@ -222,6 +269,23 @@ class GenogramBuilderView extends StatelessWidget {
         builder: (ctx, setState) => Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.blue),
+              ),
+              child: Row(
+                children: [
+                  const Text('Dari: ', style: TextStyle(fontWeight: FontWeight.bold)),
+                  Text(fromMember.name, style: const TextStyle(fontSize: 16)),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text('Ke:', style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
             DropdownButton<String>(
               value: selectedTargetId,
               isExpanded: true,
@@ -237,9 +301,17 @@ class GenogramBuilderView extends StatelessWidget {
             DropdownButton<RelType>(
               value: selectedType,
               isExpanded: true,
-              items: RelType.values
-                  .map((t) => DropdownMenuItem(value: t, child: Text(t.name)))
-                  .toList(),
+              items: const [
+                DropdownMenuItem(value: RelType.parentChild, child: Text('Orang Tua - Anak')),
+                DropdownMenuItem(value: RelType.marriage, child: Text('Menikah')),
+                DropdownMenuItem(value: RelType.divorced, child: Text('Cerai')),
+                DropdownMenuItem(value: RelType.separated, child: Text('Pisah')),
+                DropdownMenuItem(value: RelType.sibling, child: Text('Saudara Kandung')),
+                DropdownMenuItem(value: RelType.twin, child: Text('Kembar')),
+                DropdownMenuItem(value: RelType.adopted, child: Text('Adopsi')),
+                DropdownMenuItem(value: RelType.foster, child: Text('Anak Asuh')),
+                DropdownMenuItem(value: RelType.other, child: Text('Lainnya')),
+              ],
               onChanged: (v) => setState(() => selectedType = v!),
             ),
           ],

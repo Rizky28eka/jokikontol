@@ -5,8 +5,6 @@ import 'package:uuid/uuid.dart';
 import '../controllers/form_controller.dart';
 import '../controllers/patient_controller.dart';
 import '../models/patient_model.dart';
-import '../models/form_model.dart';
-import '../services/hive_service.dart';
 import '../services/logger_service.dart';
 
 /// Mixin to eliminate duplication in form views using flutter_form_builder
@@ -30,7 +28,6 @@ mixin FormBuilderMixin<T extends StatefulWidget> on State<T> {
   String generateUuid() => _uuid.v4();
 
   /// Optional: Override to customize success message
-  String get draftSavedMessage => 'Draft berhasil disimpan';
   String get formSubmittedMessage => 'Form berhasil disubmit';
   
   /// Optional: Override to transform form data before saving/submitting
@@ -45,42 +42,8 @@ mixin FormBuilderMixin<T extends StatefulWidget> on State<T> {
     int? patientId,
     int? formId,
   }) async {
-    await HiveService.init();
-    
     if (formId != null) {
       await loadFormData(formId);
-    } else {
-      await checkForDrafts(patient, patientId);
-    }
-  }
-  
-  /// Check if draft exists and prompt user
-  Future<void> checkForDrafts(Patient? patient, int? patientId) async {
-    final effectivePatientId = patientId ?? patient?.id;
-    if (effectivePatientId == null) return;
-
-    final draft = await HiveService.getDraftForm(formType, effectivePatientId);
-    if (draft != null && mounted) {
-      Get.defaultDialog(
-        title: 'Draft Ditemukan',
-        middleText: 'Apakah Anda ingin melanjutkan pengisian form dari draft yang tersimpan?',
-        textConfirm: 'Ya',
-        textCancel: 'Tidak',
-        confirmTextColor: Colors.white,
-        onConfirm: () {
-          Get.back();
-          if (mounted && draft.data != null) {
-            setState(() {
-              initialValues = transformInitialData(Map<String, dynamic>.from(draft.data!));
-              formKey.currentState?.patchValue(initialValues);
-            });
-          }
-        },
-        onCancel: () {
-          // User declined, optionally delete draft
-          HiveService.deleteDraftForm(formType, effectivePatientId);
-        },
-      );
     }
   }
   
@@ -90,65 +53,22 @@ mixin FormBuilderMixin<T extends StatefulWidget> on State<T> {
     if (form != null && form.data != null && mounted) {
       setState(() {
         initialValues = transformInitialData(Map<String, dynamic>.from(form.data!));
-        formKey.currentState?.patchValue(initialValues);
+      });
+      // Schedule patchValue after the widget rebuilds with new initialValues
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && formKey.currentState != null) {
+          formKey.currentState!.patchValue(initialValues);
+        }
       });
     }
   }
   
-  /// Save form as draft (local + server if formId exists)
-  Future<void> saveDraft() async {
-    final effectivePatientId = currentPatientId ?? currentPatient?.id;
-    if (effectivePatientId == null) {
-      Get.snackbar('Error', 'Patient information is required');
-      return;
-    }
-
-    // Save current state to get values
-    formKey.currentState?.save();
-    final rawData = formKey.currentState?.value ?? {};
-    final formData = transformFormData(Map<String, dynamic>.from(rawData));
-
-    try {
-      _logger.info('Saving draft', context: {'formType': formType, 'patientId': effectivePatientId});
-      
-      // Create FormModel for Hive
-      final form = FormModel(
-        id: formId ?? DateTime.now().millisecondsSinceEpoch,
-        type: formType,
-        userId: 0,
-        patientId: effectivePatientId,
-        status: 'draft',
-        data: formData,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-        genogram: null,
-      );
-      
-      // Save to Hive
-      await HiveService.saveDraftForm(form);
-
-      // If editing existing form, also update on server
-      if (formId != null) {
-        await formController.updateForm(
-          id: formId!,
-          data: formData,
-          status: 'draft',
-        );
-      }
-
-      if (mounted) {
-        Get.snackbar(
-          'Sukses',
-          draftSavedMessage,
-          backgroundColor: Colors.green,
-          colorText: Colors.white,
-        );
-      }
-    } catch (e) {
-      _logger.error('Error saving draft', error: e);
-      if (mounted) {
-        Get.snackbar('Error', 'Gagal menyimpan draft: $e');
-      }
+  /// Merges current form state into initialValues to persist data across sections
+  void updateFormData() {
+    if (formKey.currentState != null) {
+      formKey.currentState!.save();
+      final currentData = formKey.currentState!.value;
+      initialValues.addAll(currentData);
     }
   }
   
@@ -160,30 +80,41 @@ mixin FormBuilderMixin<T extends StatefulWidget> on State<T> {
       return;
     }
 
-    // Validate before submit
-    if (formKey.currentState?.saveAndValidate() != true) {
-      Get.snackbar('Validasi Gagal', 'Mohon lengkapi semua field yang diperlukan');
+    // Check if form state is available
+    if (formKey.currentState == null) {
+      _logger.warning('FormBuilder state is null, cannot submit');
+      Get.snackbar('Error', 'Form belum siap, coba lagi');
       return;
     }
 
-    final rawData = formKey.currentState?.value ?? {};
-    final formData = transformFormData(Map<String, dynamic>.from(rawData));
+    // Validate before submit
+    if (!formKey.currentState!.saveAndValidate()) {
+      Get.snackbar('Validasi Gagal', 'Mohon lengkapi semua field yang diperlukan');
+      _logger.warning('Form validation failed');
+      return;
+    }
+
+    updateFormData();
+    final formData = transformFormData(Map<String, dynamic>.from(initialValues));
 
     try {
-      _logger.info('Submitting form', context: {'formType': formType, 'patientId': effectivePatientId});
-      
-      FormModel? resultForm;
+      _logger.info('Submitting form', context: {
+        'formType': formType,
+        'patientId': effectivePatientId,
+        'hasState': true,
+        'dataKeys': formData.keys.toList(),
+      });
       
       if (formId != null) {
         // Update existing form
-        resultForm = await formController.updateForm(
+        await formController.updateForm(
           id: formId!,
           data: formData,
           status: 'submitted',
         );
       } else {
         // Create new form
-        resultForm = await formController.createForm(
+        await formController.createForm(
           type: formType,
           patientId: effectivePatientId,
           data: formData,
@@ -191,10 +122,7 @@ mixin FormBuilderMixin<T extends StatefulWidget> on State<T> {
         );
       }
 
-      if (resultForm != null && mounted) {
-        // Delete local draft after successful submission
-        await HiveService.deleteDraftForm(formType, effectivePatientId);
-        
+      if (mounted) {
         Get.snackbar(
           'Sukses',
           formSubmittedMessage,
@@ -210,64 +138,41 @@ mixin FormBuilderMixin<T extends StatefulWidget> on State<T> {
     } catch (e) {
       _logger.error('Error submitting form', error: e);
       if (mounted) {
-        // Save as local draft on failure
-        final form = FormModel(
-          id: formId ?? DateTime.now().millisecondsSinceEpoch,
-          type: formType,
-          userId: 0,
-          patientId: effectivePatientId,
-          status: 'draft',
-          data: formData,
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-          genogram: null,
-        );
-        await HiveService.saveDraftForm(form);
         Get.snackbar(
           'Error',
-          'Gagal submit form. Draft telah disimpan secara lokal.',
+          'Gagal submit form: $e',
           duration: const Duration(seconds: 4),
         );
       }
     }
   }
   
-  /// Build action buttons (Draft + Submit)
+  /// Build action buttons (Submit only)
   Widget buildActionButtons({
-    VoidCallback? onSaveDraft,
     VoidCallback? onSubmit,
     bool isLoading = false,
   }) {
     return Padding(
       padding: const EdgeInsets.all(16.0),
-      child: Row(
-        children: [
-          Expanded(
-            child: OutlinedButton.icon(
-              onPressed: isLoading ? null : (onSaveDraft ?? saveDraft),
-              icon: const Icon(Icons.save_outlined),
-              label: const Text('Simpan Draft'),
-            ),
+      child: SizedBox(
+        width: double.infinity,
+        child: ElevatedButton.icon(
+          onPressed: isLoading ? null : (onSubmit ?? submitForm),
+          icon: isLoading
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation(Colors.white),
+                  ),
+                )
+              : const Icon(Icons.send_rounded),
+          label: Text(isLoading ? 'Mengirim...' : 'Submit Form'),
+          style: ElevatedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 16),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            flex: 2,
-            child: ElevatedButton.icon(
-              onPressed: isLoading ? null : (onSubmit ?? submitForm),
-              icon: isLoading
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation(Colors.white),
-                      ),
-                    )
-                  : const Icon(Icons.send_rounded),
-              label: Text(isLoading ? 'Mengirim...' : 'Submit Form'),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
