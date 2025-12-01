@@ -128,7 +128,10 @@ class PatientsListViewState extends State<PatientsListView> with AutomaticKeepAl
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => Get.toNamed('/patient-form'),
+        onPressed: () async {
+          await Get.toNamed('/patient-form');
+          _fetch();
+        },
         icon: const Icon(Icons.add_rounded),
         label: const Text('Tambah Pasien'),
       ),

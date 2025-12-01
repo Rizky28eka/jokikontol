@@ -147,9 +147,10 @@ class FormsListViewState extends State<FormsListView> with AutomaticKeepAliveCli
                                 title: Text(_titleForType(f['type'])),
                                 subtitle: Text('Status: ${_statusLabel(f['status'])} • Pasien: ${_patientName(f)}'),
                                 trailing: const Icon(Icons.chevron_right_rounded),
-                                onTap: () {
+                                onTap: () async {
                                   final model = FormModel.fromJson(f);
-                                  Get.to(() => const FormDetailView(), arguments: model);
+                                  await Get.to(() => const FormDetailView(), arguments: model);
+                                  _fetch();
                                 },
                               ),
                             );

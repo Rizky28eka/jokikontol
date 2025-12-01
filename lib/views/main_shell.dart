@@ -19,20 +19,25 @@ class _MainShellState extends State<MainShell> {
   final _formsKey = GlobalKey<FormsListViewState>();
   final _profileKey = GlobalKey<ProfileViewState>();
 
-  List<Widget> get _tabs => [
-    const MahasiswaDashboardView(),
-    PatientsListView(key: _patientsKey),
-    FormsListView(key: _formsKey),
-    ProfileView(key: _profileKey),
-  ];
+  late final List<Widget> _tabs;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabs = [
+      const MahasiswaDashboardView(),
+      PatientsListView(key: _patientsKey),
+      FormsListView(key: _formsKey),
+      ProfileView(key: _profileKey),
+    ];
+  }
 
   void _onTabSelected(int index) {
-    if (_currentIndex == index) {
-      _refreshCurrentTab(index);
-    }
     setState(() {
       _currentIndex = index;
     });
+    // Always refresh data when switching tabs to ensure up-to-date information
+    _refreshCurrentTab(index);
   }
 
   void _refreshCurrentTab(int index) {
