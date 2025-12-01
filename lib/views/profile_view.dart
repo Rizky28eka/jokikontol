@@ -6,7 +6,7 @@ import 'package:file_picker/file_picker.dart';
 import '../controllers/auth_controller.dart';
 
 class ProfileView extends StatefulWidget {
-  ProfileView({super.key});
+  const ProfileView({super.key});
 
   @override
   State<ProfileView> createState() => ProfileViewState();

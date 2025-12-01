@@ -5,10 +5,10 @@ class ApiConfig {
   // 2. Add exception in antivirus settings for this app
   // 3. Or temporarily disable web protection during development
   static const String baseUrl =
-      'http://10.129.123.124:8000/api'; // Update this with your backend URL
+      'http://192.168.18.134:8000/api'; // Update this with your backend URL
 
   // Environment-based configurations
-  static const String developmentBaseUrl = 'http://10.129.123.124:8000/api';
+  static const String developmentBaseUrl = 'http://192.168.18.134:8000/api';
   static const String localhostBaseUrl = 'http://localhost:8000/api'; // Use this if antivirus blocks IP
   static const String productionBaseUrl = 'https://your-production-api.com/api';
   static const String stagingBaseUrl = 'https://staging.your-api.com/api';

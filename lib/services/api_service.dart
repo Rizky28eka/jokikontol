@@ -69,7 +69,7 @@ class ApiService {
         statusCode: response.statusCode,
         durationMs: null,
         responseData: response.body.length > 500
-            ? response.body.substring(0, 500) + '...'
+            ? '${response.body.substring(0, 500)}...'
             : response.body,
       );
 
@@ -124,7 +124,7 @@ class ApiService {
         durationMs: null,
         requestBody: body,
         responseData: response.body.length > 500
-            ? response.body.substring(0, 500) + '...'
+            ? '${response.body.substring(0, 500)}...'
             : response.body,
       );
 
@@ -179,7 +179,7 @@ class ApiService {
         durationMs: null,
         requestBody: body,
         responseData: response.body.length > 500
-            ? response.body.substring(0, 500) + '...'
+            ? '${response.body.substring(0, 500)}...'
             : response.body,
       );
 
@@ -232,7 +232,7 @@ class ApiService {
         statusCode: response.statusCode,
         durationMs: null,
         responseData: response.body.length > 500
-            ? response.body.substring(0, 500) + '...'
+            ? '${response.body.substring(0, 500)}...'
             : response.body,
       );
 
@@ -279,7 +279,7 @@ class ApiService {
         durationMs: null,
         requestBody: body,
         responseData: response.body.length > 500
-            ? response.body.substring(0, 500) + '...'
+            ? '${response.body.substring(0, 500)}...'
             : response.body,
       );
 
@@ -321,7 +321,7 @@ class ApiService {
         statusCode: response.statusCode,
         durationMs: null,
         responseData: response.body.length > 500
-            ? response.body.substring(0, 500) + '...'
+            ? '${response.body.substring(0, 500)}...'
             : response.body,
       );
 

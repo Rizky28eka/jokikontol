@@ -103,7 +103,7 @@ class DosenDashboardViewWithStats extends StatelessWidget {
   }
 
   Widget _buildStatCard(String title, String value, Color color, IconData icon) {
-    return Container(
+    return SizedBox(
       width: 150,
       height: 100,
       child: Card(
