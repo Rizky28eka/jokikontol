@@ -3,13 +3,10 @@ import 'package:flutter_form_builder/flutter_form_builder.dart';
 import 'package:get/get.dart';
 import '../controllers/form_controller.dart';
 import '../controllers/patient_controller.dart';
-import '../controllers/pdf_controller.dart';
 import '../controllers/nursing_intervention_controller.dart';
 import '../models/patient_model.dart';
 import '../services/nursing_data_global_service.dart';
 import '../utils/form_builder_mixin.dart';
-import '../widgets/form_components/custom_text_field.dart';
-import '../widgets/form_components/custom_dropdown.dart';
 import '../widgets/form_components/custom_checkbox_group.dart';
 import '../widgets/form_components/custom_date_time_picker.dart';
 
@@ -36,6 +33,7 @@ class _MentalHealthAssessmentFormViewState
   );
 
   int _currentSection = 0;
+  final int _totalSections = 11;
 
   @override
   String get formType => 'pengkajian';
@@ -69,40 +67,6 @@ class _MentalHealthAssessmentFormViewState
       patientId: _currentPatientId,
       formId: formId,
     );
-
-    Future.microtask(() async {
-      if (_currentPatientId != null) {
-        await _prefillGenogramFromPatient(_currentPatientId!);
-      }
-    });
-  }
-
-  Future<void> _prefillGenogramFromPatient(int patientId) async {
-    try {
-      await formController.fetchForms(patientId: patientId);
-      final formsWithGenogram = formController.forms
-          .where((f) => f.patientId == patientId && f.genogram != null)
-          .toList();
-      if (formsWithGenogram.isNotEmpty) {
-        final latest = formsWithGenogram.first;
-        if (latest.genogram?.structure != null) {
-          setState(() {
-            final structure = latest.genogram!.structure;
-            final notes = latest.genogram!.notes;
-
-            initialValues['genogram_structure'] = structure;
-            initialValues['genogram_notes'] = notes;
-
-            formKey.currentState?.fields['genogram_structure']?.didChange(
-              structure,
-            );
-            formKey.currentState?.fields['genogram_notes']?.didChange(notes);
-          });
-        }
-      }
-    } catch (e) {
-      // ignore
-    }
   }
 
   @override
@@ -118,8 +82,7 @@ class _MentalHealthAssessmentFormViewState
       'hubungan_sosial': data['section_3']?['hubungan_sosial'],
       'dukungan_sosial': data['section_3']?['dukungan_sosial'],
       'stresor_psikososial': data['section_3']?['stresor_psikososial'],
-      'riwayat_gangguan_psikiatri':
-          data['section_4']?['riwayat_gangguan_psikiatri'],
+      'riwayat_gangguan_psikiatri': data['section_4']?['riwayat_gangguan_psikiatri'],
       'kesadaran': data['section_5']?['kesadaran'],
       'orientasi': data['section_5']?['orientasi'],
       'penampilan': data['section_5']?['penampilan'],
@@ -129,10 +92,8 @@ class _MentalHealthAssessmentFormViewState
       'fungsi_sosial': data['section_7']?['fungsi_sosial'],
       'kepercayaan': data['section_8']?['kepercayaan'],
       'praktik_ibadah': data['section_8']?['praktik_ibadah'],
-      'genogram_structure':
-          data['section_9']?['structure'] ?? data['genogram']?['structure'],
-      'genogram_notes':
-          data['section_9']?['notes'] ?? data['genogram']?['notes'],
+      'genogram_structure': data['section_9']?['structure'] ?? data['genogram']?['structure'],
+      'genogram_notes': data['section_9']?['notes'] ?? data['genogram']?['notes'],
       'diagnosis': data['section_10']?['diagnosis'],
       'intervensi': data['section_10']?['intervensi'] ?? [],
       'tujuan': data['section_10']?['tujuan'],
@@ -146,588 +107,461 @@ class _MentalHealthAssessmentFormViewState
   @override
   Map<String, dynamic> transformFormData(Map<String, dynamic> formData) {
     final result = {
-      'section_1': {
-        'nama_lengkap': formData['nama_lengkap'],
-        'umur': formData['umur'],
-        'jenis_kelamin': formData['jenis_kelamin'],
-        'status_perkawinan': formData['status_perkawinan'],
-      },
-      'section_2': {
-        'riwayat_pendidikan': formData['riwayat_pendidikan'],
-        'pekerjaan': formData['pekerjaan'],
-        'riwayat_keluarga': formData['riwayat_keluarga'],
-      },
-      'section_3': {
-        'hubungan_sosial': formData['hubungan_sosial'],
-        'dukungan_sosial': formData['dukungan_sosial'],
-        'stresor_psikososial': formData['stresor_psikososial'],
-      },
-      'section_4': {
-        'riwayat_gangguan_psikiatri': formData['riwayat_gangguan_psikiatri'],
-      },
-      'section_5': {
-        'kesadaran': formData['kesadaran'],
-        'orientasi': formData['orientasi'],
-        'penampilan': formData['penampilan'],
-      },
-      'section_6': {
-        'mood': formData['mood'],
-        'afect': formData['afect'],
-        'alam_pikiran': formData['alam_pikiran'],
-      },
+      'section_1': {'nama_lengkap': formData['nama_lengkap'], 'umur': formData['umur'], 'jenis_kelamin': formData['jenis_kelamin'], 'status_perkawinan': formData['status_perkawinan']},
+      'section_2': {'riwayat_pendidikan': formData['riwayat_pendidikan'], 'pekerjaan': formData['pekerjaan'], 'riwayat_keluarga': formData['riwayat_keluarga']},
+      'section_3': {'hubungan_sosial': formData['hubungan_sosial'], 'dukungan_sosial': formData['dukungan_sosial'], 'stresor_psikososial': formData['stresor_psikososial']},
+      'section_4': {'riwayat_gangguan_psikiatri': formData['riwayat_gangguan_psikiatri']},
+      'section_5': {'kesadaran': formData['kesadaran'], 'orientasi': formData['orientasi'], 'penampilan': formData['penampilan']},
+      'section_6': {'mood': formData['mood'], 'afect': formData['afect'], 'alam_pikiran': formData['alam_pikiran']},
       'section_7': {'fungsi_sosial': formData['fungsi_sosial']},
-      'section_8': {
-        'kepercayaan': formData['kepercayaan'],
-        'praktik_ibadah': formData['praktik_ibadah'],
-      },
-      'section_9': formData['genogram_structure'] != null
-          ? {
-              'structure': formData['genogram_structure'],
-              'notes': formData['genogram_notes'],
-            }
-          : null,
-      'section_10': formData['diagnosis'] != null
-          ? {
-              'diagnosis': formData['diagnosis'],
-              'intervensi': formData['intervensi'],
-              'tujuan': formData['tujuan'],
-              'kriteria': formData['kriteria'],
-              'rasional': formData['rasional'],
-            }
-          : null,
-      'section_11': {
-        'catatan_tambahan': formData['catatan_tambahan'],
-        'tanggal_pengisian': formData['tanggal_pengisian'],
-      },
+      'section_8': {'kepercayaan': formData['kepercayaan'], 'praktik_ibadah': formData['praktik_ibadah']},
+      'section_9': formData['genogram_structure'] != null ? {'structure': formData['genogram_structure'], 'notes': formData['genogram_notes']} : null,
+      'section_10': formData['diagnosis'] != null ? {'diagnosis': formData['diagnosis'], 'intervensi': formData['intervensi'], 'tujuan': formData['tujuan'], 'kriteria': formData['kriteria'], 'rasional': formData['rasional']} : null,
+      'section_11': {'catatan_tambahan': formData['catatan_tambahan'], 'tanggal_pengisian': formData['tanggal_pengisian']},
     };
-
-    // Add genogram at top level for backend
     if (formData['genogram_structure'] != null) {
-      result['genogram'] = {
-        'structure': formData['genogram_structure'],
-        'notes': formData['genogram_notes'],
-      };
+      result['genogram'] = {'structure': formData['genogram_structure'], 'notes': formData['genogram_notes']};
     }
-
     return super.transformFormData(result);
   }
 
   void _nextSection() {
-    updateFormData(); // Save current section data before switching
-    if (_currentSection < 10) setState(() => _currentSection++);
+    updateFormData();
+    if (_currentSection < _totalSections - 1) {
+      setState(() => _currentSection++);
+    }
   }
 
   void _previousSection() {
-    updateFormData(); // Save current section data before switching
-    if (_currentSection > 0) setState(() => _currentSection--);
-  }
-
-  Future<void> _exportToPdf() async {
-    if (widget.formId == null) {
-      Get.snackbar(
-        'Cannot Export',
-        'Please save the form first before exporting to PDF',
-      );
-      return;
+    updateFormData();
+    if (_currentSection > 0) {
+      setState(() => _currentSection--);
     }
-    final pdfController = Get.put(PdfController());
-    final pdfUrl = await pdfController.generatePdfForForm(widget.formId!);
-    if (pdfUrl != null) {
-      Get.snackbar('Success', 'PDF generated successfully. URL: $pdfUrl');
-    }
-  }
-
-  Widget _buildSection(int sectionNumber) {
-    Widget sectionContent;
-    switch (sectionNumber) {
-      case 0:
-        sectionContent = _buildIdentitasKlienSection();
-        break;
-      case 1:
-        sectionContent = _buildRiwayatKehidupanSection();
-        break;
-      case 2:
-        sectionContent = _buildRiwayatPsikososialSection();
-        break;
-      case 3:
-        sectionContent = _buildRiwayatPsikiatriSection();
-        break;
-      case 4:
-        sectionContent = _buildPemeriksaanPsikologisSection();
-        break;
-      case 5:
-        sectionContent = _buildFungsiPsikologisSection();
-        break;
-      case 6:
-        sectionContent = _buildFungsiSosialSection();
-        break;
-      case 7:
-        sectionContent = _buildFungsiSpiritualSection();
-        break;
-      case 8:
-        sectionContent = _buildGenogramSection();
-        break;
-      case 9:
-        sectionContent = _buildRenpraSection();
-        break;
-      case 10:
-        sectionContent = _buildPenutupSection();
-        break;
-      default:
-        sectionContent = const SizedBox();
-    }
-
-    return KeyedSubtree(
-      key: ValueKey('section_$sectionNumber'),
-      child: sectionContent,
-    );
-  }
-
-  Widget _buildIdentitasKlienSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Section 1: Identitas Klien',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 16),
-        const CustomTextField(name: 'nama_lengkap', label: 'Nama Lengkap'),
-        const SizedBox(height: 16),
-        const CustomTextField(
-          name: 'umur',
-          label: 'Umur',
-          keyboardType: TextInputType.number,
-        ),
-        const SizedBox(height: 16),
-        CustomDropdown<String>(
-          name: 'jenis_kelamin',
-          label: 'Jenis Kelamin',
-          items: const [
-            DropdownMenuItem(value: 'L', child: Text('Laki-laki')),
-            DropdownMenuItem(value: 'P', child: Text('Perempuan')),
-            DropdownMenuItem(value: 'O', child: Text('Lainnya')),
-          ],
-          hint: 'Pilih Jenis Kelamin',
-        ),
-        const SizedBox(height: 16),
-        CustomDropdown<String>(
-          name: 'status_perkawinan',
-          label: 'Status Perkawinan',
-          items: const [
-            DropdownMenuItem(value: 'belum_kawin', child: Text('Belum Kawin')),
-            DropdownMenuItem(value: 'menikah', child: Text('Menikah')),
-            DropdownMenuItem(value: 'cerai_hidup', child: Text('Cerai Hidup')),
-            DropdownMenuItem(value: 'cerai_mati', child: Text('Cerai Mati')),
-            DropdownMenuItem(value: 'duda', child: Text('Duda')),
-            DropdownMenuItem(value: 'janda', child: Text('Janda')),
-          ],
-          hint: 'Pilih Status Perkawinan',
-        ),
-      ],
-    );
-  }
-
-  Widget _buildRiwayatKehidupanSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Section 2: Riwayat Kehidupan',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 16),
-        const CustomTextField(
-          name: 'riwayat_pendidikan',
-          label: 'Riwayat Pendidikan',
-          maxLines: 3,
-        ),
-        const SizedBox(height: 16),
-        const CustomTextField(name: 'pekerjaan', label: 'Pekerjaan'),
-        const SizedBox(height: 16),
-        const CustomTextField(
-          name: 'riwayat_keluarga',
-          label: 'Riwayat Keluarga',
-          maxLines: 3,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildRiwayatPsikososialSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Section 3: Riwayat Psikososial',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 16),
-        const CustomTextField(
-          name: 'hubungan_sosial',
-          label: 'Hubungan Sosial',
-          maxLines: 3,
-        ),
-        const SizedBox(height: 16),
-        const CustomTextField(
-          name: 'dukungan_sosial',
-          label: 'Dukungan Sosial',
-          maxLines: 3,
-        ),
-        const SizedBox(height: 16),
-        const CustomTextField(
-          name: 'stresor_psikososial',
-          label: 'Stresor Psikososial',
-          maxLines: 3,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildRiwayatPsikiatriSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Section 4: Riwayat Psikiatri',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 16),
-        const CustomTextField(
-          name: 'riwayat_gangguan_psikiatri',
-          label: 'Riwayat Gangguan Psikiatri',
-          maxLines: 3,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildPemeriksaanPsikologisSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Section 5: Pemeriksaan Psikologis',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 16),
-        CustomDropdown<String>(
-          name: 'kesadaran',
-          label: 'Kesadaran',
-          items: const [
-            DropdownMenuItem(value: 'sadar_penuh', child: Text('Sadar Penuh')),
-            DropdownMenuItem(value: 'somnolent', child: Text('Somnolent')),
-            DropdownMenuItem(value: 'stupor', child: Text('Stupor')),
-            DropdownMenuItem(value: 'coma', child: Text('Coma')),
-          ],
-          hint: 'Pilih Kesadaran',
-        ),
-        const SizedBox(height: 16),
-        CustomDropdown<String>(
-          name: 'orientasi',
-          label: 'Orientasi',
-          items: const [
-            DropdownMenuItem(value: 'utuh', child: Text('Utuh')),
-            DropdownMenuItem(value: 'gangguan', child: Text('Gangguan')),
-          ],
-          hint: 'Pilih Orientasi',
-        ),
-        const SizedBox(height: 16),
-        const CustomTextField(name: 'penampilan', label: 'Penampilan'),
-      ],
-    );
-  }
-
-  Widget _buildFungsiPsikologisSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Section 6: Fungsi Psikologis',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 16),
-        CustomDropdown<String>(
-          name: 'mood',
-          label: 'Mood',
-          items: const [
-            DropdownMenuItem(value: 'normal', child: Text('Normal')),
-            DropdownMenuItem(value: 'depresi', child: Text('Depresi')),
-            DropdownMenuItem(value: 'ansietas', child: Text('Ansietas')),
-            DropdownMenuItem(value: 'iritabel', child: Text('Iritabel')),
-            DropdownMenuItem(value: 'labil', child: Text('Labil')),
-          ],
-          hint: 'Pilih Mood',
-        ),
-        const SizedBox(height: 16),
-        CustomDropdown<String>(
-          name: 'afect',
-          label: 'Afect',
-          items: const [
-            DropdownMenuItem(value: 'normal', child: Text('Normal')),
-            DropdownMenuItem(value: 'flat', child: Text('Flat')),
-            DropdownMenuItem(value: 'terhambat', child: Text('Terhambat')),
-            DropdownMenuItem(value: 'labil', child: Text('Labil')),
-            DropdownMenuItem(value: 'iritabel', child: Text('Iritabel')),
-          ],
-          hint: 'Pilih Afect',
-        ),
-        const SizedBox(height: 16),
-        const CustomTextField(name: 'alam_pikiran', label: 'Alam Pikiran'),
-      ],
-    );
-  }
-
-  Widget _buildFungsiSosialSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Section 7: Fungsi Sosial',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 16),
-        const CustomTextField(
-          name: 'fungsi_sosial',
-          label: 'Fungsi Sosial',
-          maxLines: 3,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildFungsiSpiritualSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Section 8: Fungsi Spiritual',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 16),
-        const CustomTextField(name: 'kepercayaan', label: 'Kepercayaan'),
-        const SizedBox(height: 16),
-        const CustomTextField(name: 'praktik_ibadah', label: 'Praktik Ibadah'),
-      ],
-    );
-  }
-
-  Widget _buildGenogramSection() {
-    final structure = formKey.currentState?.fields['genogram_structure']?.value;
-    final List members = structure != null && structure is Map
-        ? (structure['members'] ?? []) as List
-        : [];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        FormBuilderField<Map<String, dynamic>>(
-          name: 'genogram_structure',
-          builder: (field) => const SizedBox.shrink(),
-        ),
-        FormBuilderField<String>(
-          name: 'genogram_notes',
-          builder: (field) => const SizedBox.shrink(),
-        ),
-        const Text(
-          'Section 9: Genogram',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 16),
-        if (members.isEmpty)
-          const Text('Belum ada anggota genogram.')
-        else
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Anggota Genogram (${members.length})',
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: members.length,
-                itemBuilder: (context, idx) {
-                  final member = members[idx] as Map<String, dynamic>;
-                  return ListTile(
-                    title: Text(member['name'] ?? 'Unknown'),
-                    subtitle: Text(
-                      '${member['relationship'] ?? ''} • ${member['age'] ?? ''}',
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
-        const SizedBox(height: 16),
-        ElevatedButton(
-          onPressed: () async {
-            final result = await Get.toNamed(
-              '/genogram-builder',
-              arguments: {
-                'structure': structure ?? {'members': [], 'connections': []},
-                'notes':
-                    formKey.currentState?.fields['genogram_notes']?.value ?? '',
-              },
-            );
-            if (result != null && result is Map<String, dynamic>) {
-              formKey.currentState?.fields['genogram_structure']?.didChange(
-                result['structure'] ?? result,
-              );
-              formKey.currentState?.fields['genogram_notes']?.didChange(
-                result['notes'] ?? '',
-              );
-              setState(() {});
-            }
-          },
-          child: const Text('Open Genogram Builder'),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildRenpraSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Section 10: Rencana Perawatan (Renpra)',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 16),
-        Obx(() {
-          final nursingService = Get.find<NursingDataGlobalService>();
-          final diagnoses = nursingService.diagnoses;
-          if (diagnoses.isEmpty) {
-            return const Text('Tidak ada diagnosis tersedia');
-          }
-          return CustomDropdown<int>(
-            name: 'diagnosis',
-            label: 'Diagnosis',
-            items: diagnoses
-                .map(
-                  (diag) =>
-                      DropdownMenuItem(value: diag.id, child: Text(diag.name)),
-                )
-                .toList(),
-            hint: 'Pilih Diagnosis',
-          );
-        }),
-        const SizedBox(height: 16),
-        Obx(() {
-          final interventions = _interventionController.interventions;
-          if (interventions.isEmpty) {
-            return const Text('Tidak ada intervensi tersedia');
-          }
-
-          return CustomCheckboxGroup<int>(
-            name: 'intervensi',
-            label: 'Intervensi',
-            options: interventions
-                .map(
-                  (iv) => FormBuilderFieldOption(
-                    value: iv.id,
-                    child: Text(iv.name),
-                  ),
-                )
-                .toList(),
-          );
-        }),
-        const SizedBox(height: 16),
-        const CustomTextField(name: 'tujuan', label: 'Tujuan', maxLines: 3),
-        const SizedBox(height: 16),
-        const CustomTextField(name: 'kriteria', label: 'Kriteria', maxLines: 3),
-        const SizedBox(height: 16),
-        const CustomTextField(name: 'rasional', label: 'Rasional', maxLines: 3),
-      ],
-    );
-  }
-
-  Widget _buildPenutupSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Section 11: Penutup',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 16),
-        const CustomTextField(
-          name: 'catatan_tambahan',
-          label: 'Catatan Tambahan',
-          maxLines: 5,
-        ),
-        const SizedBox(height: 16),
-        CustomDateTimePicker(
-          name: 'tanggal_pengisian',
-          label: 'Tanggal Pengisian',
-          inputType: InputType.date,
-          initialDate: DateTime.now(),
-          firstDate: DateTime(2000),
-          lastDate: DateTime.now(),
-        ),
-      ],
-    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
     return Scaffold(
+      backgroundColor: colorScheme.surface,
       appBar: AppBar(
-        title: Text(
-          widget.formId == null
-              ? 'Form Pengkajian Kesehatan Jiwa'
-              : 'Edit Form',
-        ),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        actions: [
-          TextButton(
-            onPressed: _exportToPdf,
-            child: const Text('PDF', style: TextStyle(color: Colors.white)),
+        title: const Text('Pengkajian Kesehatan Jiwa'),
+        backgroundColor: colorScheme.surface,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        leading: BackButton(color: colorScheme.onSurface),
+        titleTextStyle: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold, color: colorScheme.onSurface),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(8.0),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: LinearProgressIndicator(
+                value: (_currentSection + 1) / _totalSections,
+                backgroundColor: colorScheme.surfaceContainerHighest,
+                valueColor: AlwaysStoppedAnimation<Color>(colorScheme.primary),
+              ),
+            ),
           ),
-        ],
+        ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
+      body: FormBuilder(
+        key: formKey,
+        initialValue: initialValues,
         child: Column(
           children: [
-            LinearProgressIndicator(value: (_currentSection + 1) / 11),
-            const SizedBox(height: 16),
-            Text('Section ${_currentSection + 1} dari 11'),
-            const SizedBox(height: 16),
             Expanded(
-              child: FormBuilder(
-                key: formKey,
-                initialValue: initialValues,
-                child: SingleChildScrollView(
-                  child: _buildSection(_currentSection),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(vertical: 24.0, horizontal: 20.0),
+                child: _buildSection(context, _currentSection),
+              ),
+            ),
+            _buildBottomActionBar(colorScheme, textTheme),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSection(BuildContext context, int sectionNumber) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    String title;
+    Widget content;
+
+    switch (sectionNumber) {
+      case 0:
+        title = 'Identitas Klien';
+        content = _buildIdentitasKlienSection(colorScheme);
+        break;
+      case 1:
+        title = 'Riwayat Kehidupan';
+        content = _buildRiwayatKehidupanSection(colorScheme);
+        break;
+      case 2:
+        title = 'Riwayat Psikososial';
+        content = _buildRiwayatPsikososialSection(colorScheme);
+        break;
+      case 3:
+        title = 'Riwayat Psikiatri';
+        content = _buildRiwayatPsikiatriSection(colorScheme);
+        break;
+      case 4:
+        title = 'Pemeriksaan Psikologis';
+        content = _buildPemeriksaanPsikologisSection(colorScheme);
+        break;
+      case 5:
+        title = 'Fungsi Psikologis';
+        content = _buildFungsiPsikologisSection(colorScheme);
+        break;
+      case 6:
+        title = 'Fungsi Sosial';
+        content = _buildFungsiSosialSection(colorScheme);
+        break;
+      case 7:
+        title = 'Fungsi Spiritual';
+        content = _buildFungsiSpiritualSection(colorScheme);
+        break;
+      case 8:
+        title = 'Genogram';
+        content = _buildGenogramSection(colorScheme);
+        break;
+      case 9:
+        title = 'Rencana Perawatan (Renpra)';
+        content = _buildRenpraSection(colorScheme);
+        break;
+      case 10:
+        title = 'Penutup';
+        content = _buildPenutupSection(colorScheme);
+        break;
+      default:
+        return const SizedBox.shrink();
+    }
+    
+    return _buildInfoCard(
+      colorScheme: colorScheme,
+      textTheme: textTheme,
+      title: 'Bagian ${sectionNumber + 1}: $title',
+      child: content,
+    );
+  }
+
+  Widget _buildIdentitasKlienSection(ColorScheme colorScheme) {
+    return Column(
+      children: [
+        _buildTextField(name: 'nama_lengkap', label: 'Nama Lengkap', colorScheme: colorScheme),
+        const SizedBox(height: 20),
+        _buildTextField(name: 'umur', label: 'Umur', keyboardType: TextInputType.number, colorScheme: colorScheme),
+        const SizedBox(height: 20),
+        _buildDropdown<String>(name: 'jenis_kelamin', label: 'Jenis Kelamin', items: const [
+          DropdownMenuItem(value: 'L', child: Text('Laki-laki')),
+          DropdownMenuItem(value: 'P', child: Text('Perempuan')),
+          DropdownMenuItem(value: 'O', child: Text('Lainnya')),
+        ], colorScheme: colorScheme),
+        const SizedBox(height: 20),
+        _buildDropdown<String>(name: 'status_perkawinan', label: 'Status Perkawinan', items: const [
+          DropdownMenuItem(value: 'belum_kawin', child: Text('Belum Kawin')),
+          DropdownMenuItem(value: 'menikah', child: Text('Menikah')),
+          DropdownMenuItem(value: 'cerai_hidup', child: Text('Cerai Hidup')),
+          DropdownMenuItem(value: 'cerai_mati', child: Text('Cerai Mati')),
+          DropdownMenuItem(value: 'duda', child: Text('Duda')),
+          DropdownMenuItem(value: 'janda', child: Text('Janda')),
+        ], colorScheme: colorScheme),
+      ],
+    );
+  }
+
+  Widget _buildRiwayatKehidupanSection(ColorScheme colorScheme) {
+    return Column(
+      children: [
+        _buildTextField(name: 'riwayat_pendidikan', label: 'Riwayat Pendidikan', maxLines: 3, colorScheme: colorScheme),
+        const SizedBox(height: 20),
+        _buildTextField(name: 'pekerjaan', label: 'Pekerjaan', colorScheme: colorScheme),
+        const SizedBox(height: 20),
+        _buildTextField(name: 'riwayat_keluarga', label: 'Riwayat Keluarga', maxLines: 3, colorScheme: colorScheme),
+      ],
+    );
+  }
+
+  Widget _buildRiwayatPsikososialSection(ColorScheme colorScheme) {
+    return Column(
+      children: [
+        _buildTextField(name: 'hubungan_sosial', label: 'Hubungan Sosial', maxLines: 3, colorScheme: colorScheme),
+        const SizedBox(height: 20),
+        _buildTextField(name: 'dukungan_sosial', label: 'Dukungan Sosial', maxLines: 3, colorScheme: colorScheme),
+        const SizedBox(height: 20),
+        _buildTextField(name: 'stresor_psikososial', label: 'Stresor Psikososial', maxLines: 3, colorScheme: colorScheme),
+      ],
+    );
+  }
+
+  Widget _buildRiwayatPsikiatriSection(ColorScheme colorScheme) {
+    return _buildTextField(name: 'riwayat_gangguan_psikiatri', label: 'Riwayat Gangguan Psikiatri', maxLines: 3, colorScheme: colorScheme);
+  }
+
+  Widget _buildPemeriksaanPsikologisSection(ColorScheme colorScheme) {
+    return Column(
+      children: [
+        _buildDropdown<String>(name: 'kesadaran', label: 'Kesadaran', items: const [
+          DropdownMenuItem(value: 'sadar_penuh', child: Text('Sadar Penuh')),
+          DropdownMenuItem(value: 'somnolent', child: Text('Somnolent')),
+          DropdownMenuItem(value: 'stupor', child: Text('Stupor')),
+          DropdownMenuItem(value: 'coma', child: Text('Coma')),
+        ], colorScheme: colorScheme),
+        const SizedBox(height: 20),
+        _buildDropdown<String>(name: 'orientasi', label: 'Orientasi', items: const [
+          DropdownMenuItem(value: 'utuh', child: Text('Utuh')),
+          DropdownMenuItem(value: 'gangguan', child: Text('Gangguan')),
+        ], colorScheme: colorScheme),
+        const SizedBox(height: 20),
+        _buildTextField(name: 'penampilan', label: 'Penampilan', colorScheme: colorScheme),
+      ],
+    );
+  }
+
+  Widget _buildFungsiPsikologisSection(ColorScheme colorScheme) {
+    return Column(
+      children: [
+        _buildDropdown<String>(name: 'mood', label: 'Mood', items: const [
+          DropdownMenuItem(value: 'normal', child: Text('Normal')),
+          DropdownMenuItem(value: 'depresi', child: Text('Depresi')),
+          DropdownMenuItem(value: 'ansietas', child: Text('Ansietas')),
+          DropdownMenuItem(value: 'iritabel', child: Text('Iritabel')),
+          DropdownMenuItem(value: 'labil', child: Text('Labil')),
+        ], colorScheme: colorScheme),
+        const SizedBox(height: 20),
+        _buildDropdown<String>(name: 'afect', label: 'Afect', items: const [
+          DropdownMenuItem(value: 'normal', child: Text('Normal')),
+          DropdownMenuItem(value: 'flat', child: Text('Flat')),
+          DropdownMenuItem(value: 'terhambat', child: Text('Terhambat')),
+          DropdownMenuItem(value: 'labil', child: Text('Labil')),
+          DropdownMenuItem(value: 'iritabel', child: Text('Iritabel')),
+        ], colorScheme: colorScheme),
+        const SizedBox(height: 20),
+        _buildTextField(name: 'alam_pikiran', label: 'Alam Pikiran', colorScheme: colorScheme),
+      ],
+    );
+  }
+
+  Widget _buildFungsiSosialSection(ColorScheme colorScheme) {
+    return _buildTextField(name: 'fungsi_sosial', label: 'Fungsi Sosial', maxLines: 3, colorScheme: colorScheme);
+  }
+
+  Widget _buildFungsiSpiritualSection(ColorScheme colorScheme) {
+    return Column(
+      children: [
+        _buildTextField(name: 'kepercayaan', label: 'Kepercayaan', colorScheme: colorScheme),
+        const SizedBox(height: 20),
+        _buildTextField(name: 'praktik_ibadah', label: 'Praktik Ibadah', colorScheme: colorScheme),
+      ],
+    );
+  }
+
+  Widget _buildGenogramSection(ColorScheme colorScheme) {
+    final structure = formKey.currentState?.fields['genogram_structure']?.value;
+    final notes = formKey.currentState?.fields['genogram_notes']?.value ?? '';
+    final List members = structure != null && structure is Map ? (structure['members'] ?? []) as List : [];
+    
+    return Column(
+      children: [
+        FormBuilderField<Map<String, dynamic>>(name: 'genogram_structure', builder: (field) => const SizedBox.shrink()),
+        FormBuilderField<String>(name: 'genogram_notes', builder: (field) => const SizedBox.shrink()),
+        _buildTextField(name: 'genogram_notes', label: 'Catatan Genogram', maxLines: 4, colorScheme: colorScheme),
+        const SizedBox(height: 20),
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            onPressed: () async {
+              final result = await Get.toNamed('/genogram-builder', arguments: {'structure': structure ?? {'members': [], 'connections': []}, 'notes': notes});
+              if (result != null && result is Map<String, dynamic>) {
+                formKey.currentState?.fields['genogram_structure']?.didChange(result['structure'] ?? result);
+                formKey.currentState?.fields['genogram_notes']?.didChange(result['notes'] ?? '');
+                setState(() {});
+              }
+            },
+            icon: const Icon(Icons.family_restroom_rounded),
+            label: Text(members.isEmpty ? 'Buka Genogram Builder' : 'Edit Genogram (${members.length} Anggota)'),
+            style: FilledButton.styleFrom(
+              backgroundColor: colorScheme.secondary,
+              foregroundColor: colorScheme.onSecondary,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRenpraSection(ColorScheme colorScheme) {
+    return Column(
+      children: [
+        Obx(() {
+          final diagnoses = Get.find<NursingDataGlobalService>().diagnoses;
+          if (diagnoses.isEmpty) return const Center(child: Text('Data diagnosis tidak tersedia.'));
+          return _buildDropdown<int>(name: 'diagnosis', label: 'Diagnosis', items: diagnoses.map((d) => DropdownMenuItem(value: d.id, child: Text(d.name))).toList(), colorScheme: colorScheme);
+        }),
+        const SizedBox(height: 20),
+        _buildInterventionSection(colorScheme),
+        const SizedBox(height: 20),
+        _buildTextField(name: 'tujuan', label: 'Tujuan', maxLines: 3, colorScheme: colorScheme),
+        const SizedBox(height: 20),
+        _buildTextField(name: 'kriteria', label: 'Kriteria Evaluasi', maxLines: 3, colorScheme: colorScheme),
+        const SizedBox(height: 20),
+        _buildTextField(name: 'rasional', label: 'Rasional', maxLines: 3, colorScheme: colorScheme),
+      ],
+    );
+  }
+
+  Widget _buildInterventionSection(ColorScheme colorScheme) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Intervensi', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: colorScheme.onSurface)),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(color: colorScheme.surfaceContainerHighest.withOpacity(0.3), borderRadius: BorderRadius.circular(12), border: Border.all(color: colorScheme.outline.withOpacity(0.2), width: 1)),
+          child: Obx(() {
+            final interventions = _interventionController.interventions;
+            if (interventions.isEmpty) return const Center(child: Text('Tidak ada intervensi tersedia.'));
+            return CustomCheckboxGroup<int>(name: 'intervensi', label: '', options: interventions.map((iv) => FormBuilderFieldOption(value: iv.id, child: Text(iv.name))).toList());
+          }),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPenutupSection(ColorScheme colorScheme) {
+    return Column(
+      children: [
+        _buildTextField(name: 'catatan_tambahan', label: 'Catatan Tambahan', maxLines: 5, colorScheme: colorScheme),
+        const SizedBox(height: 20),
+        FormBuilderField(
+          name: 'tanggal_pengisian',
+          builder: (field) {
+            DateTime? initialDate;
+            if (field.value is String) {
+              initialDate = DateTime.tryParse(field.value as String);
+            } else if (field.value is DateTime) {
+              initialDate = field.value as DateTime;
+            }
+
+            return CustomDateTimePicker(
+              name: 'tanggal_pengisian',
+              label: 'Tanggal Pengisian',
+              inputType: InputType.date,
+              initialDate: initialDate ?? DateTime.now(),
+              firstDate: DateTime(2000),
+              lastDate: DateTime.now(),
+              onChanged: (val) => field.didChange(val),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInfoCard({required ColorScheme colorScheme, required TextTheme textTheme, required String title, required Widget child}) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: colorScheme.outlineVariant.withOpacity(0.5), width: 1),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(title, style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600, color: colorScheme.onSurface)),
+        const SizedBox(height: 24),
+        child,
+      ]),
+    );
+  }
+
+  Widget _buildTextField({required String name, required String label, required ColorScheme colorScheme, TextInputType? keyboardType, int? maxLines = 1}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: colorScheme.onSurface)),
+        const SizedBox(height: 8),
+        FormBuilderTextField(
+          name: name,
+          keyboardType: keyboardType,
+          maxLines: maxLines,
+          style: TextStyle(fontSize: 16, color: colorScheme.onSurface),
+          decoration: InputDecoration(
+            filled: true,
+            fillColor: colorScheme.surfaceContainerHighest.withOpacity(0.3),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: colorScheme.outline.withOpacity(0.2), width: 1)),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: colorScheme.primary, width: 2)),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDropdown<T>({required String name, required String label, required List<DropdownMenuItem<T>> items, required ColorScheme colorScheme, ValueChanged<T?>? onChanged}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: colorScheme.onSurface)),
+        const SizedBox(height: 8),
+        FormBuilderDropdown<T>(
+          name: name,
+          items: items,
+          onChanged: onChanged,
+          decoration: InputDecoration(
+            filled: true,
+            fillColor: colorScheme.surfaceContainerHighest.withOpacity(0.3),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: colorScheme.outline.withOpacity(0.2), width: 1)),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: colorScheme.primary, width: 2)),
+          ),
+          dropdownColor: colorScheme.surfaceContainerHighest,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBottomActionBar(ColorScheme colorScheme, TextTheme textTheme) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(color: colorScheme.surface, border: Border(top: BorderSide(color: colorScheme.outlineVariant.withOpacity(0.3), width: 1))),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          if (_currentSection > 0)
+            TextButton.icon(
+              onPressed: _previousSection,
+              icon: const Icon(Icons.arrow_back_ios_new_rounded),
+              label: const Text('Sebelumnya'),
+              style: TextButton.styleFrom(foregroundColor: colorScheme.onSurface),
+            ),
+          const Spacer(),
+          SizedBox(
+            height: 52,
+            child: Obx(
+              () => FilledButton.icon(
+                onPressed: formController.isLoading ? null : (_currentSection == _totalSections - 1 ? submitForm : _nextSection),
+                icon: formController.isLoading ? const SizedBox.shrink() : Icon(_currentSection == _totalSections - 1 ? Icons.save_alt_rounded : Icons.arrow_forward_ios_rounded),
+                label: formController.isLoading
+                    ? SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2.5, color: colorScheme.onPrimary))
+                    : Text(_currentSection == _totalSections - 1 ? 'Simpan' : 'Selanjutnya'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: colorScheme.primary,
+                  foregroundColor: colorScheme.onPrimary,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
                 ),
               ),
             ),
-            const SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                if (_currentSection > 0)
-                  ElevatedButton(
-                    onPressed: _previousSection,
-                    child: const Text('Sebelumnya'),
-                  )
-                else
-                  const SizedBox.shrink(),
-                if (_currentSection == 10)
-                  Expanded(child: buildActionButtons())
-                else
-                  ElevatedButton(
-                    onPressed: _nextSection,
-                    child: const Text('Selanjutnya'),
-                  ),
-              ],
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

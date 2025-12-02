@@ -7,8 +7,6 @@ import '../models/patient_model.dart';
 import '../services/nursing_data_global_service.dart';
 import '../controllers/nursing_intervention_controller.dart';
 import '../utils/form_builder_mixin.dart';
-import '../widgets/form_components/custom_text_field.dart';
-import '../widgets/form_components/custom_dropdown.dart';
 import '../widgets/form_components/custom_checkbox_group.dart';
 
 class CatatanTambahanFormView extends StatefulWidget {
@@ -47,7 +45,6 @@ class _CatatanTambahanFormViewState extends State<CatatanTambahanFormView>
   @override
   int? get currentPatientId => _currentPatientId;
 
-  // State to track selected diagnosis for visibility logic
   int? _selectedDiagnosis;
 
   @override
@@ -69,7 +66,6 @@ class _CatatanTambahanFormViewState extends State<CatatanTambahanFormView>
     final catatan = data['catatan'] ?? {};
     final renpra = catatan['renpra'] ?? {};
 
-    // Set initial selected diagnosis for UI state
     if (renpra['diagnosis'] != null) {
       _selectedDiagnosis = renpra['diagnosis'];
     }
@@ -91,7 +87,7 @@ class _CatatanTambahanFormViewState extends State<CatatanTambahanFormView>
     final result = {
       'catatan': {
         'isi_catatan': formData['isi_catatan'],
-        'renpra': formData['diagnosis'] != null
+        'renpra': formData['diagnosis'] != null && _selectedDiagnosis != null
             ? {
                 'diagnosis': formData['diagnosis'],
                 'intervensi': formData['intervensi'],
@@ -102,154 +98,397 @@ class _CatatanTambahanFormViewState extends State<CatatanTambahanFormView>
             : null,
       },
     };
-    // Call super to convert DateTime objects to strings
     return super.transformFormData(result);
   }
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final isNew = formId == null;
+
     return Scaffold(
+      backgroundColor: colorScheme.surface,
       appBar: AppBar(
-        title: Text(
-          widget.formId == null
-              ? 'Form Catatan Tambahan'
-              : 'Edit Catatan Tambahan',
+        title: Text(isNew ? 'Form Catatan Tambahan' : 'Edit Catatan Tambahan'),
+        backgroundColor: colorScheme.surface,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        leading: BackButton(color: colorScheme.onSurface),
+        titleTextStyle: textTheme.titleLarge?.copyWith(
+          fontWeight: FontWeight.bold,
+          color: colorScheme.onSurface,
         ),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final isWideScreen = constraints.maxWidth > 600;
+          return FormBuilder(
+            key: formKey,
+            initialValue: initialValues,
+            child: Column(
+              children: [
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isWideScreen ? 48.0 : 20.0,
+                      vertical: 24.0,
+                    ),
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 800),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _buildInfoCard(
+                              colorScheme: colorScheme,
+                              textTheme: textTheme,
+                              title: 'Catatan Perkembangan',
+                              child: _buildTextField(
+                                name: 'isi_catatan',
+                                label: 'Isi Catatan',
+                                colorScheme: colorScheme,
+                                keyboardType: TextInputType.multiline,
+                                maxLines: 5,
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                            _buildInfoCard(
+                              colorScheme: colorScheme,
+                              textTheme: textTheme,
+                              title: 'Rencana Perawatan (Renpra) - Opsional',
+                              child: _buildRenpraSection(
+                                colorScheme,
+                                textTheme,
+                              ),
+                            ),
+                            const SizedBox(height: 32),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                _buildBottomActionBar(colorScheme, textTheme),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildRenpraSection(ColorScheme colorScheme, TextTheme textTheme) {
+    return Column(
+      children: [
+        Obx(() {
+          final diagnoses = Get.find<NursingDataGlobalService>().diagnoses;
+          if (diagnoses.isEmpty) {
+            return const Center(child: Text('Data diagnosis tidak tersedia.'));
+          }
+          return _buildDropdown<int>(
+            name: 'diagnosis',
+            label: 'Diagnosis',
+            items: diagnoses
+                .map((d) => DropdownMenuItem(value: d.id, child: Text(d.name)))
+                .toList(),
+            hint: 'Pilih Diagnosis (Opsional)',
+            onChanged: (value) {
+              setState(() {
+                _selectedDiagnosis = value;
+                // Clear dependent fields if diagnosis is cleared
+                if (value == null) {
+                  formKey.currentState?.fields['intervensi']?.didChange([]);
+                  formKey.currentState?.fields['tujuan']?.didChange(null);
+                  formKey.currentState?.fields['kriteria']?.didChange(null);
+                  formKey.currentState?.fields['rasional']?.didChange(null);
+                }
+              });
+            },
+            colorScheme: colorScheme,
+            icon: Icons.medical_information_outlined,
+          );
+        }),
+        if (_selectedDiagnosis != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 20.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildInterventionSection(colorScheme, textTheme),
+                const SizedBox(height: 20),
+                _buildTextField(
+                  name: 'tujuan',
+                  label: 'Tujuan',
+                  colorScheme: colorScheme,
+                  maxLines: 3,
+                ),
+                const SizedBox(height: 20),
+                _buildTextField(
+                  name: 'kriteria',
+                  label: 'Kriteria Evaluasi',
+                  colorScheme: colorScheme,
+                  maxLines: 3,
+                ),
+                const SizedBox(height: 20),
+                _buildTextField(
+                  name: 'rasional',
+                  label: 'Rasional',
+                  colorScheme: colorScheme,
+                  maxLines: 3,
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildInterventionSection(
+    ColorScheme colorScheme,
+    TextTheme textTheme,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Intervensi',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: colorScheme.onSurface,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: colorScheme.surfaceContainerHighest.withOpacity(0.3),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: colorScheme.outline.withOpacity(0.2),
+              width: 1,
+            ),
+          ),
+          child: Obx(() {
+            final interventions = _interventionController.interventions;
+            if (interventions.isEmpty) {
+              return const Center(
+                child: Text('Tidak ada intervensi tersedia.'),
+              );
+            }
+            return CustomCheckboxGroup<int>(
+              name: 'intervensi',
+              label: '', // Label is handled outside
+              options: interventions
+                  .map(
+                    (iv) => FormBuilderFieldOption(
+                      value: iv.id,
+                      child: Text(iv.name),
+                    ),
+                  )
+                  .toList(),
+            );
+          }),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInfoCard({
+    required ColorScheme colorScheme,
+    required TextTheme textTheme,
+    required String title,
+    required Widget child,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: colorScheme.outlineVariant.withOpacity(0.5),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+              color: colorScheme.onSurface,
+            ),
+          ),
+          const SizedBox(height: 20),
+          child,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTextField({
+    required String name,
+    required String label,
+    required ColorScheme colorScheme,
+    TextInputType? keyboardType,
+    int? maxLines = 1,
+    String? hint,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: colorScheme.onSurface,
+          ),
+        ),
+        const SizedBox(height: 8),
+        FormBuilderTextField(
+          name: name,
+          keyboardType: keyboardType,
+          maxLines: maxLines,
+          style: TextStyle(fontSize: 16, color: colorScheme.onSurface),
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: TextStyle(
+              color: colorScheme.onSurfaceVariant.withOpacity(0.5),
+            ),
+            filled: true,
+            fillColor: colorScheme.surfaceContainerHighest.withOpacity(0.3),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(
+                color: colorScheme.outline.withOpacity(0.2),
+                width: 1,
+              ),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: colorScheme.primary, width: 2),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDropdown<T>({
+    required String name,
+    required String label,
+    required List<DropdownMenuItem<T>> items,
+    required ColorScheme colorScheme,
+    IconData? icon,
+    String? hint,
+    ValueChanged<T?>? onChanged,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: colorScheme.onSurface,
+          ),
+        ),
+        const SizedBox(height: 8),
+        FormBuilderDropdown<T>(
+          name: name,
+          items: items,
+          onChanged: onChanged,
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: TextStyle(
+              color: colorScheme.onSurfaceVariant.withOpacity(0.5),
+            ),
+            prefixIcon: icon != null
+                ? Icon(icon, color: colorScheme.primary, size: 22)
+                : null,
+            filled: true,
+            fillColor: colorScheme.surfaceContainerHighest.withOpacity(0.3),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(
+                color: colorScheme.outline.withOpacity(0.2),
+                width: 1,
+              ),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: colorScheme.primary, width: 2),
+            ),
+          ),
+          dropdownColor: colorScheme.surfaceContainerHighest,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBottomActionBar(ColorScheme colorScheme, TextTheme textTheme) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        border: Border(
+          top: BorderSide(
+            color: colorScheme.outlineVariant.withOpacity(0.3),
+            width: 1,
+          ),
+        ),
+      ),
+      child: Obx(
+        () => Row(
           children: [
             Expanded(
-              child: SingleChildScrollView(
-                child: FormBuilder(
-                  key: formKey,
-                  initialValue: initialValues,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Catatan Tambahan',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
+              child: SizedBox(
+                height: 52,
+                child: FilledButton.icon(
+                  onPressed: formController.isLoading ? null : submitForm,
+                  icon: formController.isLoading
+                      ? const SizedBox.shrink()
+                      : const Icon(Icons.save_alt_rounded),
+                  label: formController.isLoading
+                      ? SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            color: colorScheme
+                                .onPrimary, // Changed to onPrimary for visibility on dark backgrounds if any
+                          ),
+                        )
+                      : Text(
+                          'Simpan',
+                          style: textTheme.titleMedium?.copyWith(
+                            color: colorScheme.onPrimary,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 16),
-                      const CustomTextField(
-                        name: 'isi_catatan',
-                        label: 'Isi Catatan',
-                        maxLines: null,
-                        keyboardType: TextInputType.multiline,
-                      ),
-                      const SizedBox(height: 24),
-
-                      // Optional Renpra section
-                      const Text(
-                        'Rencana Perawatan (Renpra) - Opsional',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Diagnosis dropdown
-                      Obx(() {
-                        final nursingService =
-                            Get.find<NursingDataGlobalService>();
-                        final diagnoses = nursingService.diagnoses;
-
-                        final items = diagnoses
-                            .map(
-                              (diag) => DropdownMenuItem<int>(
-                                value: diag.id,
-                                child: Text(diag.name),
-                              ),
-                            )
-                            .toList();
-
-                        if (items.isEmpty) {
-                          return const Text('Tidak ada diagnosis tersedia');
-                        }
-
-                        return CustomDropdown<int>(
-                          name: 'diagnosis',
-                          label: 'Diagnosis',
-                          items: items,
-                          hint: 'Pilih Diagnosis atau Tidak Ada',
-                          onChanged: (value) {
-                            setState(() {
-                              _selectedDiagnosis = value;
-                              // Clear dependent fields if diagnosis is cleared
-                              if (value == null) {
-                                formKey.currentState?.fields['intervensi']
-                                    ?.didChange([]);
-                                formKey.currentState?.fields['tujuan']
-                                    ?.didChange(null);
-                                formKey.currentState?.fields['kriteria']
-                                    ?.didChange(null);
-                                formKey.currentState?.fields['rasional']
-                                    ?.didChange(null);
-                              }
-                            });
-                          },
-                        );
-                      }),
-                      const SizedBox(height: 16),
-
-                      // Intervensi checkboxes (only if renpra is selected)
-                      if (_selectedDiagnosis != null) ...[
-                        const Text('Intervensi'),
-                        const SizedBox(height: 8),
-                        Obx(() {
-                          final interventions =
-                              _interventionController.interventions;
-                          if (interventions.isEmpty) {
-                            return const Text('Tidak ada intervensi tersedia');
-                          }
-
-                          return CustomCheckboxGroup<int>(
-                            name: 'intervensi',
-                            label: 'Intervensi',
-                            options: interventions
-                                .map(
-                                  (iv) => FormBuilderFieldOption(
-                                    value: iv.id,
-                                    child: Text(iv.name),
-                                  ),
-                                )
-                                .toList(),
-                          );
-                        }),
-                        const SizedBox(height: 16),
-                        const CustomTextField(
-                          name: 'tujuan',
-                          label: 'Tujuan',
-                          maxLines: 3,
-                        ),
-                        const SizedBox(height: 16),
-                        const CustomTextField(
-                          name: 'kriteria',
-                          label: 'Kriteria',
-                          maxLines: 3,
-                        ),
-                        const SizedBox(height: 16),
-                        const CustomTextField(
-                          name: 'rasional',
-                          label: 'Rasional',
-                          maxLines: 3,
-                        ),
-                      ],
-                    ],
+                  style: FilledButton.styleFrom(
+                    backgroundColor: colorScheme
+                        .primary, // Ensure button has a background color
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 ),
               ),
             ),
-
-            // Action buttons from mixin
-            buildActionButtons(),
           ],
         ),
       ),
