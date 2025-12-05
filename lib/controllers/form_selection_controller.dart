@@ -26,6 +26,14 @@ class FormSelectionController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    _forms.clear(); // Clear previous data
+    fetchForms();
+  }
+
+  @override
+  void onReady() {
+    super.onReady();
+    // Ensure fresh data when view is ready
     fetchForms();
   }
 

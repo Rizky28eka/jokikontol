@@ -66,61 +66,111 @@ class _ResumeKegawatdaruratanFormViewState
 
   @override
   Map<String, dynamic> transformInitialData(Map<String, dynamic> data) {
+    DateTime? parseDate(dynamic value) {
+      if (value is DateTime) return value;
+      if (value is String) return DateTime.tryParse(value);
+      return null;
+    }
+
+    String? normalizeGender(dynamic value) {
+      if (value == null) return null;
+      final s = value.toString().toLowerCase();
+      if (s == 'l' || s.contains('laki')) return 'L';
+      if (s == 'p' || s.contains('perem')) return 'P';
+      if (s.startsWith('o') || s.contains('lain')) return 'O';
+      return 'O';
+    }
+
+    final identitas = data['identitas'] ?? data;
+    final riwayatKeluhan = data['riwayat_keluhan'] ?? data;
+    final pemeriksaanFisik = data['pemeriksaan_fisik'] ?? data;
+    final statusMental = data['status_mental'] ?? data;
+    final diagnosis = data['diagnosis'] ?? data;
+    final tindakan = data['tindakan'] ?? data;
+    final implementasi = data['implementasi'] ?? data;
+    final evaluasi = data['evaluasi'] ?? data;
+    final rencanaLanjut = data['rencana_lanjut'] ?? data;
+    final rencanaKeluarga = data['rencana_keluarga'] ?? data;
+    final renpra = data['renpra'] ?? {};
+
+    int? parseId(dynamic value) {
+      if (value is int) return value;
+      if (value is String) return int.tryParse(value);
+      if (value is double) return value.toInt();
+      return null;
+    }
+
+    List<int> parseIntervensi(dynamic value) {
+      // Backend may send list of ints/strings or something else; normalize to int list
+      if (value is List) {
+        return value
+            .map((v) => v is int ? v : (v is String ? int.tryParse(v) : null))
+            .whereType<int>()
+            .toList();
+      }
+      return [];
+    }
+
+    final renpraDiagnosis = parseId(renpra['diagnosis'] ?? data['renpra_diagnosis']);
+    final renpraIntervensi = renpra['intervensi'] ?? data['renpra_intervensi'];
+    final renpraTujuan = renpra['tujuan'] ?? data['renpra_tujuan'];
+    final renpraKriteria = renpra['kriteria'] ?? data['renpra_kriteria'];
+    final renpraRasional = renpra['rasional'] ?? data['renpra_rasional'];
+    final renpraEvaluasi = renpra['evaluasi'] ?? data['renpra_evaluasi'];
+
     return {
       // Section 1: Identitas
-      'nama_lengkap': data['identitas']?['nama_lengkap'],
-      'umur': data['identitas']?['umur'],
-      'jenis_kelamin': data['identitas']?['jenis_kelamin'],
-      'alamat': data['identitas']?['alamat'],
-      'tanggal_masuk': data['identitas']?['tanggal_masuk'],
+      'nama_lengkap': identitas['nama_lengkap'],
+      'umur': identitas['umur']?.toString(),
+      'jenis_kelamin': normalizeGender(identitas['jenis_kelamin']),
+      'alamat': identitas['alamat'],
+      'tanggal_masuk': parseDate(identitas['tanggal_masuk']),
       // Section 2: Riwayat Keluhan
-      'keluhan_utama': data['riwayat_keluhan']?['keluhan_utama'],
-      'riwayat_penyakit_sekarang':
-          data['riwayat_keluhan']?['riwayat_penyakit_sekarang'],
-      'faktor_pencetus': data['riwayat_keluhan']?['faktor_pencetus'],
+      'keluhan_utama': riwayatKeluhan['keluhan_utama'],
+      'riwayat_penyakit_sekarang': riwayatKeluhan['riwayat_penyakit_sekarang'],
+      'faktor_pencetus': riwayatKeluhan['faktor_pencetus'],
       // Section 3: Pemeriksaan Fisik
-      'keadaan_umum': data['pemeriksaan_fisik']?['keadaan_umum'],
-      'tanda_vital': data['pemeriksaan_fisik']?['tanda_vital'],
-      'pemeriksaan_lain': data['pemeriksaan_fisik']?['pemeriksaan_lain'],
+      'keadaan_umum': pemeriksaanFisik['keadaan_umum'],
+      'tanda_vital': pemeriksaanFisik['tanda_vital'],
+      'pemeriksaan_lain': pemeriksaanFisik['pemeriksaan_lain'],
       // Section 4: Status Mental
-      'kesadaran': data['status_mental']?['kesadaran'],
-      'orientasi': data['status_mental']?['orientasi'],
-      'bentuk_pemikiran': data['status_mental']?['bentuk_pemikiran'],
-      'isi_pemikiran': data['status_mental']?['isi_pemikiran'],
-      'persepsi': data['status_mental']?['persepsi'],
+      'kesadaran': statusMental['kesadaran'],
+      'orientasi': statusMental['orientasi'],
+      'bentuk_pemikiran': statusMental['bentuk_pemikiran'],
+      'isi_pemikiran': statusMental['isi_pemikiran'],
+      'persepsi': statusMental['persepsi'],
       // Section 5: Diagnosis
-      'diagnosis_utama': data['diagnosis']?['diagnosis_utama'],
-      'diagnosis_banding': data['diagnosis']?['diagnosis_banding'],
-      'diagnosis_tambahan': data['diagnosis']?['diagnosis_tambahan'],
+      'diagnosis_utama': diagnosis['diagnosis_utama'],
+      'diagnosis_banding': diagnosis['diagnosis_banding'],
+      'diagnosis_tambahan': diagnosis['diagnosis_tambahan'],
       // Section 6: Tindakan
-      'tindakan_medis': data['tindakan']?['tindakan_medis'],
-      'tindakan_keperawatan': data['tindakan']?['tindakan_keperawatan'],
-      'terapi_psikososial': data['tindakan']?['terapi_psikososial'],
+      'tindakan_medis': tindakan['tindakan_medis'],
+      'tindakan_keperawatan': tindakan['tindakan_keperawatan'],
+      'terapi_psikososial': tindakan['terapi_psikososial'],
       // Section 7: Implementasi
-      'pelaksanaan_intervensi': data['implementasi']?['pelaksanaan_intervensi'],
-      'kolaborasi_tim': data['implementasi']?['kolaborasi_tim'],
-      'edukasi': data['implementasi']?['edukasi'],
+      'pelaksanaan_intervensi': implementasi['pelaksanaan_intervensi'],
+      'kolaborasi_tim': implementasi['kolaborasi_tim'],
+      'edukasi': implementasi['edukasi'],
       // Section 8: Evaluasi
-      'respon_intervensi': data['evaluasi']?['respon_intervensi'],
-      'perubahan_klinis': data['evaluasi']?['perubahan_klinis'],
-      'tujuan_tercapai': data['evaluasi']?['tujuan_tercapai'],
-      'hambatan_perawatan': data['evaluasi']?['hambatan_perawatan'],
+      'respon_intervensi': evaluasi['respon_intervensi'],
+      'perubahan_klinis': evaluasi['perubahan_klinis'],
+      'tujuan_tercapai': evaluasi['tujuan_tercapai'],
+      'hambatan_perawatan': evaluasi['hambatan_perawatan'],
       // Section 9: Rencana Lanjut
-      'rencana_medis': data['rencana_lanjut']?['rencana_medis'],
-      'rencana_keperawatan': data['rencana_lanjut']?['rencana_keperawatan'],
-      'rencana_pemantauan': data['rencana_lanjut']?['rencana_pemantauan'],
+      'rencana_medis': rencanaLanjut['rencana_medis'],
+      'rencana_keperawatan': rencanaLanjut['rencana_keperawatan'],
+      'rencana_pemantauan': rencanaLanjut['rencana_pemantauan'],
       // Section 10: Rencana Keluarga
-      'keterlibatan_keluarga':
-          data['rencana_keluarga']?['keterlibatan_keluarga'],
-      'edukasi_keluarga': data['rencana_keluarga']?['edukasi_keluarga'],
-      'dukungan_keluarga': data['rencana_keluarga']?['dukungan_keluarga'],
+      'keterlibatan_keluarga': rencanaKeluarga['keterlibatan_keluarga'],
+      'edukasi_keluarga': rencanaKeluarga['edukasi_keluarga'],
+      'dukungan_keluarga': rencanaKeluarga['dukungan_keluarga'],
       // Section 11: Renpra
-      'diagnosis': data['renpra']?['diagnosis'],
-      'intervensi': data['renpra']?['intervensi'] ?? [],
-      'tujuan': data['renpra']?['tujuan'],
-      'kriteria': data['renpra']?['kriteria'],
-      'rasional': data['renpra']?['rasional'],
-      'evaluasi_renpra': data['renpra']?['evaluasi'],
+      'diagnosis': renpraDiagnosis,
+      'intervensi': parseIntervensi(renpraIntervensi),
+      'tujuan': renpraTujuan,
+      'kriteria': renpraKriteria,
+      'rasional': renpraRasional,
+      'evaluasi_renpra': renpraEvaluasi,
     };
   }
 
@@ -192,6 +242,48 @@ class _ResumeKegawatdaruratanFormViewState
               'evaluasi': formData['evaluasi_renpra'],
             }
           : null,
+      // flat mirror for BE compatibility
+      'nama_lengkap': formData['nama_lengkap'],
+      'umur': formData['umur'],
+      'jenis_kelamin': formData['jenis_kelamin'],
+      'alamat': formData['alamat'],
+      'tanggal_masuk': formData['tanggal_masuk'],
+      'keluhan_utama': formData['keluhan_utama'],
+      'riwayat_penyakit_sekarang': formData['riwayat_penyakit_sekarang'],
+      'faktor_pencetus': formData['faktor_pencetus'],
+      'keadaan_umum': formData['keadaan_umum'],
+      'tanda_vital': formData['tanda_vital'],
+      'pemeriksaan_lain': formData['pemeriksaan_lain'],
+      'kesadaran': formData['kesadaran'],
+      'orientasi': formData['orientasi'],
+      'bentuk_pemikiran': formData['bentuk_pemikiran'],
+      'isi_pemikiran': formData['isi_pemikiran'],
+      'persepsi': formData['persepsi'],
+      'diagnosis_utama': formData['diagnosis_utama'],
+      'diagnosis_banding': formData['diagnosis_banding'],
+      'diagnosis_tambahan': formData['diagnosis_tambahan'],
+      'tindakan_medis': formData['tindakan_medis'],
+      'tindakan_keperawatan': formData['tindakan_keperawatan'],
+      'terapi_psikososial': formData['terapi_psikososial'],
+      'pelaksanaan_intervensi': formData['pelaksanaan_intervensi'],
+      'kolaborasi_tim': formData['kolaborasi_tim'],
+      'edukasi': formData['edukasi'],
+      'respon_intervensi': formData['respon_intervensi'],
+      'perubahan_klinis': formData['perubahan_klinis'],
+      'tujuan_tercapai': formData['tujuan_tercapai'],
+      'hambatan_perawatan': formData['hambatan_perawatan'],
+      'rencana_medis': formData['rencana_medis'],
+      'rencana_keperawatan': formData['rencana_keperawatan'],
+      'rencana_pemantauan': formData['rencana_pemantauan'],
+      'keterlibatan_keluarga': formData['keterlibatan_keluarga'],
+      'edukasi_keluarga': formData['edukasi_keluarga'],
+      'dukungan_keluarga': formData['dukungan_keluarga'],
+      'renpra_diagnosis': formData['diagnosis'],
+      'renpra_intervensi': formData['intervensi'],
+      'renpra_tujuan': formData['tujuan'],
+      'renpra_kriteria': formData['kriteria'],
+      'renpra_rasional': formData['rasional'],
+      'renpra_evaluasi': formData['evaluasi_renpra'],
     };
     return super.transformFormData(result);
   }
@@ -282,7 +374,7 @@ class _ResumeKegawatdaruratanFormViewState
         const SizedBox(height: 16),
         const CustomTextField(name: 'alamat', label: 'Alamat', maxLines: 2),
         const SizedBox(height: 16),
-        CustomDateTimePicker(
+        const CustomDateTimePicker(
           name: 'tanggal_masuk',
           label: 'Tanggal Masuk',
           inputType: InputType.date,

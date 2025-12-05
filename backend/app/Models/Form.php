@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class Form extends Model
 {
@@ -22,6 +23,8 @@ class Form extends Model
         'patient_id',
         'status',
         'data',
+        'formable_type',
+        'formable_id',
     ];
 
     /**
@@ -71,5 +74,13 @@ class Form extends Model
     public function revisions()
     {
         return $this->hasMany(Revision::class);
+    }
+
+    /**
+     * Get the formable model (polymorphic).
+     */
+    public function formable(): MorphTo
+    {
+        return $this->morphTo();
     }
 }

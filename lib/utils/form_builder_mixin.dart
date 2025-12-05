@@ -6,6 +6,7 @@ import '../controllers/form_controller.dart';
 import '../controllers/patient_controller.dart';
 import '../models/patient_model.dart';
 import '../services/logger_service.dart';
+import 'form_data_mapper.dart';
 
 /// Mixin to eliminate duplication in form views using flutter_form_builder
 mixin FormBuilderMixin<T extends StatefulWidget> on State<T> {
@@ -68,8 +69,14 @@ mixin FormBuilderMixin<T extends StatefulWidget> on State<T> {
   Future<void> loadFormData(int formId) async {
     final form = await formController.getFormById(formId);
     if (form != null && form.data != null && mounted) {
+      // Apply reverse mapping to convert API flat structure back to form's nested structure
+      final reversedData = FormDataMapper.mapFromApiFormat(
+        form.type,
+        Map<String, dynamic>.from(form.data!),
+      );
+      
       setState(() {
-        initialValues = transformInitialData(Map<String, dynamic>.from(form.data!));
+        initialValues = transformInitialData(reversedData);
       });
       // Schedule patchValue after the widget rebuilds with new initialValues
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -122,31 +129,34 @@ mixin FormBuilderMixin<T extends StatefulWidget> on State<T> {
         'dataKeys': formData.keys.toList(),
       });
       
-      if (formId != null) {
-        // Update existing form
-        await formController.updateForm(
-          id: formId!,
-          data: formData,
-          status: 'submitted',
-        );
-      } else {
-        // Create new form
-        await formController.createForm(
-          type: formType,
-          patientId: effectivePatientId,
-          data: formData,
-          status: 'submitted',
-        );
-      }
+      final result = formId != null
+          ? await formController.updateForm(
+              id: formId!,
+              data: formData,
+              status: 'submitted',
+            )
+          : await formController.createForm(
+              type: formType,
+              patientId: effectivePatientId,
+              data: formData,
+              status: 'submitted',
+            );
 
-      if (mounted) {
+      if (mounted && result != null) {
+        // Navigate back immediately without waiting
         Get.back(result: true);
-        Get.snackbar(
-          'Sukses',
-          formSubmittedMessage,
-          backgroundColor: Colors.green,
-          colorText: Colors.white,
-        );
+        // Show success message after navigation
+        Future.delayed(const Duration(milliseconds: 100), () {
+          if (Get.isSnackbarOpen != true) {
+            Get.snackbar(
+              'Sukses',
+              formSubmittedMessage,
+              backgroundColor: Colors.green,
+              colorText: Colors.white,
+              duration: const Duration(seconds: 2),
+            );
+          }
+        });
       }
     } catch (e) {
       _logger.error('Error submitting form', error: e);

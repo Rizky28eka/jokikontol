@@ -4,12 +4,14 @@ class ApiConfig {
   // 1. Use localhost instead of IP: 'http://localhost:8000/api'
   // 2. Add exception in antivirus settings for this app
   // 3. Or temporarily disable web protection during development
+  // static const String baseUrl =
+  //     'https://tamajiwa.bilcode.id/api'; // Update this with your backend URL
   static const String baseUrl =
       'https://tamajiwa.bilcode.id/api'; // Update this with your backend URL
 
   // Environment-based configurations
   static const String developmentBaseUrl = 'https://tamajiwa.bilcode.id/api';
-  // static const String developmentBaseUrl = 'http://10.129.123.124:8000/api';
+  // static const String developmentBaseUrl = 'http://[nyesuain ip ente]:8000/api';
   static const String localhostBaseUrl = 'http://localhost:8000/api'; // Use this if antivirus blocks IP
   static const String productionBaseUrl = 'https://tamajiwa.bilcode.id/api';
   static const String stagingBaseUrl = 'https://staging.your-api.com/api';

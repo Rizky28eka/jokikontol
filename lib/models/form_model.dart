@@ -1,6 +1,11 @@
 import 'genogram_model.dart';
 import 'user_model.dart';
 import 'patient_model.dart';
+import 'pengkajian_form_model.dart';
+import 'resume_kegawatdaruratan_form_model.dart';
+import 'resume_poliklinik_form_model.dart';
+import 'sap_form_model.dart';
+import 'catatan_tambahan_form_model.dart';
 
 class FormUser {
   final int id;
@@ -44,8 +49,12 @@ class FormModel {
   final GenogramModel? genogram;
   final UserModel? user;
   final Patient? patient;
-
   final String? comments;
+  
+  // Polymorphic fields
+  final String? formableType;
+  final int? formableId;
+  final dynamic formable; // Can be PengkajianFormModel, etc.
 
   FormModel({
     required this.id,
@@ -60,16 +69,41 @@ class FormModel {
     this.user,
     this.patient,
     this.comments,
+    this.formableType,
+    this.formableId,
+    this.formable,
   });
 
   factory FormModel.fromJson(Map<String, dynamic> json) {
+    dynamic formableData;
+    if (json['formable'] != null) {
+      final formableType = json['formable_type'];
+      if (formableType != null) {
+        if (formableType.contains('PengkajianForm')) {
+          formableData = PengkajianFormModel.fromJson(json['formable']);
+        } else if (formableType.contains('ResumeKegawatdaruratanForm')) {
+          formableData = ResumeKegawatdaruratanFormModel.fromJson(json['formable']);
+        } else if (formableType.contains('ResumePoliklinikForm')) {
+          formableData = ResumePoliklinikFormModel.fromJson(json['formable']);
+        } else if (formableType.contains('SapForm')) {
+          formableData = SapFormModel.fromJson(json['formable']);
+        } else if (formableType.contains('CatatanTambahanForm')) {
+          formableData = CatatanTambahanFormModel.fromJson(json['formable']);
+        } else {
+          formableData = json['formable'];
+        }
+      } else {
+        formableData = json['formable'];
+      }
+    }
+
     return FormModel(
       id: json['id'],
       type: json['type'],
       userId: json['user_id'],
       patientId: json['patient_id'],
       status: json['status'],
-      data: json['data'] != null
+      data: json['data'] != null && json['data'] is Map
           ? Map<String, dynamic>.from(json['data'])
           : null,
       createdAt: DateTime.parse(json['created_at']),
@@ -82,6 +116,9 @@ class FormModel {
           ? Patient.fromJson(json['patient'])
           : null,
       comments: json['comments'],
+      formableType: json['formable_type'],
+      formableId: json['formable_id'],
+      formable: formableData,
     );
   }
 

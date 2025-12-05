@@ -19,21 +19,18 @@ class ResumePoliklinikFormView extends StatefulWidget {
   const ResumePoliklinikFormView({super.key, this.patient, this.formId});
 
   @override
-  State<ResumePoliklinikFormView> createState() =>
-      _ResumePoliklinikFormViewState();
+  State<ResumePoliklinikFormView> createState() => _ResumePoliklinikFormViewState();
 }
 
-class _ResumePoliklinikFormViewState extends State<ResumePoliklinikFormView>
-    with FormBuilderMixin {
+class _ResumePoliklinikFormViewState extends State<ResumePoliklinikFormView> with FormBuilderMixin {
   @override
   final FormController formController = Get.put(FormController());
   @override
   final PatientController patientController = Get.find();
-  final NursingInterventionController _interventionController = Get.put(
-    NursingInterventionController(),
-  );
+  final NursingInterventionController _interventionController = Get.put(NursingInterventionController());
 
   int _currentSection = 0;
+  final int _totalSections = 10;
 
   @override
   String get formType => 'resume_poliklinik';
@@ -54,8 +51,13 @@ class _ResumePoliklinikFormViewState extends State<ResumePoliklinikFormView>
   void initState() {
     super.initState();
     _currentPatient = widget.patient ?? Get.arguments?['patient'] as Patient?;
-    _currentPatientId =
-        _currentPatient?.id ?? Get.arguments?['patientId'] as int?;
+    _currentPatientId = _currentPatient?.id ?? Get.arguments?['patientId'] as int?;
+
+    final formDataArg = Get.arguments?['formData'] as Map<String, dynamic>?;
+    if (formDataArg != null) {
+      initialValues = transformInitialData(formDataArg);
+    }
+
     initializeForm(
       patient: _currentPatient,
       patientId: _currentPatientId,
@@ -65,37 +67,89 @@ class _ResumePoliklinikFormViewState extends State<ResumePoliklinikFormView>
 
   @override
   Map<String, dynamic> transformInitialData(Map<String, dynamic> data) {
+    DateTime? parseDate(dynamic value) {
+      if (value is DateTime) return value;
+      if (value is String) return DateTime.tryParse(value);
+      return null;
+    }
+
+    String? normalizeGender(dynamic value) {
+      if (value == null) return null;
+      final s = value.toString().toLowerCase();
+      if (s == 'l' || s.contains('laki')) return 'L';
+      if (s == 'p' || s.contains('perem')) return 'P';
+      return 'P';
+    }
+
+    String? normalizeStatusPerkawinan(dynamic value) {
+      if (value == null) return null;
+      final s = value.toString().toLowerCase();
+      if (s.contains('belum')) return 'belum_kawin';
+      if (s.contains('menikah')) return 'menikah';
+      if (s.contains('cerai')) return 'cerai';
+      if (s.contains('duda')) return 'duda';
+      if (s.contains('janda')) return 'janda';
+      return null;
+    }
+
+    int? parseId(dynamic value) {
+      if (value is int) return value;
+      if (value is String) return int.tryParse(value);
+      if (value is double) return value.toInt();
+      return null;
+    }
+
+    List<int> parseIdList(dynamic value) {
+      if (value is List) {
+        return value
+            .map((v) => v is int ? v : (v is String ? int.tryParse(v) : null))
+            .whereType<int>()
+            .toList();
+      }
+      return <int>[];
+    }
+
+    final s1 = data['section_1'] ?? data;
+    final s2 = data['section_2'] ?? data;
+    final s3 = data['section_3'] ?? data;
+    final s4 = data['section_4'] ?? data;
+    final s5 = data['section_5'] ?? data;
+    final s6 = data['section_6'] ?? data;
+    final s7 = data['section_7'] ?? data;
+    final s8 = data['section_8'] ?? data;
+    final s9 = data['section_9'] ?? data;
+    final s10 = data['section_10'] ?? data;
+
     return {
-      'nama_lengkap': data['section_1']?['nama_lengkap'],
-      'umur': data['section_1']?['umur'],
-      'jenis_kelamin': data['section_1']?['jenis_kelamin'],
-      'status_perkawinan': data['section_1']?['status_perkawinan'],
-      'riwayat_pendidikan': data['section_2']?['riwayat_pendidikan'],
-      'pekerjaan': data['section_2']?['pekerjaan'],
-      'riwayat_keluarga': data['section_2']?['riwayat_keluarga'],
-      'hubungan_sosial': data['section_3']?['hubungan_sosial'],
-      'dukungan_sosial': data['section_3']?['dukungan_sosial'],
-      'stresor_psikososial': data['section_3']?['stresor_psikososial'],
-      'riwayat_gangguan_psikiatri':
-          data['section_4']?['riwayat_gangguan_psikiatri'],
-      'riwayat_pengobatan': data['section_4']?['riwayat_pengobatan'],
-      'kesadaran': data['section_5']?['kesadaran'],
-      'orientasi': data['section_5']?['orientasi'],
-      'penampilan': data['section_5']?['penampilan'],
-      'mood': data['section_6']?['mood'],
-      'afect': data['section_6']?['afect'],
-      'alam_pikiran': data['section_6']?['alam_pikiran'],
-      'fungsi_sosial': data['section_7']?['fungsi_sosial'],
-      'interaksi_sosial': data['section_7']?['interaksi_sosial'],
-      'kepercayaan': data['section_8']?['kepercayaan'],
-      'praktik_ibadah': data['section_8']?['praktik_ibadah'],
-      'diagnosis': data['section_9']?['diagnosis'],
-      'intervensi': data['section_9']?['intervensi'] ?? [],
-      'tujuan': data['section_9']?['tujuan'],
-      'kriteria': data['section_9']?['kriteria'],
-      'rasional': data['section_9']?['rasional'],
-      'catatan_tambahan': data['section_10']?['catatan_tambahan'],
-      'tanggal_pengisian': data['section_10']?['tanggal_pengisian'],
+      'nama_lengkap': s1['nama_lengkap'],
+      'umur': s1['umur']?.toString(),
+      'jenis_kelamin': normalizeGender(s1['jenis_kelamin']),
+      'status_perkawinan': normalizeStatusPerkawinan(s1['status_perkawinan']),
+      'riwayat_pendidikan': s2['riwayat_pendidikan'],
+      'pekerjaan': s2['pekerjaan'],
+      'riwayat_keluarga': s2['riwayat_keluarga'],
+      'hubungan_sosial': s3['hubungan_sosial'],
+      'dukungan_sosial': s3['dukungan_sosial'],
+      'stresor_psikososial': s3['stresor_psikososial'],
+      'riwayat_gangguan_psikiatri': s4['riwayat_gangguan_psikiatri'],
+      'riwayat_pengobatan': s4['riwayat_pengobatan'],
+      'kesadaran': s5['kesadaran'],
+      'orientasi': s5['orientasi'],
+      'penampilan': s5['penampilan'],
+      'mood': s6['mood'],
+      'afect': s6['afect'],
+      'alam_pikiran': s6['alam_pikiran'],
+      'fungsi_sosial': s7['fungsi_sosial'],
+      'interaksi_sosial': s7['interaksi_sosial'],
+      'kepercayaan': s8['kepercayaan'],
+      'praktik_ibadah': s8['praktik_ibadah'],
+        'diagnosis': parseId(s9['diagnosis']),
+        'intervensi': parseIdList(s9['intervensi']),
+      'tujuan': s9['tujuan'],
+      'kriteria': s9['kriteria'],
+      'rasional': s9['rasional'],
+      'catatan_tambahan': s10['catatan_tambahan'],
+      'tanggal_pengisian': parseDate(s10['tanggal_pengisian']),
     };
   }
 
@@ -153,377 +207,306 @@ class _ResumePoliklinikFormViewState extends State<ResumePoliklinikFormView>
         'catatan_tambahan': formData['catatan_tambahan'],
         'tanggal_pengisian': formData['tanggal_pengisian'],
       },
+      // flat mirror for BE compatibility
+      'nama_lengkap': formData['nama_lengkap'],
+      'umur': formData['umur'],
+      'jenis_kelamin': formData['jenis_kelamin'],
+      'status_perkawinan': formData['status_perkawinan'],
+      'riwayat_pendidikan': formData['riwayat_pendidikan'],
+      'pekerjaan': formData['pekerjaan'],
+      'riwayat_keluarga': formData['riwayat_keluarga'],
+      'hubungan_sosial': formData['hubungan_sosial'],
+      'dukungan_sosial': formData['dukungan_sosial'],
+      'stresor_psikososial': formData['stresor_psikososial'],
+      'riwayat_gangguan_psikiatri': formData['riwayat_gangguan_psikiatri'],
+      'riwayat_pengobatan': formData['riwayat_pengobatan'],
+      'kesadaran': formData['kesadaran'],
+      'orientasi': formData['orientasi'],
+      'penampilan': formData['penampilan'],
+      'mood': formData['mood'],
+      'afect': formData['afect'],
+      'alam_pikiran': formData['alam_pikiran'],
+      'fungsi_sosial': formData['fungsi_sosial'],
+      'interaksi_sosial': formData['interaksi_sosial'],
+      'kepercayaan': formData['kepercayaan'],
+      'praktik_ibadah': formData['praktik_ibadah'],
+      'diagnosis': formData['diagnosis'],
+      'intervensi': formData['intervensi'],
+      'tujuan': formData['tujuan'],
+      'kriteria': formData['kriteria'],
+      'rasional': formData['rasional'],
+      'catatan_tambahan': formData['catatan_tambahan'],
+      'tanggal_pengisian': formData['tanggal_pengisian'],
     };
+
     return super.transformFormData(result);
   }
-
   void _nextSection() {
     updateFormData();
-    if (_currentSection < 9) setState(() => _currentSection++);
+    if (_currentSection < _totalSections - 1) {
+      setState(() => _currentSection++);
+    }
   }
 
   void _previousSection() {
     updateFormData();
-    if (_currentSection > 0) setState(() => _currentSection--);
+    if (_currentSection > 0) {
+      setState(() => _currentSection--);
+    }
   }
 
-  Widget _buildSection(int sectionNumber) {
-    Widget sectionContent;
-    switch (sectionNumber) {
-      case 0:
-        sectionContent = _buildIdentitasKlienSection();
-        break;
-      case 1:
-        sectionContent = _buildRiwayatKehidupanSection();
-        break;
-      case 2:
-        sectionContent = _buildRiwayatPsikososialSection();
-        break;
-      case 3:
-        sectionContent = _buildRiwayatPsikiatriSection();
-        break;
-      case 4:
-        sectionContent = _buildPemeriksaanPsikologisSection();
-        break;
-      case 5:
-        sectionContent = _buildFungsiPsikologisSection();
-        break;
-      case 6:
-        sectionContent = _buildFungsiSosialSection();
-        break;
-      case 7:
-        sectionContent = _buildFungsiSpiritualSection();
-        break;
-      case 8:
-        sectionContent = _buildRenpraSection();
-        break;
-      case 9:
-        sectionContent = _buildPenutupSection();
-        break;
-      default:
-        sectionContent = const SizedBox();
-    }
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
 
-    return KeyedSubtree(
-      key: ValueKey('section_$sectionNumber'),
-      child: sectionContent,
+    return Scaffold(
+      backgroundColor: colorScheme.surface,
+      appBar: AppBar(
+        title: const Text('Resume Poliklinik'),
+        backgroundColor: colorScheme.surface,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        leading: BackButton(color: colorScheme.onSurface),
+        titleTextStyle: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold, color: colorScheme.onSurface),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(8.0),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: LinearProgressIndicator(
+                value: (_currentSection + 1) / _totalSections,
+                backgroundColor: colorScheme.surfaceContainerHighest,
+                valueColor: AlwaysStoppedAnimation<Color>(colorScheme.primary),
+              ),
+            ),
+          ),
+        ),
+      ),
+      body: FormBuilder(
+        key: formKey,
+        initialValue: initialValues,
+        child: Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                key: ValueKey('section_$_currentSection'),
+                padding: const EdgeInsets.symmetric(vertical: 24.0, horizontal: 20.0),
+                child: _buildSection(context, _currentSection),
+              ),
+            ),
+            _buildBottomActionBar(colorScheme, textTheme),
+          ],
+        ),
+      ),
     );
   }
 
-  Widget _buildIdentitasKlienSection() {
+  Widget _buildSection(BuildContext context, int sectionNumber) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    String title;
+    Widget content;
+
+    switch (sectionNumber) {
+      case 0:
+        title = 'Identitas Klien';
+        content = _buildIdentitasSection(colorScheme);
+        break;
+      case 1:
+        title = 'Riwayat Kehidupan';
+        content = _buildRiwayatKehidupanSection(colorScheme);
+        break;
+      case 2:
+        title = 'Riwayat Psikososial';
+        content = _buildRiwayatPsikososialSection(colorScheme);
+        break;
+      case 3:
+        title = 'Riwayat Psikiatri';
+        content = _buildRiwayatPsikiatriSection(colorScheme);
+        break;
+      case 4:
+        title = 'Pemeriksaan Psikologis';
+        content = _buildPemeriksaanPsikologisSection(colorScheme);
+        break;
+      case 5:
+        title = 'Fungsi Psikologis';
+        content = _buildFungsiPsikologisSection(colorScheme);
+        break;
+      case 6:
+        title = 'Fungsi Sosial';
+        content = _buildFungsiSosialSection(colorScheme);
+        break;
+      case 7:
+        title = 'Fungsi Spiritual';
+        content = _buildFungsiSpiritualSection(colorScheme);
+        break;
+      case 8:
+        title = 'Rencana Perawatan';
+        content = _buildRenpraSection(colorScheme);
+        break;
+      case 9:
+        title = 'Penutup';
+        content = _buildPenutupSection(colorScheme);
+        break;
+      default:
+        return const SizedBox.shrink();
+    }
+
+    return _buildInfoCard(
+      colorScheme: colorScheme,
+      textTheme: textTheme,
+      title: 'Bagian ${sectionNumber + 1}: $title',
+      child: content,
+    );
+  }
+
+  Widget _buildIdentitasSection(ColorScheme colorScheme) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Section 1: Identitas Klien',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 16),
-        const CustomTextField(name: 'nama_lengkap', label: 'Nama Lengkap'),
-        const SizedBox(height: 16),
-        const CustomTextField(
-          name: 'umur',
-          label: 'Umur',
-          keyboardType: TextInputType.number,
-        ),
-        const SizedBox(height: 16),
+        CustomTextField(name: 'nama_lengkap', label: 'Nama Lengkap'),
+        const SizedBox(height: 20),
+        CustomTextField(name: 'umur', label: 'Umur', keyboardType: TextInputType.number),
+        const SizedBox(height: 20),
         CustomDropdown<String>(
           name: 'jenis_kelamin',
           label: 'Jenis Kelamin',
           items: const [
             DropdownMenuItem(value: 'L', child: Text('Laki-laki')),
             DropdownMenuItem(value: 'P', child: Text('Perempuan')),
-            DropdownMenuItem(value: 'O', child: Text('Lainnya')),
           ],
-          hint: 'Pilih Jenis Kelamin',
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 20),
         CustomDropdown<String>(
           name: 'status_perkawinan',
           label: 'Status Perkawinan',
           items: const [
             DropdownMenuItem(value: 'belum_kawin', child: Text('Belum Kawin')),
             DropdownMenuItem(value: 'menikah', child: Text('Menikah')),
-            DropdownMenuItem(value: 'cerai_hidup', child: Text('Cerai Hidup')),
-            DropdownMenuItem(value: 'cerai_mati', child: Text('Cerai Mati')),
+            DropdownMenuItem(value: 'cerai', child: Text('Cerai')),
             DropdownMenuItem(value: 'duda', child: Text('Duda')),
             DropdownMenuItem(value: 'janda', child: Text('Janda')),
           ],
-          hint: 'Pilih Status Perkawinan',
         ),
       ],
     );
   }
 
-  Widget _buildRiwayatKehidupanSection() {
+  Widget _buildRiwayatKehidupanSection(ColorScheme colorScheme) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Section 2: Riwayat Kehidupan',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 16),
-        const CustomTextField(
-          name: 'riwayat_pendidikan',
-          label: 'Riwayat Pendidikan',
-          maxLines: 3,
-        ),
-        const SizedBox(height: 16),
-        const CustomTextField(name: 'pekerjaan', label: 'Pekerjaan'),
-        const SizedBox(height: 16),
-        const CustomTextField(
-          name: 'riwayat_keluarga',
-          label: 'Riwayat Keluarga',
-          maxLines: 3,
-        ),
+        CustomTextField(name: 'riwayat_pendidikan', label: 'Riwayat Pendidikan', maxLines: 3),
+        const SizedBox(height: 20),
+        CustomTextField(name: 'pekerjaan', label: 'Pekerjaan'),
+        const SizedBox(height: 20),
+        CustomTextField(name: 'riwayat_keluarga', label: 'Riwayat Keluarga', maxLines: 3),
       ],
     );
   }
 
-  Widget _buildRiwayatPsikososialSection() {
+  Widget _buildRiwayatPsikososialSection(ColorScheme colorScheme) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Section 3: Riwayat Psikososial',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 16),
-        const CustomTextField(
-          name: 'hubungan_sosial',
-          label: 'Hubungan Sosial',
-          maxLines: 3,
-        ),
-        const SizedBox(height: 16),
-        const CustomTextField(
-          name: 'dukungan_sosial',
-          label: 'Dukungan Sosial',
-          maxLines: 3,
-        ),
-        const SizedBox(height: 16),
-        const CustomTextField(
-          name: 'stresor_psikososial',
-          label: 'Stresor Psikososial',
-          maxLines: 3,
-        ),
+        CustomTextField(name: 'hubungan_sosial', label: 'Hubungan Sosial', maxLines: 3),
+        const SizedBox(height: 20),
+        CustomTextField(name: 'dukungan_sosial', label: 'Dukungan Sosial', maxLines: 3),
+        const SizedBox(height: 20),
+        CustomTextField(name: 'stresor_psikososial', label: 'Stresor Psikososial', maxLines: 3),
       ],
     );
   }
 
-  Widget _buildRiwayatPsikiatriSection() {
+  Widget _buildRiwayatPsikiatriSection(ColorScheme colorScheme) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Section 4: Riwayat Psikiatri',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 16),
-        const CustomTextField(
-          name: 'riwayat_gangguan_psikiatri',
-          label: 'Riwayat Gangguan Psikiatri',
-          maxLines: 3,
-        ),
-        const SizedBox(height: 16),
-        const CustomTextField(
-          name: 'riwayat_pengobatan',
-          label: 'Riwayat Pengobatan Sebelumnya',
-          maxLines: 3,
-        ),
+        CustomTextField(name: 'riwayat_gangguan_psikiatri', label: 'Riwayat Gangguan Psikiatri', maxLines: 3),
+        const SizedBox(height: 20),
+        CustomTextField(name: 'riwayat_pengobatan', label: 'Riwayat Pengobatan', maxLines: 3),
       ],
     );
   }
 
-  Widget _buildPemeriksaanPsikologisSection() {
+  Widget _buildPemeriksaanPsikologisSection(ColorScheme colorScheme) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Section 5: Pemeriksaan Psikologis',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 16),
-        CustomDropdown<String>(
-          name: 'kesadaran',
-          label: 'Kesadaran',
-          items: const [
-            DropdownMenuItem(value: 'sadar_penuh', child: Text('Sadar Penuh')),
-            DropdownMenuItem(value: 'somnolent', child: Text('Somnolent')),
-            DropdownMenuItem(value: 'stupor', child: Text('Stupor')),
-            DropdownMenuItem(value: 'coma', child: Text('Coma')),
-          ],
-          hint: 'Pilih Kesadaran',
-        ),
-        const SizedBox(height: 16),
-        CustomDropdown<String>(
-          name: 'orientasi',
-          label: 'Orientasi',
-          items: const [
-            DropdownMenuItem(value: 'utuh', child: Text('Utuh')),
-            DropdownMenuItem(value: 'gangguan', child: Text('Gangguan')),
-          ],
-          hint: 'Pilih Orientasi',
-        ),
-        const SizedBox(height: 16),
-        const CustomTextField(name: 'penampilan', label: 'Penampilan'),
+        CustomTextField(name: 'kesadaran', label: 'Kesadaran'),
+        const SizedBox(height: 20),
+        CustomTextField(name: 'orientasi', label: 'Orientasi'),
+        const SizedBox(height: 20),
+        CustomTextField(name: 'penampilan', label: 'Penampilan'),
       ],
     );
   }
 
-  Widget _buildFungsiPsikologisSection() {
+  Widget _buildFungsiPsikologisSection(ColorScheme colorScheme) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Section 6: Fungsi Psikologis',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 16),
-        CustomDropdown<String>(
-          name: 'mood',
-          label: 'Mood',
-          items: const [
-            DropdownMenuItem(value: 'normal', child: Text('Normal')),
-            DropdownMenuItem(value: 'depresi', child: Text('Depresi')),
-            DropdownMenuItem(value: 'ansietas', child: Text('Ansietas')),
-            DropdownMenuItem(value: 'iritabel', child: Text('Iritabel')),
-            DropdownMenuItem(value: 'labil', child: Text('Labil')),
-          ],
-          hint: 'Pilih Mood',
-        ),
-        const SizedBox(height: 16),
-        CustomDropdown<String>(
-          name: 'afect',
-          label: 'Afect',
-          items: const [
-            DropdownMenuItem(value: 'normal', child: Text('Normal')),
-            DropdownMenuItem(value: 'flat', child: Text('Flat')),
-            DropdownMenuItem(value: 'terhambat', child: Text('Terhambat')),
-            DropdownMenuItem(value: 'labil', child: Text('Labil')),
-            DropdownMenuItem(value: 'iritabel', child: Text('Iritabel')),
-          ],
-          hint: 'Pilih Afect',
-        ),
-        const SizedBox(height: 16),
-        const CustomTextField(name: 'alam_pikiran', label: 'Alam Pikiran'),
+        CustomTextField(name: 'mood', label: 'Mood'),
+        const SizedBox(height: 20),
+        CustomTextField(name: 'afect', label: 'Afect'),
+        const SizedBox(height: 20),
+        CustomTextField(name: 'alam_pikiran', label: 'Alam Pikiran'),
       ],
     );
   }
 
-  Widget _buildFungsiSosialSection() {
+  Widget _buildFungsiSosialSection(ColorScheme colorScheme) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Section 7: Fungsi Sosial',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 16),
-        const CustomTextField(
-          name: 'fungsi_sosial',
-          label: 'Fungsi Sosial',
-          maxLines: 3,
-        ),
-        const SizedBox(height: 16),
-        const CustomTextField(
-          name: 'interaksi_sosial',
-          label: 'Interaksi Sosial',
-          maxLines: 3,
-        ),
+        CustomTextField(name: 'fungsi_sosial', label: 'Fungsi Sosial', maxLines: 3),
+        const SizedBox(height: 20),
+        CustomTextField(name: 'interaksi_sosial', label: 'Interaksi Sosial', maxLines: 3),
       ],
     );
   }
 
-  Widget _buildFungsiSpiritualSection() {
+  Widget _buildFungsiSpiritualSection(ColorScheme colorScheme) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Section 8: Fungsi Spiritual',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 16),
-        const CustomTextField(name: 'kepercayaan', label: 'Kepercayaan'),
-        const SizedBox(height: 16),
-        const CustomTextField(name: 'praktik_ibadah', label: 'Praktik Ibadah'),
+        CustomTextField(name: 'kepercayaan', label: 'Kepercayaan'),
+        const SizedBox(height: 20),
+        CustomTextField(name: 'praktik_ibadah', label: 'Praktik Ibadah'),
       ],
     );
   }
 
-  Widget _buildRenpraSection() {
+  Widget _buildRenpraSection(ColorScheme colorScheme) {
+    final nursingService = Get.find<NursingDataGlobalService>();
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Section 9: Rencana Perawatan (Renpra)',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 16),
         Obx(() {
-          final nursingService = Get.find<NursingDataGlobalService>();
           final diagnoses = nursingService.diagnoses;
-          if (diagnoses.isEmpty) {
-            return const Text('Tidak ada diagnosis tersedia');
-          }
-
+          if (diagnoses.isEmpty) return const Center(child: Text('Data diagnosis tidak tersedia.'));
           return CustomDropdown<int>(
             name: 'diagnosis',
             label: 'Diagnosis',
-            items: diagnoses
-                .map(
-                  (diag) =>
-                      DropdownMenuItem(value: diag.id, child: Text(diag.name)),
-                )
-                .toList(),
-            hint: 'Pilih Diagnosis',
+            items: diagnoses.map((d) => DropdownMenuItem(value: d.id, child: Text(d.name))).toList(),
           );
         }),
-        const SizedBox(height: 16),
+        const SizedBox(height: 20),
         Obx(() {
           final interventions = _interventionController.interventions;
-          if (interventions.isEmpty) {
-            return const Text('Tidak ada intervensi tersedia');
-          }
-
-          return CustomCheckboxGroup<int>(
-            name: 'intervensi',
-            label: 'Intervensi',
-            options: interventions
-                .map(
-                  (iv) => FormBuilderFieldOption(
-                    value: iv.id,
-                    child: Text(iv.name),
-                  ),
-                )
-                .toList(),
-          );
+          if (interventions.isEmpty) return const Center(child: Text('Tidak ada intervensi tersedia.'));
+          final options = interventions.map((iv) => FormBuilderFieldOption(value: iv.id, child: Text(iv.name))).toList();
+          return CustomCheckboxGroup<int>(name: 'intervensi', label: 'Intervensi', options: options);
         }),
-        const SizedBox(height: 16),
-        const CustomTextField(name: 'tujuan', label: 'Tujuan', maxLines: 3),
-        const SizedBox(height: 16),
-        const CustomTextField(name: 'kriteria', label: 'Kriteria', maxLines: 3),
-        const SizedBox(height: 16),
-        const CustomTextField(name: 'rasional', label: 'Rasional', maxLines: 3),
+        const SizedBox(height: 20),
+        CustomTextField(name: 'tujuan', label: 'Tujuan', maxLines: 3),
+        const SizedBox(height: 20),
+        CustomTextField(name: 'kriteria', label: 'Kriteria Evaluasi', maxLines: 3),
+        const SizedBox(height: 20),
+        CustomTextField(name: 'rasional', label: 'Rasional', maxLines: 3),
       ],
     );
   }
 
-  Widget _buildPenutupSection() {
+  Widget _buildPenutupSection(ColorScheme colorScheme) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Section 10: Penutup',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 16),
-        const CustomTextField(
-          name: 'catatan_tambahan',
-          label: 'Catatan Tambahan',
-          maxLines: 5,
-        ),
-        const SizedBox(height: 16),
+        CustomTextField(name: 'catatan_tambahan', label: 'Catatan Tambahan', maxLines: 5),
+        const SizedBox(height: 20),
         CustomDateTimePicker(
           name: 'tanggal_pengisian',
           label: 'Tanggal Pengisian',
@@ -536,56 +519,63 @@ class _ResumePoliklinikFormViewState extends State<ResumePoliklinikFormView>
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          widget.formId == null
-              ? 'Resume Poliklinik Kesehatan Jiwa'
-              : 'Edit Resume',
-        ),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+  Widget _buildInfoCard({required ColorScheme colorScheme, required TextTheme textTheme, required String title, required Widget child}) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: colorScheme.outlineVariant.withOpacity(0.5), width: 1),
       ),
-        body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            LinearProgressIndicator(value: (_currentSection + 1) / 10),
-            const SizedBox(height: 16),
-            Text('Section ${_currentSection + 1} dari 10'),
-            const SizedBox(height: 16),
-            Expanded(
-              child: SingleChildScrollView(
-                child: FormBuilder(
-                  key: formKey,
-                  initialValue: initialValues,
-                  child: _buildSection(_currentSection),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600, color: colorScheme.onSurface)),
+          const SizedBox(height: 24),
+          child,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBottomActionBar(ColorScheme colorScheme, TextTheme textTheme) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        border: Border(top: BorderSide(color: colorScheme.outlineVariant.withOpacity(0.3), width: 1)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          if (_currentSection > 0)
+            TextButton.icon(
+              onPressed: _previousSection,
+              icon: const Icon(Icons.arrow_back_ios_new_rounded),
+              label: const Text('Sebelumnya'),
+              style: TextButton.styleFrom(foregroundColor: colorScheme.onSurface),
+            ),
+          const Spacer(),
+          SizedBox(
+            height: 52,
+            child: Obx(
+              () => FilledButton.icon(
+                onPressed: formController.isLoading ? null : (_currentSection == _totalSections - 1 ? submitForm : _nextSection),
+                icon: formController.isLoading ? const SizedBox.shrink() : Icon(_currentSection == _totalSections - 1 ? Icons.save_alt_rounded : Icons.arrow_forward_ios_rounded),
+                label: formController.isLoading
+                    ? SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2.5, color: colorScheme.onPrimary))
+                    : Text(_currentSection == _totalSections - 1 ? 'Simpan' : 'Selanjutnya'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: colorScheme.primary,
+                  foregroundColor: colorScheme.onPrimary,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
                 ),
               ),
             ),
-            const SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                if (_currentSection > 0)
-                  ElevatedButton(
-                    onPressed: _previousSection,
-                    child: const Text('Sebelumnya'),
-                  )
-                else
-                  const SizedBox.shrink(),
-                if (_currentSection == 9)
-                  Expanded(child: buildActionButtons())
-                else
-                  ElevatedButton(
-                    onPressed: _nextSection,
-                    child: const Text('Selanjutnya'),
-                  ),
-              ],
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

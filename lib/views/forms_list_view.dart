@@ -229,7 +229,7 @@ class FormsListViewState extends State<FormsListView>
         ],
       ),
       child: DropdownButtonFormField<String>(
-        value: currentValue,
+        initialValue: currentValue,
         decoration: InputDecoration(
           prefixIcon: Icon(icon, color: colorScheme.primary, size: 22),
           filled: true,

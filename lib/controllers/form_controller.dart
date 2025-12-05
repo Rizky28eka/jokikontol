@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'package:tamajiwa/services/logger_service.dart';
 import '../models/form_model.dart';
 import '../services/api_service.dart';
+import '../utils/form_data_mapper.dart';
 
 class FormController extends GetxController {
   final LoggerService _logger = LoggerService();
@@ -15,16 +16,11 @@ class FormController extends GetxController {
   bool get isLoading => _isLoading.value;
   String get errorMessage => _errorMessage.value;
 
-  @override
-  void onInit() {
-    super.onInit();
-    fetchForms();
-  }
-
   Future<void> fetchForms({String? type, int? patientId}) async {
     _isLoading.value = true;
     _errorMessage.value = '';
-    _logger.form(operation: 'fetch', formType: type ?? 'all');
+    _forms.clear(); // Clear previous data before fetching
+    _logger.form(operation: 'fetch', formType: type ?? 'all', patientId: patientId?.toString());
 
     try {
       String endpoint = 'forms';
@@ -84,36 +80,47 @@ class FormController extends GetxController {
     );
 
     try {
-      final response = await ApiService.post(
-        'forms',
-        body: {
-          'type': type,
-          'patient_id': patientId,
-          'data': data,
-          'status': status,
-        },
-      );
+      // Map form data to new structured format
+      final mappedData = data != null 
+          ? FormDataMapper.mapToApiFormat(type, {...data, 'patient_id': patientId, 'status': status})
+          : {'type': type, 'patient_id': patientId, 'status': status, 'data': {}};
+
+      _logger.info('Mapped data for API', context: {'mappedData': mappedData});
+
+      final response = await ApiService.post('forms', body: mappedData);
+
+      _logger.info('API Response', context: {'statusCode': response.statusCode, 'body': response.body});
 
       if (response.statusCode == 201) {
         final data = json.decode(response.body);
         final newForm = FormModel.fromJson(data['form']);
-        await fetchForms(type: type); // Refresh the list
-        _logger.info('Form created successfully', context: {'type': type});
+        // Don't auto-refresh to avoid ANR, let caller handle navigation
+        _logger.info('Form created successfully', context: {'type': type, 'formId': newForm.id});
         return newForm;
       } else {
         final errorData = json.decode(response.body);
         _errorMessage.value = errorData['message'] ?? 'Failed to create form';
-        Get.snackbar('Error', _errorMessage.value);
         _logger.error(
-          'Failed to create form',
+          'Failed to create form - API Error',
           error: _errorMessage.value,
-          stackTrace: StackTrace.current,
+          context: {'statusCode': response.statusCode, 'response': errorData},
         );
+        if (Get.isSnackbarOpen != true) {
+          Get.snackbar('Error', _errorMessage.value);
+        }
       }
     } catch (e, stackTrace) {
       _errorMessage.value = 'Error creating form: $e';
-      Get.snackbar('Error', _errorMessage.value);
       _logger.error('Error creating form', error: e, stackTrace: stackTrace);
+      if (Get.isSnackbarOpen != true) {
+        Get.snackbar(
+          'Error', 
+          'Gagal membuat form: ${e.toString()}',
+          backgroundColor: Get.theme.colorScheme.error,
+          colorText: Get.theme.colorScheme.onError,
+          duration: const Duration(seconds: 3),
+        );
+      }
     } finally {
       _isLoading.value = false;
     }
@@ -153,7 +160,7 @@ class FormController extends GetxController {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final updatedForm = FormModel.fromJson(data['form']);
-        await fetchForms(); // Refresh the list
+        // Don't auto-refresh to avoid ANR
         Get.snackbar('Success', 'Form updated successfully');
         _logger.info('Form updated successfully', context: {'formId': id});
         return updatedForm;
@@ -231,7 +238,8 @@ class FormController extends GetxController {
       final response = await ApiService.delete('forms/$id');
 
       if (response.statusCode == 200) {
-        await fetchForms(); // Refresh the list
+        // Remove from local list instead of fetching all
+        _forms.removeWhere((form) => form.id == id);
         _logger.info('Form deleted successfully', context: {'formId': id});
         return true;
       } else {

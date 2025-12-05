@@ -71,6 +71,12 @@ class _MentalHealthAssessmentFormViewState
 
   @override
   Map<String, dynamic> transformInitialData(Map<String, dynamic> data) {
+    DateTime? parseDate(dynamic value) {
+      if (value is DateTime) return value;
+      if (value is String) return DateTime.tryParse(value);
+      return null;
+    }
+
     return {
       'nama_lengkap': data['section_1']?['nama_lengkap'],
       'umur': data['section_1']?['umur'],
@@ -95,12 +101,12 @@ class _MentalHealthAssessmentFormViewState
       'genogram_structure': data['section_9']?['structure'] ?? data['genogram']?['structure'],
       'genogram_notes': data['section_9']?['notes'] ?? data['genogram']?['notes'],
       'diagnosis': data['section_10']?['diagnosis'],
-      'intervensi': data['section_10']?['intervensi'] ?? [],
+      'intervensi': (data['section_10']?['intervensi'] as List?)?.cast<int>() ?? [],
       'tujuan': data['section_10']?['tujuan'],
       'kriteria': data['section_10']?['kriteria'],
       'rasional': data['section_10']?['rasional'],
       'catatan_tambahan': data['section_11']?['catatan_tambahan'],
-      'tanggal_pengisian': data['section_11']?['tanggal_pengisian'],
+      'tanggal_pengisian': parseDate(data['section_11']?['tanggal_pengisian']),
     };
   }
 
@@ -242,11 +248,14 @@ class _MentalHealthAssessmentFormViewState
         return const SizedBox.shrink();
     }
     
-    return _buildInfoCard(
-      colorScheme: colorScheme,
-      textTheme: textTheme,
-      title: 'Bagian ${sectionNumber + 1}: $title',
-      child: content,
+    return Container(
+      key: ValueKey('section_content_$sectionNumber'),
+      child: _buildInfoCard(
+        colorScheme: colorScheme,
+        textTheme: textTheme,
+        title: 'Bagian ${sectionNumber + 1}: $title',
+        child: content,
+      ),
     );
   }
 
@@ -258,9 +267,8 @@ class _MentalHealthAssessmentFormViewState
         _buildTextField(name: 'umur', label: 'Umur', keyboardType: TextInputType.number, colorScheme: colorScheme),
         const SizedBox(height: 20),
         _buildDropdown<String>(name: 'jenis_kelamin', label: 'Jenis Kelamin', items: const [
-          DropdownMenuItem(value: 'L', child: Text('Laki-laki')),
-          DropdownMenuItem(value: 'P', child: Text('Perempuan')),
-          DropdownMenuItem(value: 'O', child: Text('Lainnya')),
+          DropdownMenuItem(value: 'Laki-laki', child: Text('Laki-laki')),
+          DropdownMenuItem(value: 'Perempuan', child: Text('Perempuan')),
         ], colorScheme: colorScheme),
         const SizedBox(height: 20),
         _buildDropdown<String>(name: 'status_perkawinan', label: 'Status Perkawinan', items: const [
@@ -369,7 +377,6 @@ class _MentalHealthAssessmentFormViewState
     return Column(
       children: [
         FormBuilderField<Map<String, dynamic>>(name: 'genogram_structure', builder: (field) => const SizedBox.shrink()),
-        FormBuilderField<String>(name: 'genogram_notes', builder: (field) => const SizedBox.shrink()),
         _buildTextField(name: 'genogram_notes', label: 'Catatan Genogram', maxLines: 4, colorScheme: colorScheme),
         const SizedBox(height: 20),
         SizedBox(
@@ -397,10 +404,11 @@ class _MentalHealthAssessmentFormViewState
   }
 
   Widget _buildRenpraSection(ColorScheme colorScheme) {
+    final nursingService = Get.find<NursingDataGlobalService>();
     return Column(
       children: [
         Obx(() {
-          final diagnoses = Get.find<NursingDataGlobalService>().diagnoses;
+          final diagnoses = nursingService.diagnoses;
           if (diagnoses.isEmpty) return const Center(child: Text('Data diagnosis tidak tersedia.'));
           return _buildDropdown<int>(name: 'diagnosis', label: 'Diagnosis', items: diagnoses.map((d) => DropdownMenuItem(value: d.id, child: Text(d.name))).toList(), colorScheme: colorScheme);
         }),
@@ -428,7 +436,8 @@ class _MentalHealthAssessmentFormViewState
           child: Obx(() {
             final interventions = _interventionController.interventions;
             if (interventions.isEmpty) return const Center(child: Text('Tidak ada intervensi tersedia.'));
-            return CustomCheckboxGroup<int>(name: 'intervensi', label: '', options: interventions.map((iv) => FormBuilderFieldOption(value: iv.id, child: Text(iv.name))).toList());
+            final options = interventions.map((iv) => FormBuilderFieldOption(value: iv.id, child: Text(iv.name))).toList();
+            return CustomCheckboxGroup<int>(name: 'intervensi', label: '', options: options);
           }),
         ),
       ],
@@ -436,30 +445,25 @@ class _MentalHealthAssessmentFormViewState
   }
 
   Widget _buildPenutupSection(ColorScheme colorScheme) {
+    final rawDate = initialValues['tanggal_pengisian'];
+    DateTime? initialDate;
+    if (rawDate is DateTime) {
+      initialDate = rawDate;
+    } else if (rawDate is String) {
+      initialDate = DateTime.tryParse(rawDate);
+    }
+
     return Column(
       children: [
         _buildTextField(name: 'catatan_tambahan', label: 'Catatan Tambahan', maxLines: 5, colorScheme: colorScheme),
         const SizedBox(height: 20),
-        FormBuilderField(
+        CustomDateTimePicker(
           name: 'tanggal_pengisian',
-          builder: (field) {
-            DateTime? initialDate;
-            if (field.value is String) {
-              initialDate = DateTime.tryParse(field.value as String);
-            } else if (field.value is DateTime) {
-              initialDate = field.value as DateTime;
-            }
-
-            return CustomDateTimePicker(
-              name: 'tanggal_pengisian',
-              label: 'Tanggal Pengisian',
-              inputType: InputType.date,
-              initialDate: initialDate ?? DateTime.now(),
-              firstDate: DateTime(2000),
-              lastDate: DateTime.now(),
-              onChanged: (val) => field.didChange(val),
-            );
-          },
+          label: 'Tanggal Pengisian',
+          inputType: InputType.date,
+          initialDate: initialDate ?? DateTime.now(),
+          firstDate: DateTime(2000),
+          lastDate: DateTime.now(),
         ),
       ],
     );

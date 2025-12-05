@@ -31,7 +31,7 @@ class FormController extends Controller
             $query->where('patient_id', $request->patient_id);
         }
 
-        $forms = $query->with(['genogram', 'patient'])->orderBy('created_at', 'desc')->paginate(10);
+        $forms = $query->with(['genogram', 'patient', 'formable'])->orderBy('created_at', 'desc')->paginate(10);
 
         return response()->json($forms);
     }
@@ -42,7 +42,7 @@ class FormController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'type' => 'required|string|in:pengkajian,resume_kegawatdaruratan,resume_poliklinik,sap,catatan_tambahan', // Allow all form types including 'catatan_tambahan'
+            'type' => 'required|string|in:pengkajian,resume_kegawatdaruratan,resume_poliklinik,sap,catatan_tambahan',
             'patient_id' => 'required|exists:patients,id',
             'data' => 'nullable|array',
             'status' => 'sometimes|in:draft,submitted,revised,approved',
@@ -56,6 +56,13 @@ class FormController extends Controller
             $this->validateNursingIds($validated['data']);
         }
 
+        // Create specific form model based on type
+        $formable = $this->createSpecificForm($validated['type'], $validated, $request->all());
+
+        // Create main form with polymorphic reference
+        $validated['formable_type'] = get_class($formable);
+        $validated['formable_id'] = $formable->id;
+        
         $form = Form::create($validated);
 
         // If the form type is pengkajian and it includes genogram data, validate and create the genogram
@@ -73,7 +80,7 @@ class FormController extends Controller
 
         return response()->json([
             'message' => 'Form created successfully',
-            'form' => $form->load('genogram')
+            'form' => $form->load(['genogram', 'formable'])
         ], 201);
     }
 
@@ -93,7 +100,7 @@ class FormController extends Controller
             ], 403);
         }
 
-        return response()->json($form->load('genogram'));
+        return response()->json($form->load(['genogram', 'formable']));
     }
 
     /**
@@ -146,7 +153,7 @@ class FormController extends Controller
 
         return response()->json([
             'message' => 'Form updated successfully',
-            'form' => $form->load('genogram')
+            'form' => $form->load(['genogram', 'formable'])
         ]);
     }
 
@@ -414,5 +421,34 @@ class FormController extends Controller
         }
 
         return true;
+    }
+
+    /**
+     * Create specific form model based on type
+     */
+    private function createSpecificForm(string $type, array $validated, array $allData)
+    {
+        $baseData = [
+            'user_id' => $validated['user_id'],
+            'patient_id' => $validated['patient_id'],
+            'status' => $validated['status'],
+        ];
+
+        $formData = array_merge($baseData, $allData['data'] ?? []);
+
+        switch ($type) {
+            case 'pengkajian':
+                return \App\Models\PengkajianForm::create($formData);
+            case 'resume_kegawatdaruratan':
+                return \App\Models\ResumeKegawatdaruratanForm::create($formData);
+            case 'resume_poliklinik':
+                return \App\Models\ResumePoliklinikForm::create($formData);
+            case 'sap':
+                return \App\Models\SapForm::create($formData);
+            case 'catatan_tambahan':
+                return \App\Models\CatatanTambahanForm::create($formData);
+            default:
+                throw new \Exception('Invalid form type');
+        }
     }
 }

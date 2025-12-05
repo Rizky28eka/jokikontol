@@ -70,44 +70,103 @@ class _SapFormViewState extends State<SapFormView> with FormBuilderMixin {
 
   @override
   Map<String, dynamic> transformInitialData(Map<String, dynamic> data) {
+    List<String> parseStringList(dynamic value) {
+      if (value is List) return value.map((e) => e.toString()).toList();
+      if (value is String) return value.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+      return <String>[];
+    }
+
+     String? joinListToString(dynamic value) {
+       if (value is List) return value.whereType<Object>().map((e) => e.toString()).join(', ');
+       if (value is String) return value;
+       return null;
+     }
+
+     int? parseId(dynamic value) {
+       if (value is int) return value;
+       if (value is String) return int.tryParse(value);
+       if (value is double) return value.toInt();
+       return null;
+     }
+
+     List<int> parseIdList(dynamic value) {
+       if (value is List) {
+         return value
+             .map((v) => v is int ? v : (v is String ? int.tryParse(v) : null))
+             .whereType<int>()
+             .toList();
+       }
+       return <int>[];
+     }
+
+     final identitas = data['identitas'] ?? data;
+    final tujuan = data['tujuan'] ?? data;
+    final materiDanMetode = data['materi_dan_metode'] ?? data;
+    final pengorganisasian = data['pengorganisasian'] ?? data;
+    final evaluasi = data['evaluasi'] ?? data;
+    final feedback = data['feedback'] ?? data;
+    final renpra = data['renpra'] ?? {};
+
     return {
-      'topik': data['identitas']?['topik'],
-      'sasaran': data['identitas']?['sasaran'],
-      'waktu': data['identitas']?['waktu'],
-      'tempat': data['identitas']?['tempat'],
-      'tujuan_umum': data['tujuan']?['umum'],
-      'tujuan_khusus': data['tujuan']?['khusus'],
-      'materi': data['materi_dan_metode']?['materi'],
-      'metode': data['materi_dan_metode']?['metode'],
-      'joblist_roles': data['joblist']?['roles'] ?? [],
-      'penyuluh': data['pengorganisasian']?['penyuluh'],
-      'moderator': data['pengorganisasian']?['moderator'],
-      'fasilitator': data['pengorganisasian']?['fasilitator'],
-      'time_keeper': data['pengorganisasian']?['time_keeper'],
-      'dokumentator': data['pengorganisasian']?['dokumentator'],
-      'observer': data['pengorganisasian']?['observer'],
+      'topik': identitas['topik'] ?? data['topik'],
+      'sub_topik': identitas['sub_topik'] ?? data['sub_topik'],
+      'sasaran': identitas['sasaran'] ?? data['sasaran'],
+      'tanggal_pelaksanaan': identitas['tanggal_pelaksanaan'] ?? data['tanggal_pelaksanaan'],
+      'waktu_pelaksanaan': identitas['waktu'] ?? identitas['waktu_pelaksanaan'] ?? data['waktu_pelaksanaan'],
+      'tempat': identitas['tempat'] ?? data['tempat'],
+      'durasi': identitas['durasi'] ?? data['durasi'],
+      'tujuan_umum': tujuan['umum'] ?? data['tujuan_umum'],
+      'tujuan_khusus': tujuan['khusus'] ?? data['tujuan_khusus'],
+      'materi': materiDanMetode['materi'] ?? data['materi'] ?? data['materi_penyuluhan'],
+      'metode': joinListToString(materiDanMetode['metode'] ?? data['metode']),
+      'media': joinListToString(materiDanMetode['media'] ?? data['media']),
+      'joblist_roles': parseStringList(data['joblist']?['roles'] ?? data['joblist_roles']),
+      'penyuluh': pengorganisasian['penyuluh'] ?? data['penyuluh'],
+      'moderator': pengorganisasian['moderator'] ?? data['moderator'],
+      'fasilitator': pengorganisasian['fasilitator'] ?? data['fasilitator'],
+      'time_keeper': pengorganisasian['time_keeper'] ?? data['time_keeper'],
+      'dokumentator': pengorganisasian['dokumentator'] ?? data['dokumentator'],
+      'observer': pengorganisasian['observer'] ?? data['observer'],
       'tabel_kegiatan': data['tabel_kegiatan'] ?? [],
-      'evaluasi_input': data['evaluasi']?['input'],
-      'evaluasi_proses': data['evaluasi']?['proses'],
-      'evaluasi_hasil': data['evaluasi']?['hasil'],
-      'pertanyaan': data['feedback']?['pertanyaan'],
-      'saran': data['feedback']?['saran'],
-      'diagnosis': data['renpra']?['diagnosis'],
-      'intervensi': data['renpra']?['intervensi'] ?? [],
-      'tujuan': data['renpra']?['tujuan'],
-      'kriteria': data['renpra']?['kriteria'],
-      'rasional': data['renpra']?['rasional'],
+      'evaluasi_input': evaluasi['input'] ?? data['evaluasi_struktur'],
+      'evaluasi_proses': evaluasi['proses'] ?? data['evaluasi_proses'],
+      'evaluasi_hasil': evaluasi['hasil'] ?? data['evaluasi_hasil'],
+      'pertanyaan': feedback['pertanyaan'] ?? data['pertanyaan'],
+      'saran': feedback['saran'] ?? data['saran'],
+      'diagnosis': parseId(renpra['diagnosis'] ?? data['renpra_diagnosis']),
+      'intervensi': parseIdList(renpra['intervensi'] ?? data['renpra_intervensi']),
+      'tujuan': renpra['tujuan'] ?? data['renpra_tujuan'],
+      'kriteria': renpra['kriteria'] ?? data['renpra_kriteria'],
+      'rasional': renpra['rasional'] ?? data['renpra_rasional'],
     };
   }
 
   @override
   Map<String, dynamic> transformFormData(Map<String, dynamic> formData) {
+    List<String> toStringList(dynamic value) {
+      if (value is List) return value.map((e) => e.toString()).toList();
+      if (value is String) {
+        return value
+            .split(',')
+            .map((e) => e.trim())
+            .where((e) => e.isNotEmpty)
+            .toList();
+      }
+      return [];
+    }
+
+    final metodeList = toStringList(formData['metode']);
+    final mediaList = toStringList(formData['media']);
+
     final result = {
       'identitas': {
         'topik': formData['topik'],
+        'sub_topik': formData['sub_topik'],
         'sasaran': formData['sasaran'],
-        'waktu': formData['waktu'],
+        'tanggal_pelaksanaan': formData['tanggal_pelaksanaan'],
+        'waktu': formData['waktu_pelaksanaan'],
         'tempat': formData['tempat'],
+        'durasi': formData['durasi'],
       },
       'tujuan': {
         'umum': formData['tujuan_umum'],
@@ -115,7 +174,8 @@ class _SapFormViewState extends State<SapFormView> with FormBuilderMixin {
       },
       'materi_dan_metode': {
         'materi': formData['materi'],
-        'metode': formData['metode'],
+        'metode': metodeList,
+        'media': mediaList,
       },
       'joblist': {'roles': formData['joblist_roles'] ?? []},
       'pengorganisasian': {
@@ -146,6 +206,32 @@ class _SapFormViewState extends State<SapFormView> with FormBuilderMixin {
               'evaluasi': formData['evaluasi_renpra'],
             }
           : null,
+      // flat mirror for BE compatibility
+      'topik': formData['topik'],
+      'sub_topik': formData['sub_topik'],
+      'sasaran': formData['sasaran'],
+      'tanggal_pelaksanaan': formData['tanggal_pelaksanaan'],
+      'waktu_pelaksanaan': formData['waktu_pelaksanaan'],
+      'tempat': formData['tempat'],
+      'durasi': formData['durasi'],
+      'tujuan_umum': formData['tujuan_umum'],
+      'tujuan_khusus': formData['tujuan_khusus'],
+      'materi_penyuluhan': formData['materi'],
+      'metode': metodeList,
+      'media': mediaList,
+      'kegiatan': formData['tabel_kegiatan'] ?? [],
+      'evaluasi_struktur': formData['evaluasi_input'],
+      'evaluasi_proses': formData['evaluasi_proses'],
+      'evaluasi_hasil': formData['evaluasi_hasil'],
+      'penyuluh': formData['penyuluh'],
+      'moderator': formData['moderator'],
+      'fasilitator': formData['fasilitator'],
+      'renpra_diagnosis': formData['diagnosis'],
+      'renpra_intervensi': formData['intervensi'],
+      'renpra_tujuan': formData['tujuan'],
+      'renpra_kriteria': formData['kriteria'],
+      'renpra_rasional': formData['rasional'],
+      'renpra_evaluasi': formData['evaluasi_renpra'],
     };
     return super.transformFormData(result);
   }
@@ -215,9 +301,15 @@ class _SapFormViewState extends State<SapFormView> with FormBuilderMixin {
         const SizedBox(height: 16),
         const CustomTextField(name: 'topik', label: 'Topik'),
         const SizedBox(height: 16),
+        const CustomTextField(name: 'sub_topik', label: 'Sub Topik'),
+        const SizedBox(height: 16),
         const CustomTextField(name: 'sasaran', label: 'Sasaran'),
         const SizedBox(height: 16),
-        const CustomTextField(name: 'waktu', label: 'Waktu'),
+        const CustomTextField(name: 'tanggal_pelaksanaan', label: 'Tanggal Pelaksanaan'),
+        const SizedBox(height: 16),
+        const CustomTextField(name: 'waktu_pelaksanaan', label: 'Waktu Pelaksanaan'),
+        const SizedBox(height: 16),
+        const CustomTextField(name: 'durasi', label: 'Durasi'),
         const SizedBox(height: 16),
         const CustomTextField(name: 'tempat', label: 'Tempat'),
       ],
@@ -260,6 +352,8 @@ class _SapFormViewState extends State<SapFormView> with FormBuilderMixin {
         const CustomTextField(name: 'materi', label: 'Materi', maxLines: 5),
         const SizedBox(height: 16),
         const CustomTextField(name: 'metode', label: 'Metode', maxLines: 3),
+        const SizedBox(height: 16),
+        const CustomTextField(name: 'media', label: 'Media', maxLines: 3),
       ],
     );
   }

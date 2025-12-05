@@ -12,7 +12,7 @@ void main() async {
   // Initialize Logger
   LoggerService().init();
   LoggerService().appStartup(environment: 'development');
-
+ 
   // Initialize AuthController permanently
   final authController = AuthController();
   await authController.initAuth();

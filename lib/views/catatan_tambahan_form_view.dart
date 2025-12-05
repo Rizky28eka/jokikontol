@@ -8,6 +8,7 @@ import '../services/nursing_data_global_service.dart';
 import '../controllers/nursing_intervention_controller.dart';
 import '../utils/form_builder_mixin.dart';
 import '../widgets/form_components/custom_checkbox_group.dart';
+import 'package:intl/intl.dart';
 
 class CatatanTambahanFormView extends StatefulWidget {
   final Patient? patient;
@@ -63,19 +64,32 @@ class _CatatanTambahanFormViewState extends State<CatatanTambahanFormView>
 
   @override
   Map<String, dynamic> transformInitialData(Map<String, dynamic> data) {
-    final catatan = data['catatan'] ?? {};
+    final catatan = data['catatan'] ?? data;
     final renpra = catatan['renpra'] ?? {};
+
+    List<int> parseIntervensi(dynamic value) {
+      if (value is List) return value.cast<int>();
+      return [];
+    }
+
+    DateTime? parseDate(dynamic value) {
+      if (value is DateTime) return value;
+      if (value is String) return DateTime.tryParse(value);
+      return null;
+    }
 
     if (renpra['diagnosis'] != null) {
       _selectedDiagnosis = renpra['diagnosis'];
     }
 
     return {
-      'isi_catatan': catatan['isi_catatan'],
+      'tanggal_catatan': parseDate(catatan['tanggal_catatan']),
+      'waktu_catatan': catatan['waktu_catatan'],
+      'kategori': catatan['kategori'] ?? 'Perkembangan',
+      'isi_catatan': catatan['isi_catatan'] ?? catatan['catatan'],
+      'tindak_lanjut': catatan['tindak_lanjut'],
       'diagnosis': renpra['diagnosis'],
-      'intervensi': renpra['intervensi'] != null
-          ? List<int>.from(renpra['intervensi'])
-          : [],
+      'intervensi': parseIntervensi(renpra['intervensi']),
       'tujuan': renpra['tujuan'],
       'kriteria': renpra['kriteria'],
       'rasional': renpra['rasional'],
@@ -84,19 +98,22 @@ class _CatatanTambahanFormViewState extends State<CatatanTambahanFormView>
 
   @override
   Map<String, dynamic> transformFormData(Map<String, dynamic> formData) {
+    // Convert tindak_lanjut to string if it's an array
+    String? tindakLanjut = formData['tindak_lanjut'];
+    if (tindakLanjut == null && formData['intervensi'] != null) {
+      // If tindak_lanjut is empty but intervensi exists, use intervensi as tindak_lanjut
+      final intervensi = formData['intervensi'];
+      if (intervensi is List && intervensi.isNotEmpty) {
+        tindakLanjut = 'Intervensi ID: ${intervensi.join(", ")}';
+      }
+    }
+    
     final result = {
-      'catatan': {
-        'isi_catatan': formData['isi_catatan'],
-        'renpra': formData['diagnosis'] != null && _selectedDiagnosis != null
-            ? {
-                'diagnosis': formData['diagnosis'],
-                'intervensi': formData['intervensi'],
-                'tujuan': formData['tujuan'],
-                'kriteria': formData['kriteria'],
-                'rasional': formData['rasional'],
-              }
-            : null,
-      },
+      'tanggal_catatan': formData['tanggal_catatan'],
+      'waktu_catatan': formData['waktu_catatan'],
+      'kategori': formData['kategori'],
+      'catatan': formData['isi_catatan'],
+      'tindak_lanjut': tindakLanjut ?? '',
     };
     return super.transformFormData(result);
   }
@@ -145,11 +162,48 @@ class _CatatanTambahanFormViewState extends State<CatatanTambahanFormView>
                               textTheme: textTheme,
                               title: 'Catatan Perkembangan',
                               child: _buildTextField(
-                                name: 'isi_catatan',
-                                label: 'Isi Catatan',
+                                name: 'kategori',
+                                label: 'Kategori',
                                 colorScheme: colorScheme,
-                                keyboardType: TextInputType.multiline,
-                                maxLines: 5,
+                                hint: 'Misal: Perkembangan / Observasi / Evaluasi',
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            _buildInfoCard(
+                              colorScheme: colorScheme,
+                              textTheme: textTheme,
+                              title: 'Detail Catatan',
+                              child: Column(
+                                children: [
+                                  _buildDateField(
+                                    name: 'tanggal_catatan',
+                                    label: 'Tanggal Catatan',
+                                    colorScheme: colorScheme,
+                                  ),
+                                  const SizedBox(height: 16),
+                                  _buildTextField(
+                                    name: 'waktu_catatan',
+                                    label: 'Waktu Catatan',
+                                    colorScheme: colorScheme,
+                                    hint: 'HH:mm',
+                                  ),
+                                  const SizedBox(height: 16),
+                                  _buildTextField(
+                                    name: 'isi_catatan',
+                                    label: 'Isi Catatan',
+                                    colorScheme: colorScheme,
+                                    keyboardType: TextInputType.multiline,
+                                    maxLines: 5,
+                                  ),
+                                  const SizedBox(height: 16),
+                                  _buildTextField(
+                                    name: 'tindak_lanjut',
+                                    label: 'Tindak Lanjut',
+                                    colorScheme: colorScheme,
+                                    keyboardType: TextInputType.multiline,
+                                    maxLines: 3,
+                                  ),
+                                ],
                               ),
                             ),
                             const SizedBox(height: 24),
@@ -377,6 +431,58 @@ class _CatatanTambahanFormViewState extends State<CatatanTambahanFormView>
               borderSide: BorderSide(color: colorScheme.primary, width: 2),
             ),
           ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDateField({
+    required String name,
+    required String label,
+    required ColorScheme colorScheme,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: colorScheme.onSurface,
+          ),
+        ),
+        const SizedBox(height: 8),
+        FormBuilderDateTimePicker(
+          name: name,
+          inputType: InputType.date,
+          format: DateFormat('dd/MM/yyyy'),
+          decoration: InputDecoration(
+            hintText: 'Pilih tanggal',
+            hintStyle: TextStyle(
+              color: colorScheme.onSurfaceVariant.withOpacity(0.5),
+            ),
+            suffixIcon: const Icon(Icons.calendar_today),
+            filled: true,
+            fillColor: colorScheme.surfaceContainerHighest.withOpacity(0.3),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(
+                color: colorScheme.outline.withOpacity(0.2),
+                width: 1,
+              ),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: colorScheme.primary, width: 2),
+            ),
+          ),
+          firstDate: DateTime(2000),
+          lastDate: DateTime.now().add(const Duration(days: 365)),
         ),
       ],
     );

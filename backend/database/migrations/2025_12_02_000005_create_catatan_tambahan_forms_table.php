@@ -6,31 +6,29 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
-        Schema::create('forms', function (Blueprint $table) {
+        Schema::create('catatan_tambahan_forms', function (Blueprint $table) {
             $table->id();
-            $table->string('type'); // e.g., 'pengkajian', 'other types in future'
             $table->unsignedBigInteger('user_id');
             $table->unsignedBigInteger('patient_id');
-            $table->enum('status', ['submitted', 'revised', 'approved'])->default('submitted');
-            $table->json('data')->nullable(); // Store form data as JSON
+            $table->enum('status', ['draft', 'submitted', 'revised', 'approved'])->default('draft');
+            
+            $table->date('tanggal_catatan')->nullable();
+            $table->time('waktu_catatan')->nullable();
+            $table->string('kategori')->nullable(); // Observasi, Tindakan, Evaluasi, dll
+            $table->text('catatan')->nullable();
+            $table->text('tindak_lanjut')->nullable();
+            
             $table->timestamps();
             
-            // Foreign key constraints
             $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
             $table->foreign('patient_id')->references('id')->on('patients')->onDelete('cascade');
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
-        Schema::dropIfExists('forms');
+        Schema::dropIfExists('catatan_tambahan_forms');
     }
 };
