@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_form_builder/flutter_form_builder.dart';
 import 'package:get/get.dart';
+import 'package:intl/intl.dart';
+import 'package:tamajiwa/services/logger_service.dart';
+
 import '../controllers/form_controller.dart';
+import '../controllers/nursing_intervention_controller.dart';
 import '../controllers/patient_controller.dart';
 import '../models/patient_model.dart';
 import '../services/nursing_data_global_service.dart';
-import '../controllers/nursing_intervention_controller.dart';
 import '../utils/form_builder_mixin.dart';
 import '../widgets/form_components/custom_checkbox_group.dart';
-import 'package:intl/intl.dart';
 
 class CatatanTambahanFormView extends StatefulWidget {
   final Patient? patient;
@@ -23,6 +25,7 @@ class CatatanTambahanFormView extends StatefulWidget {
 
 class _CatatanTambahanFormViewState extends State<CatatanTambahanFormView>
     with FormBuilderMixin {
+  final LoggerService _logger = LoggerService();
   @override
   final FormController formController = Get.put(FormController());
   @override
@@ -55,6 +58,15 @@ class _CatatanTambahanFormViewState extends State<CatatanTambahanFormView>
     _currentPatientId =
         _currentPatient?.id ?? Get.arguments?['patientId'] as int?;
 
+    _logger.info(
+      'Initializing CatatanTambahanFormView',
+      context: {
+        'formId': formId,
+        'patientId': _currentPatientId,
+        'isNewForm': formId == null,
+      },
+    );
+
     initializeForm(
       patient: _currentPatient,
       patientId: _currentPatientId,
@@ -64,62 +76,26 @@ class _CatatanTambahanFormViewState extends State<CatatanTambahanFormView>
 
   @override
   Map<String, dynamic> transformInitialData(Map<String, dynamic> data) {
-    final catatan = data['catatan'] ?? data;
-    final renpra = catatan['renpra'] ?? {};
-
-    List<int> parseIntervensi(dynamic value) {
-      if (value is List) return value.cast<int>();
-      return [];
+    _logger.debug('Transforming initial data for CatatanTambahan view', context: {'data': data});
+    // The reverse mapper has already flattened the data.
+    // We just need to handle view-specific state here.
+    if (data['diagnosis'] != null) {
+      _selectedDiagnosis = data['diagnosis'];
     }
-
-    DateTime? parseDate(dynamic value) {
-      if (value is DateTime) return value;
-      if (value is String) return DateTime.tryParse(value);
-      return null;
-    }
-
-    if (renpra['diagnosis'] != null) {
-      _selectedDiagnosis = renpra['diagnosis'];
-    }
-
-    return {
-      'tanggal_catatan': parseDate(catatan['tanggal_catatan']),
-      'waktu_catatan': catatan['waktu_catatan'],
-      'kategori': catatan['kategori'] ?? 'Perkembangan',
-      'isi_catatan': catatan['isi_catatan'] ?? catatan['catatan'],
-      'tindak_lanjut': catatan['tindak_lanjut'],
-      'diagnosis': renpra['diagnosis'],
-      'intervensi': parseIntervensi(renpra['intervensi']),
-      'tujuan': renpra['tujuan'],
-      'kriteria': renpra['kriteria'],
-      'rasional': renpra['rasional'],
-    };
+    return data;
   }
 
   @override
   Map<String, dynamic> transformFormData(Map<String, dynamic> formData) {
-    // Convert tindak_lanjut to string if it's an array
-    String? tindakLanjut = formData['tindak_lanjut'];
-    if (tindakLanjut == null && formData['intervensi'] != null) {
-      // If tindak_lanjut is empty but intervensi exists, use intervensi as tindak_lanjut
-      final intervensi = formData['intervensi'];
-      if (intervensi is List && intervensi.isNotEmpty) {
-        tindakLanjut = 'Intervensi ID: ${intervensi.join(", ")}';
-      }
-    }
-    
-    final result = {
-      'tanggal_catatan': formData['tanggal_catatan'],
-      'waktu_catatan': formData['waktu_catatan'],
-      'kategori': formData['kategori'],
-      'catatan': formData['isi_catatan'],
-      'tindak_lanjut': tindakLanjut ?? '',
-    };
-    return super.transformFormData(result);
+    _logger.debug('Transforming form data for submission from CatatanTambahan view', context: {'formData': formData});
+    // The forward mapper will handle the complex transformation.
+    // The mixin's transform handles generic conversions like DateTime.
+    return super.transformFormData(formData);
   }
 
   @override
   Widget build(BuildContext context) {
+    _logger.trace('Building CatatanTambahanFormView');
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final isNew = formId == null;
@@ -248,6 +224,7 @@ class _CatatanTambahanFormViewState extends State<CatatanTambahanFormView>
                 .toList(),
             hint: 'Pilih Diagnosis (Opsional)',
             onChanged: (value) {
+              _logger.info('Diagnosis changed', context: {'newDiagnosisId': value});
               setState(() {
                 _selectedDiagnosis = value;
                 // Clear dependent fields if diagnosis is cleared
@@ -564,7 +541,16 @@ class _CatatanTambahanFormViewState extends State<CatatanTambahanFormView>
               child: SizedBox(
                 height: 52,
                 child: FilledButton.icon(
-                  onPressed: formController.isLoading ? null : submitForm,
+                  onPressed: formController.isLoading
+                      ? null
+                      : () {
+                          _logger.userInteraction(
+                            'Save Catatan Tambahan',
+                            page: 'CatatanTambahanFormView',
+                            element: 'SaveButton',
+                          );
+                          submitForm();
+                        },
                   icon: formController.isLoading
                       ? const SizedBox.shrink()
                       : const Icon(Icons.save_alt_rounded),

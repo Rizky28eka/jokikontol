@@ -57,78 +57,11 @@ class _MentalHealthAssessmentFormViewState
     _currentPatientId =
         _currentPatient?.id ?? Get.arguments?['patientId'] as int?;
 
-    final formDataArg = Get.arguments?['formData'] as Map<String, dynamic>?;
-    if (formDataArg != null) {
-      initialValues = transformInitialData(formDataArg);
-    }
-
     initializeForm(
       patient: _currentPatient,
       patientId: _currentPatientId,
       formId: formId,
     );
-  }
-
-  @override
-  Map<String, dynamic> transformInitialData(Map<String, dynamic> data) {
-    DateTime? parseDate(dynamic value) {
-      if (value is DateTime) return value;
-      if (value is String) return DateTime.tryParse(value);
-      return null;
-    }
-
-    return {
-      'nama_lengkap': data['section_1']?['nama_lengkap'],
-      'umur': data['section_1']?['umur'],
-      'jenis_kelamin': data['section_1']?['jenis_kelamin'],
-      'status_perkawinan': data['section_1']?['status_perkawinan'],
-      'riwayat_pendidikan': data['section_2']?['riwayat_pendidikan'],
-      'pekerjaan': data['section_2']?['pekerjaan'],
-      'riwayat_keluarga': data['section_2']?['riwayat_keluarga'],
-      'hubungan_sosial': data['section_3']?['hubungan_sosial'],
-      'dukungan_sosial': data['section_3']?['dukungan_sosial'],
-      'stresor_psikososial': data['section_3']?['stresor_psikososial'],
-      'riwayat_gangguan_psikiatri': data['section_4']?['riwayat_gangguan_psikiatri'],
-      'kesadaran': data['section_5']?['kesadaran'],
-      'orientasi': data['section_5']?['orientasi'],
-      'penampilan': data['section_5']?['penampilan'],
-      'mood': data['section_6']?['mood'],
-      'afect': data['section_6']?['afect'],
-      'alam_pikiran': data['section_6']?['alam_pikiran'],
-      'fungsi_sosial': data['section_7']?['fungsi_sosial'],
-      'kepercayaan': data['section_8']?['kepercayaan'],
-      'praktik_ibadah': data['section_8']?['praktik_ibadah'],
-      'genogram_structure': data['section_9']?['structure'] ?? data['genogram']?['structure'],
-      'genogram_notes': data['section_9']?['notes'] ?? data['genogram']?['notes'],
-      'diagnosis': data['section_10']?['diagnosis'],
-      'intervensi': (data['section_10']?['intervensi'] as List?)?.cast<int>() ?? [],
-      'tujuan': data['section_10']?['tujuan'],
-      'kriteria': data['section_10']?['kriteria'],
-      'rasional': data['section_10']?['rasional'],
-      'catatan_tambahan': data['section_11']?['catatan_tambahan'],
-      'tanggal_pengisian': parseDate(data['section_11']?['tanggal_pengisian']),
-    };
-  }
-
-  @override
-  Map<String, dynamic> transformFormData(Map<String, dynamic> formData) {
-    final result = {
-      'section_1': {'nama_lengkap': formData['nama_lengkap'], 'umur': formData['umur'], 'jenis_kelamin': formData['jenis_kelamin'], 'status_perkawinan': formData['status_perkawinan']},
-      'section_2': {'riwayat_pendidikan': formData['riwayat_pendidikan'], 'pekerjaan': formData['pekerjaan'], 'riwayat_keluarga': formData['riwayat_keluarga']},
-      'section_3': {'hubungan_sosial': formData['hubungan_sosial'], 'dukungan_sosial': formData['dukungan_sosial'], 'stresor_psikososial': formData['stresor_psikososial']},
-      'section_4': {'riwayat_gangguan_psikiatri': formData['riwayat_gangguan_psikiatri']},
-      'section_5': {'kesadaran': formData['kesadaran'], 'orientasi': formData['orientasi'], 'penampilan': formData['penampilan']},
-      'section_6': {'mood': formData['mood'], 'afect': formData['afect'], 'alam_pikiran': formData['alam_pikiran']},
-      'section_7': {'fungsi_sosial': formData['fungsi_sosial']},
-      'section_8': {'kepercayaan': formData['kepercayaan'], 'praktik_ibadah': formData['praktik_ibadah']},
-      'section_9': formData['genogram_structure'] != null ? {'structure': formData['genogram_structure'], 'notes': formData['genogram_notes']} : null,
-      'section_10': formData['diagnosis'] != null ? {'diagnosis': formData['diagnosis'], 'intervensi': formData['intervensi'], 'tujuan': formData['tujuan'], 'kriteria': formData['kriteria'], 'rasional': formData['rasional']} : null,
-      'section_11': {'catatan_tambahan': formData['catatan_tambahan'], 'tanggal_pengisian': formData['tanggal_pengisian']},
-    };
-    if (formData['genogram_structure'] != null) {
-      result['genogram'] = {'structure': formData['genogram_structure'], 'notes': formData['genogram_notes']};
-    }
-    return super.transformFormData(result);
   }
 
   void _nextSection() {

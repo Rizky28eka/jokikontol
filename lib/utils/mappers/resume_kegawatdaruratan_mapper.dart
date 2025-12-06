@@ -1,94 +1,113 @@
 class ResumeKegawatdaruratanMapper {
-  static Map<String, dynamic> map(Map<String, dynamic> data) {
-    final result = <String, dynamic>{};
-    
-    final identitas = data['identitas'] ?? {};
-    final riwayatKeluhan = data['riwayat_keluhan'] ?? {};
-    final pemeriksaanFisik = data['pemeriksaan_fisik'] ?? {};
-    final statusMental = data['status_mental'] ?? {};
-    final diagnosis = data['diagnosis'] ?? {};
-    final tindakan = data['tindakan'] ?? {};
-    final renpra = data['renpra'] ?? {};
-
-    // Identitas
-    if (identitas['nama_lengkap'] != null) result['nama_lengkap'] = identitas['nama_lengkap'];
-    else if (data['nama_lengkap'] != null) result['nama_lengkap'] = data['nama_lengkap'];
-    
-    if (identitas['umur'] != null) result['umur'] = identitas['umur'];
-    else if (data['umur'] != null) result['umur'] = data['umur'];
-    
-    if (identitas['jenis_kelamin'] != null) result['jenis_kelamin'] = identitas['jenis_kelamin'];
-    else if (data['jenis_kelamin'] != null) result['jenis_kelamin'] = data['jenis_kelamin'];
-    
-    if (identitas['alamat'] != null) result['alamat'] = identitas['alamat'];
-    else if (data['alamat'] != null) result['alamat'] = data['alamat'];
-    
-    if (identitas['tanggal_masuk'] != null) result['tanggal_masuk'] = identitas['tanggal_masuk'];
-    else if (data['tanggal_masuk'] != null) result['tanggal_masuk'] = data['tanggal_masuk'];
-    
-    // Riwayat Keluhan
-    if (riwayatKeluhan['keluhan_utama'] != null) result['keluhan_utama'] = riwayatKeluhan['keluhan_utama'];
-    else if (data['keluhan_utama'] != null) result['keluhan_utama'] = data['keluhan_utama'];
-    
-    if (riwayatKeluhan['riwayat_penyakit_sekarang'] != null) result['riwayat_penyakit_sekarang'] = riwayatKeluhan['riwayat_penyakit_sekarang'];
-    else if (data['riwayat_penyakit_sekarang'] != null) result['riwayat_penyakit_sekarang'] = data['riwayat_penyakit_sekarang'];
-    
-    if (riwayatKeluhan['faktor_pencetus'] != null) result['faktor_pencetus'] = riwayatKeluhan['faktor_pencetus'];
-    else if (data['faktor_pencetus'] != null) result['faktor_pencetus'] = data['faktor_pencetus'];
-    
-    // Pemeriksaan Fisik
-    if (pemeriksaanFisik['keadaan_umum'] != null) result['keadaan_umum'] = pemeriksaanFisik['keadaan_umum'];
-    else if (data['keadaan_umum'] != null) result['keadaan_umum'] = data['keadaan_umum'];
-    
-    if (pemeriksaanFisik['tanda_vital'] != null) result['tanda_vital'] = pemeriksaanFisik['tanda_vital'];
-    else if (data['tanda_vital'] != null) result['tanda_vital'] = data['tanda_vital'];
-    
-    if (pemeriksaanFisik['pemeriksaan_lain'] != null) result['pemeriksaan_lain'] = pemeriksaanFisik['pemeriksaan_lain'];
-    else if (data['pemeriksaan_lain'] != null) result['pemeriksaan_lain'] = data['pemeriksaan_lain'];
-    
-    // Status Mental
-    if (statusMental['kesadaran'] != null) result['kesadaran'] = statusMental['kesadaran'];
-    else if (data['kesadaran'] != null) result['kesadaran'] = data['kesadaran'];
-    
-    if (statusMental['orientasi'] != null) result['orientasi'] = statusMental['orientasi'];
-    else if (data['orientasi'] != null) result['orientasi'] = data['orientasi'];
-    
-    if (statusMental['bentuk_pemikiran'] != null) result['bentuk_pemikiran'] = statusMental['bentuk_pemikiran'];
-    else if (data['bentuk_pemikiran'] != null) result['bentuk_pemikiran'] = data['bentuk_pemikiran'];
-    
-    if (statusMental['isi_pemikiran'] != null) result['isi_pemikiran'] = statusMental['isi_pemikiran'];
-    else if (data['isi_pemikiran'] != null) result['isi_pemikiran'] = data['isi_pemikiran'];
-    
-    if (statusMental['persepsi'] != null) result['persepsi'] = statusMental['persepsi'];
-    else if (data['persepsi'] != null) result['persepsi'] = data['persepsi'];
-    
-    // Diagnosis
-    if (diagnosis['diagnosis_utama'] != null) result['diagnosis_utama'] = diagnosis['diagnosis_utama'];
-    else if (data['diagnosis_utama'] != null) result['diagnosis_utama'] = data['diagnosis_utama'];
-    
-    if (diagnosis['diagnosis_banding'] != null) result['diagnosis_banding'] = diagnosis['diagnosis_banding'];
-    else if (data['diagnosis_banding'] != null) result['diagnosis_banding'] = data['diagnosis_banding'];
-    
-    if (diagnosis['diagnosis_tambahan'] != null) result['diagnosis_tambahan'] = diagnosis['diagnosis_tambahan'];
-    else if (data['diagnosis_tambahan'] != null) result['diagnosis_tambahan'] = data['diagnosis_tambahan'];
-    
-    // Tindakan
-    if (tindakan['tindakan_medis'] != null) result['tindakan_medis'] = tindakan['tindakan_medis'];
-    else if (data['tindakan_medis'] != null) result['tindakan_medis'] = data['tindakan_medis'];
-    
-    if (tindakan['tindakan_keperawatan'] != null) result['tindakan_keperawatan'] = tindakan['tindakan_keperawatan'];
-    else if (data['tindakan_keperawatan'] != null) result['tindakan_keperawatan'] = data['tindakan_keperawatan'];
-    
-    if (tindakan['terapi_psikososial'] != null) result['terapi_psikososial'] = tindakan['terapi_psikososial'];
-    else if (data['terapi_psikososial'] != null) result['terapi_psikososial'] = data['terapi_psikososial'];
-    
-    // Renpra
-    if (renpra['diagnosis'] != null) result['renpra_diagnosis'] = renpra['diagnosis'];
-    if (renpra['intervensi'] != null) result['renpra_intervensi'] = renpra['intervensi'];
-    if (renpra['tujuan'] != null) result['renpra_tujuan'] = renpra['tujuan'];
-    if (renpra['kriteria'] != null) result['renpra_kriteria'] = renpra['kriteria'];
-    if (renpra['rasional'] != null) result['renpra_rasional'] = renpra['rasional'];
-    
-    return result;
+  static Map<String, dynamic> map(Map<String, dynamic> formData) {
+    return {
+      'identitas': {
+        'nama_lengkap': formData['nama_lengkap'],
+        'umur': formData['umur'],
+        'jenis_kelamin': formData['jenis_kelamin'],
+        'alamat': formData['alamat'],
+        'tanggal_masuk': formData['tanggal_masuk'],
+      },
+      'riwayat_keluhan': {
+        'keluhan_utama': formData['keluhan_utama'],
+        'riwayat_penyakit_sekarang': formData['riwayat_penyakit_sekarang'],
+        'faktor_pencetus': formData['faktor_pencetus'],
+      },
+      'pemeriksaan_fisik': {
+        'keadaan_umum': formData['keadaan_umum'],
+        'tanda_vital': formData['tanda_vital'],
+        'pemeriksaan_lain': formData['pemeriksaan_lain'],
+      },
+      'status_mental': {
+        'kesadaran': formData['kesadaran'],
+        'orientasi': formData['orientasi'],
+        'bentuk_pemikiran': formData['bentuk_pemikiran'],
+        'isi_pemikiran': formData['isi_pemikiran'],
+        'persepsi': formData['persepsi'],
+      },
+      'diagnosis': {
+        'diagnosis_utama': formData['diagnosis_utama'],
+        'diagnosis_banding': formData['diagnosis_banding'],
+        'diagnosis_tambahan': formData['diagnosis_tambahan'],
+      },
+      'tindakan': {
+        'tindakan_medis': formData['tindakan_medis'],
+        'tindakan_keperawatan': formData['tindakan_keperawatan'],
+        'terapi_psikososial': formData['terapi_psikososial'],
+      },
+      'implementasi': {
+        'pelaksanaan_intervensi': formData['pelaksanaan_intervensi'],
+        'kolaborasi_tim': formData['kolaborasi_tim'],
+        'edukasi': formData['edukasi'],
+      },
+      'evaluasi': {
+        'respon_intervensi': formData['respon_intervensi'],
+        'perubahan_klinis': formData['perubahan_klinis'],
+        'tujuan_tercapai': formData['tujuan_tercapai'],
+        'hambatan_perawatan': formData['hambatan_perawatan'],
+      },
+      'rencana_lanjut': {
+        'rencana_medis': formData['rencana_medis'],
+        'rencana_keperawatan': formData['rencana_keperawatan'],
+        'rencana_pemantauan': formData['rencana_pemantauan'],
+      },
+      'rencana_keluarga': {
+        'keterlibatan_keluarga': formData['keterlibatan_keluarga'],
+        'edukasi_keluarga': formData['edukasi_keluarga'],
+        'dukungan_keluarga': formData['dukungan_keluarga'],
+      },
+      'renpra': formData['diagnosis'] != null
+          ? {
+              'diagnosis': formData['diagnosis'],
+              'intervensi': formData['intervensi'],
+              'tujuan': formData['tujuan'],
+              'kriteria': formData['kriteria'],
+              'rasional': formData['rasional'],
+              'evaluasi': formData['evaluasi_renpra'],
+            }
+          : null,
+      // flat mirror for BE compatibility
+      'nama_lengkap': formData['nama_lengkap'],
+      'umur': formData['umur'],
+      'jenis_kelamin': formData['jenis_kelamin'],
+      'alamat': formData['alamat'],
+      'tanggal_masuk': formData['tanggal_masuk'],
+      'keluhan_utama': formData['keluhan_utama'],
+      'riwayat_penyakit_sekarang': formData['riwayat_penyakit_sekarang'],
+      'faktor_pencetus': formData['faktor_pencetus'],
+      'keadaan_umum': formData['keadaan_umum'],
+      'tanda_vital': formData['tanda_vital'],
+      'pemeriksaan_lain': formData['pemeriksaan_lain'],
+      'kesadaran': formData['kesadaran'],
+      'orientasi': formData['orientasi'],
+      'bentuk_pemikiran': formData['bentuk_pemikiran'],
+      'isi_pemikiran': formData['isi_pemikiran'],
+      'persepsi': formData['persepsi'],
+      'diagnosis_utama': formData['diagnosis_utama'],
+      'diagnosis_banding': formData['diagnosis_banding'],
+      'diagnosis_tambahan': formData['diagnosis_tambahan'],
+      'tindakan_medis': formData['tindakan_medis'],
+      'tindakan_keperawatan': formData['tindakan_keperawatan'],
+      'terapi_psikososial': formData['terapi_psikososial'],
+      'pelaksanaan_intervensi': formData['pelaksanaan_intervensi'],
+      'kolaborasi_tim': formData['kolaborasi_tim'],
+      'edukasi': formData['edukasi'],
+      'respon_intervensi': formData['respon_intervensi'],
+      'perubahan_klinis': formData['perubahan_klinis'],
+      'tujuan_tercapai': formData['tujuan_tercapai'],
+      'hambatan_perawatan': formData['hambatan_perawatan'],
+      'rencana_medis': formData['rencana_medis'],
+      'rencana_keperawatan': formData['rencana_keperawatan'],
+      'rencana_pemantauan': formData['rencana_pemantauan'],
+      'keterlibatan_keluarga': formData['keterlibatan_keluarga'],
+      'edukasi_keluarga': formData['edukasi_keluarga'],
+      'dukungan_keluarga': formData['dukungan_keluarga'],
+      'renpra_diagnosis': formData['diagnosis'],
+      'renpra_intervensi': formData['intervensi'],
+      'renpra_tujuan': formData['tujuan'],
+      'renpra_kriteria': formData['kriteria'],
+      'renpra_rasional': formData['rasional'],
+      'renpra_evaluasi': formData['evaluasi_renpra'],
+    };
   }
 }
