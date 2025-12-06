@@ -12,6 +12,7 @@ class FormsService {
     final uri = Uri.parse('${ApiConfig.currentBaseUrl}${ApiConfig.forms}').replace(queryParameters: params.isNotEmpty ? params : null);
     return http.get(uri, headers: {
       'Authorization': 'Bearer $token',
+      'Accept': 'application/json',
       'Content-Type': 'application/json; charset=UTF-8',
     });
   }

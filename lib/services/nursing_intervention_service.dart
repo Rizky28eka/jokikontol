@@ -15,6 +15,7 @@ class NursingInterventionService {
       Uri.parse('$baseUrl/interventions'),
       headers: {
         'Authorization': 'Bearer $token',
+        'Accept': 'application/json',
         'Content-Type': 'application/json',
       },
     );
@@ -31,6 +32,7 @@ class NursingInterventionService {
       Uri.parse('$baseUrl/interventions'),
       headers: {
         'Authorization': 'Bearer $token',
+        'Accept': 'application/json',
         'Content-Type': 'application/json',
       },
       body: jsonEncode(body),
@@ -48,6 +50,7 @@ class NursingInterventionService {
       Uri.parse('$baseUrl/interventions/$id'),
       headers: {
         'Authorization': 'Bearer $token',
+        'Accept': 'application/json',
         'Content-Type': 'application/json',
       },
       body: jsonEncode(body),
@@ -65,6 +68,7 @@ class NursingInterventionService {
       Uri.parse('$baseUrl/interventions/$id'),
       headers: {
         'Authorization': 'Bearer $token',
+        'Accept': 'application/json',
         'Content-Type': 'application/json',
       },
     );

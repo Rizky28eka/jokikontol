@@ -110,6 +110,15 @@ class AuthController extends GetxController {
     isLoading.value = true;
 
     try {
+      _logger.debug(
+        'Sending registration request',
+        context: {
+          'email': email,
+          'name': name,
+          'role': role,
+        },
+      );
+
       final response = await http.post(
         Uri.parse('${ApiConfig.currentBaseUrl}${ApiConfig.register}'),
         headers: <String, String>{
@@ -132,7 +141,11 @@ class AuthController extends GetxController {
         _token.value = '';
         _loginTime = null;
 
-        _logger.auth(event: 'Registration success', userEmail: email);
+        _logger.auth(
+          event: 'Registration success',
+          userEmail: email,
+          success: true,
+        );
 
         Get.snackbar('Success', 'Registration successful! Please log in.');
         Get.offAllNamed(AppRoutes.login);
@@ -181,6 +194,14 @@ class AuthController extends GetxController {
     isLoading.value = true;
 
     try {
+      _logger.debug(
+        'Sending login request',
+        context: {
+          'email': email,
+          'hasPassword': password.isNotEmpty,
+        },
+      );
+
       final response = await http.post(
         Uri.parse('${ApiConfig.currentBaseUrl}${ApiConfig.login}'),
         headers: <String, String>{
@@ -190,6 +211,14 @@ class AuthController extends GetxController {
           'email': email,
           'password': password,
         }),
+      );
+
+      _logger.network(
+        method: 'POST',
+        url: '${ApiConfig.currentBaseUrl}${ApiConfig.login}',
+        statusCode: response.statusCode,
+        requestBody: {'email': email, 'hasPassword': true},
+        responseBody: response.body,
       );
 
       final data = json.decode(response.body);
@@ -209,6 +238,7 @@ class AuthController extends GetxController {
           event: 'Login success',
           userId: user.id.toString(),
           userEmail: user.email,
+          success: true,
         );
 
         Get.snackbar('Success', 'Login successful');
@@ -513,6 +543,10 @@ class AuthController extends GetxController {
     _logger.auth(event: 'Password reset request', userEmail: email);
 
     if (email.isEmpty) {
+      _logger.warning(
+        'Password reset request failed: Email was empty.',
+        context: {'email': email},
+      );
       Get.snackbar('Error', 'Please enter your email address');
       return;
     }
@@ -520,6 +554,13 @@ class AuthController extends GetxController {
     isLoading.value = true;
 
     try {
+      _logger.debug(
+        'Sending password reset request',
+        context: {
+          'email': email,
+        },
+      );
+
       final response = await http.post(
         Uri.parse('${ApiConfig.currentBaseUrl}${ApiConfig.passwordResetRequest}'),
         headers: <String, String>{
@@ -528,8 +569,16 @@ class AuthController extends GetxController {
         body: jsonEncode({'email': email}),
       );
 
+      _logger.network(
+        method: 'POST',
+        url: '${ApiConfig.currentBaseUrl}${ApiConfig.passwordResetRequest}',
+        statusCode: response.statusCode,
+        requestBody: {'email': email},
+        responseBody: response.body,
+      );
+
       if (response.statusCode == 200) {
-        _logger.info('Password reset link sent to $email');
+        _logger.auth(event: 'Password reset success', userEmail: email, success: true);
         Get.snackbar(
           'Success',
           'Password reset link has been sent to your email.\nPlease check your inbox.',

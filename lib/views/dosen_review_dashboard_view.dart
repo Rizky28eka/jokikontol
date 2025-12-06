@@ -1,17 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../controllers/review_controller.dart';
+import '../services/logger_service.dart';
 
 class DosenReviewDashboardView extends StatelessWidget {
   const DosenReviewDashboardView({super.key});
 
   Future<void> _refreshReviews(ReviewController controller) async {
+    LoggerService().debug('Refreshing reviews in DosenReviewDashboard');
     await controller.fetchSubmittedForms();
   }
 
   @override
   Widget build(BuildContext context) {
     final ReviewController reviewController = Get.put(ReviewController());
+    LoggerService().info('Dosen Review Dashboard loaded');
 
     return Scaffold(
       appBar: AppBar(
@@ -34,21 +37,25 @@ class DosenReviewDashboardView extends StatelessWidget {
               Expanded(
                 child: Obx(() {
                   if (reviewController.isLoading) {
+                    LoggerService().debug('Loading forms in DosenReviewDashboard');
                     return const Center(child: CircularProgressIndicator());
                   }
 
                   if (reviewController.errorMessage.isNotEmpty) {
+                    LoggerService().error('Error loading forms in DosenReviewDashboard', context: {'error': reviewController.errorMessage});
                     return Center(
                       child: Text('Error: ${reviewController.errorMessage}'),
                     );
                   }
 
                   if (reviewController.submittedForms.isEmpty) {
+                    LoggerService().info('No forms to review in DosenReviewDashboard');
                     return const Center(
                       child: Text('Tidak ada form menunggu review'),
                     );
                   }
 
+                  LoggerService().info('Displaying forms in DosenReviewDashboard', context: {'formCount': reviewController.submittedForms.length});
                   return ListView.builder(
                     physics: const AlwaysScrollableScrollPhysics(),
                     itemCount: reviewController.submittedForms.length,
@@ -79,6 +86,12 @@ class DosenReviewDashboardView extends StatelessWidget {
                           ),
                           onTap: () {
                             // Navigate to form review page
+                            LoggerService().userInteraction('Form selected for review', page: 'DosenReviewDashboard', data: {
+                              'formId': form.id,
+                              'formType': form.type,
+                              'patientName': form.patient?.name,
+                              'studentName': form.user?.name,
+                            });
                             Get.toNamed('/form-review/${form.id}');
                           },
                         ),

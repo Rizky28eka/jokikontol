@@ -9,6 +9,7 @@ class PatientService {
         .replace(queryParameters: query != null && query.isNotEmpty ? {'search': query} : null);
     return http.get(uri, headers: {
       'Authorization': 'Bearer $token',
+      'Accept': 'application/json',
       'Content-Type': 'application/json; charset=UTF-8',
     });
   }

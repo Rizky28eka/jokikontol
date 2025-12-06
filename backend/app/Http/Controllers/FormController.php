@@ -286,21 +286,34 @@ class FormController extends Controller
      */
     public function getSubmittedForms(Request $request)
     {
-        // Check if user is dosen - only dosen should see submitted forms for review
-        if ($request->user()->role !== 'dosen') {
-            $query = Form::query();
-            // Non-dosen users can only see their own submitted forms
-            $query->where('user_id', $request->user()->id);
-        } else {
-            $query = Form::query();
+        try {
+            \Log::info('getSubmittedForms called', ['user_id' => $request->user()->id, 'role' => $request->user()->role ?? 'unknown']);
+
+            // Check if user is dosen - only dosen should see submitted forms for review
+            if ($request->user()->role !== 'dosen') {
+                $query = Form::query();
+                // Non-dosen users can only see their own submitted forms
+                $query->where('user_id', $request->user()->id);
+            } else {
+                $query = Form::query();
+            }
+
+            // Filter by status = submitted
+            $query->where('status', 'submitted');
+
+            $forms = $query->with(['user', 'patient'])->orderBy('created_at', 'desc')->paginate(10);
+
+            \Log::info('getSubmittedForms successful', ['form_count' => $forms->count()]);
+
+            return response()->json($forms);
+        } catch (\Exception $e) {
+            \Log::error('Error in getSubmittedForms: ' . $e->getMessage(), [
+                'line' => $e->getLine(),
+                'file' => $e->getFile(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json(['error' => 'Internal server error'], 500);
         }
-
-        // Filter by status = submitted
-        $query->where('status', 'submitted');
-
-        $forms = $query->with(['user', 'patient'])->orderBy('created_at', 'desc')->paginate(10);
-
-        return response()->json($forms);
     }
 
     /**

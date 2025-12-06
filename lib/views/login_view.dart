@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../controllers/auth_controller.dart';
 import '../constants/app_routes.dart';
+import '../services/logger_service.dart';
 
 class LoginView extends StatefulWidget {
   const LoginView({super.key});
@@ -13,6 +14,7 @@ class LoginView extends StatefulWidget {
 class _LoginViewState extends State<LoginView>
     with SingleTickerProviderStateMixin {
   final AuthController authController = Get.find<AuthController>();
+  final LoggerService _logger = LoggerService();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   late AnimationController _animController;
@@ -294,10 +296,20 @@ class _LoginViewState extends State<LoginView>
         child: ElevatedButton(
           onPressed: isLoading
               ? null
-              : () => authController.login(
-                  _emailController.text.trim(),
-                  _passwordController.text,
-                ),
+              : () {
+                  _logger.userInteraction(
+                    'Login button pressed',
+                    page: 'LoginView',
+                    data: {
+                      'email': _emailController.text.trim(),
+                      'hasPassword': _passwordController.text.isNotEmpty,
+                    },
+                  );
+                  authController.login(
+                    _emailController.text.trim(),
+                    _passwordController.text,
+                  );
+                },
           style: ElevatedButton.styleFrom(
             backgroundColor: isLoading
                 ? colorScheme.surfaceContainerHighest

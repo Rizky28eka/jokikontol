@@ -5,16 +5,17 @@ class ApiConfig {
   // 2. Add exception in antivirus settings for this app
   // 3. Or temporarily disable web protection during development
   // static const String baseUrl =
-  //     'https://tamajiwa.bilcode.id/api'; // Update this with your backend URL
+  //     'http://127.0.0.1:8000/api'; // Update this with your backend URL
   static const String baseUrl =
-      'https://tamajiwa.bilcode.id/api'; // Update this with your backend URL
+      'http://127.0.0.1:8000/api'; // Update this with your backend URL
 
   // Environment-based configurations
-  static const String developmentBaseUrl = 'https://tamajiwa.bilcode.id/api';
+  static const String developmentBaseUrl = 'http://127.0.0.1:8000/api';
   // static const String developmentBaseUrl = 'http://[nyesuain ip ente]:8000/api';
-  static const String localhostBaseUrl = 'http://localhost:8000/api'; // Use this if antivirus blocks IP
-  static const String productionBaseUrl = 'https://tamajiwa.bilcode.id/api';
-  static const String stagingBaseUrl = 'https://staging.your-api.com/api';
+  static const String localhostBaseUrl =
+      'http://127.0.0.1:8000/api'; // Use this if antivirus blocks IP
+  static const String productionBaseUrl = 'http://127.0.0.1:8000/api';
+  static const String stagingBaseUrl = 'http://127.0.0.1:8000/api';
 
   // Current environment - can be changed based on build flavor
   static String get currentBaseUrl {
@@ -33,7 +34,8 @@ class ApiConfig {
   static const String userProfile = '/user/profile';
   static const String passwordResetRequest = '/forgot-password';
   static const String passwordReset = '/reset-password';
-  static const String emailVerificationNotice = '/email/verification-notification';
+  static const String emailVerificationNotice =
+      '/email/verification-notification';
   static const String patients = '/patients';
   static const String forms = '/forms';
   static const String dashboardMahasiswa = '/dashboard/mahasiswa';
@@ -49,6 +51,7 @@ class ApiConfig {
   // Helper methods for dynamic endpoints
   static String formReviewEndpoint(String id) => '/forms/$id/review';
   static String formGeneratePdfEndpoint(String id) => '/forms/$id/generate-pdf';
-  static String formUploadMaterialEndpoint(String id) => '/forms/$id/upload-material';
+  static String formUploadMaterialEndpoint(String id) =>
+      '/forms/$id/upload-material';
   static String formUploadPhotoEndpoint(String id) => '/forms/$id/upload-photo';
 }

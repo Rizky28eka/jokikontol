@@ -45,6 +45,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Get submitted forms and review routes
     Route::get('forms/submitted', [FormController::class, 'getSubmittedForms']);
+    Route::get('forms/submitted-test', function () {
+        return response()->json(['test' => 'success']);
+    });
     Route::post('forms/{form}/review', [FormController::class, 'reviewForm']);
 
     // PDF generation routes

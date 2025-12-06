@@ -5,6 +5,7 @@ import '../controllers/nursing_diagnosis_controller.dart';
 import '../controllers/nursing_intervention_controller.dart';
 import '../controllers/review_controller.dart';
 import '../models/form_model.dart';
+import '../services/logger_service.dart';
 
 class FormReviewView extends StatefulWidget {
   const FormReviewView({super.key});
@@ -23,12 +24,14 @@ class _FormReviewViewState extends State<FormReviewView> {
   );
   final TextEditingController _commentController = TextEditingController();
   final RxString _status = 'submitted'.obs;
+  final LoggerService _logger = LoggerService();
   late int formId;
 
   @override
   void initState() {
     super.initState();
     formId = int.parse(Get.parameters['formId'] ?? '0');
+    _logger.info('FormReviewView initialized', context: {'formId': formId});
     if (formId != 0) {
       _loadForm(formId);
     }
@@ -42,6 +45,12 @@ class _FormReviewViewState extends State<FormReviewView> {
   }
 
   Future<void> _reviewForm(String status) async {
+    _logger.userInteraction('Review form action selected', page: 'FormReviewView', data: {
+      'formId': formId,
+      'selectedStatus': status,
+      'hasComment': _commentController.text.isNotEmpty,
+    });
+
     Get.defaultDialog(
       title: 'Konfirmasi',
       middleText: 'Apakah Anda yakin ingin $status form ini?',
@@ -49,6 +58,12 @@ class _FormReviewViewState extends State<FormReviewView> {
         TextButton(onPressed: () => Get.back(), child: const Text('Batal')),
         TextButton(
           onPressed: () async {
+            _logger.userInteraction('Review form confirmed', page: 'FormReviewView', data: {
+              'formId': formId,
+              'status': status,
+              'comment': _commentController.text,
+            });
+
             Get.back(); // Close dialog
             // Call the backend API to review the form
             final reviewController = Get.find<ReviewController>();
@@ -59,8 +74,10 @@ class _FormReviewViewState extends State<FormReviewView> {
             );
 
             if (status == 'approved') {
+              _logger.info('Form approved successfully', context: {'formId': formId});
               Get.snackbar('Success', 'Form berhasil disetujui');
             } else {
+              _logger.info('Form sent for revision', context: {'formId': formId});
               Get.snackbar('Info', 'Form berhasil dikembalikan untuk revisi');
             }
 

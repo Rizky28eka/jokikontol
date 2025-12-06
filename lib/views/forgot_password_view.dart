@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../controllers/auth_controller.dart';
+import '../services/logger_service.dart';
 
 class ForgotPasswordView extends StatefulWidget {
   const ForgotPasswordView({super.key});
@@ -12,6 +13,7 @@ class ForgotPasswordView extends StatefulWidget {
 class _ForgotPasswordViewState extends State<ForgotPasswordView>
     with SingleTickerProviderStateMixin {
   final AuthController authController = Get.find<AuthController>();
+  final LoggerService _logger = LoggerService();
   final TextEditingController _emailController = TextEditingController();
   late AnimationController _animController;
   late Animation<double> _fadeAnimation;
@@ -341,15 +343,30 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView>
     final email = _emailController.text.trim();
 
     if (email.isEmpty) {
+      _logger.userInteraction(
+        'Forgot password attempt failed - empty email',
+        page: 'ForgotPasswordView',
+        data: {'email': email},
+      );
       Get.snackbar('Error', 'Please enter your email address');
       return;
     }
 
     if (!GetUtils.isEmail(email)) {
+      _logger.userInteraction(
+        'Forgot password attempt failed - invalid email',
+        page: 'ForgotPasswordView',
+        data: {'email': email},
+      );
       Get.snackbar('Error', 'Please enter a valid email address');
       return;
     }
 
+    _logger.userInteraction(
+      'Forgot password button pressed',
+      page: 'ForgotPasswordView',
+      data: {'email': email},
+    );
     authController.sendPasswordResetLink(email);
   }
 }

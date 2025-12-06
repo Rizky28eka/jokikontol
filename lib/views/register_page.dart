@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:tamajiwa/controllers/auth_controller.dart';
+import '../services/logger_service.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -12,6 +13,7 @@ class RegisterPage extends StatefulWidget {
 class _RegisterPageState extends State<RegisterPage>
     with SingleTickerProviderStateMixin {
   final AuthController controller = Get.find<AuthController>();
+  final LoggerService _logger = LoggerService();
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
@@ -564,6 +566,16 @@ class _RegisterPageState extends State<RegisterPage>
               ? null
               : () {
                   if (_formKey.currentState!.validate()) {
+                    _logger.userInteraction(
+                      'Register button pressed',
+                      page: 'RegisterPage',
+                      data: {
+                        'name': _nameController.text,
+                        'email': _emailController.text,
+                        'hasPassword': _passwordController.text.isNotEmpty,
+                        'role': _selectedRole.value,
+                      },
+                    );
                     controller.register(
                       _nameController.text,
                       _emailController.text,
