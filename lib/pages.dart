@@ -20,7 +20,6 @@ import 'views/catatan_tambahan_form_view.dart';
 import 'views/nursing_management_view.dart';
 import 'views/dosen_review_dashboard_view.dart';
 import 'views/form_review_view.dart';
-import 'views/dosen_dashboard_view_with_stats.dart';
 import 'views/genogram_builder_view.dart';
 import 'bindings/auth_binding.dart';
 import 'bindings/patient_binding.dart';
@@ -127,11 +126,6 @@ class AppPages {
     GetPage(
       name: '/mahasiswa-dashboard-stats',
       page: () => MahasiswaDashboardView(),
-      binding: null, // No specific binding needed
-    ),
-    GetPage(
-      name: '/dosen-dashboard-stats',
-      page: () => DosenDashboardViewWithStats(),
       binding: null, // No specific binding needed
     ),
   ];

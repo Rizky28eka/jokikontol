@@ -14,6 +14,7 @@ class NursingDataService {
       Uri.parse('$baseUrl/diagnoses'),
       headers: {
         'Authorization': 'Bearer $token',
+        'Accept': 'application/json',
         'Content-Type': 'application/json',
       },
     );
@@ -30,6 +31,7 @@ class NursingDataService {
       Uri.parse('$baseUrl/interventions'),
       headers: {
         'Authorization': 'Bearer $token',
+        'Accept': 'application/json',
         'Content-Type': 'application/json',
       },
     );

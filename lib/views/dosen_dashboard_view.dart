@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../controllers/auth_controller.dart';
+import '../controllers/dashboard_controller.dart';
 import '../services/logger_service.dart';
 
 class DosenDashboardView extends StatelessWidget {
@@ -10,9 +11,11 @@ class DosenDashboardView extends StatelessWidget {
     final LoggerService logger = LoggerService();
     logger.info('Refreshing Dosen Dashboard');
     final AuthController authController = Get.find();
+    final DashboardController dashboardController = Get.find();
     
     // Refresh user profile
     await authController.getUserProfile();
+    await dashboardController.fetchDosenStats();
     
     // Add a small delay for better UX
     await Future.delayed(const Duration(milliseconds: 500));
@@ -23,6 +26,7 @@ class DosenDashboardView extends StatelessWidget {
     final LoggerService logger = LoggerService();
     logger.info('DosenDashboardView loaded');
     final AuthController authController = Get.find();
+    final DashboardController dashboardController = Get.put(DashboardController());
 
     return Scaffold(
       appBar: AppBar(
@@ -57,58 +61,57 @@ class DosenDashboardView extends StatelessWidget {
                   return const Text('Loading...');
                 }),
                 const SizedBox(height: 20),
-                // Statistics Cards - Placeholder
                 const Text(
-                  'Statistics',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  'Statistik Form',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Column(
-                            children: [
-                              Text(
-                                '120',
-                                style: const TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const Text('Total Mahasiswa'),
-                            ],
-                          ),
-                        ),
+                const SizedBox(height: 20),
+                // Stats cards
+                Obx(() {
+                  if (dashboardController.isDosenStatsLoading) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  if (dashboardController.errorMessage.isNotEmpty) {
+                    return Center(child: Text('Error: ${dashboardController.errorMessage}'));
+                  }
+
+                  final stats = dashboardController.dosenStats;
+                  if (stats.isEmpty) {
+                    return const Center(child: Text('No statistics available'));
+                  }
+
+                  return Wrap(
+                    spacing: 16,
+                    runSpacing: 16,
+                    children: [
+                      _buildStatCard(
+                        'Total Mahasiswa',
+                        stats['total_mahasiswa'].toString(),
+                        Colors.blue,
+                        Icons.people,
                       ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Column(
-                            children: [
-                              const Text(
-                                '8',
-                                style: TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const Text('Active Classes'),
-                            ],
-                          ),
-                        ),
+                      _buildStatCard(
+                        'Total Form',
+                        stats['total_form'].toString(),
+                        Colors.green,
+                        Icons.description,
                       ),
-                    ),
-                  ],
-                ),
+                      _buildStatCard(
+                        'Form Menunggu Review',
+                        stats['form_menunggu_review'].toString(),
+                        Colors.orange,
+                        Icons.pending_actions,
+                      ),
+                      _buildStatCard(
+                        'Form Disetujui',
+                        stats['form_disetujui'].toString(),
+                        Colors.teal,
+                        Icons.check_circle,
+                      ),
+                    ],
+                  );
+                }),
                 const SizedBox(height: 20),
                 // List Form - Placeholder
                 const Text(
@@ -145,36 +148,12 @@ class DosenDashboardView extends StatelessWidget {
                 const SizedBox(height: 10),
                 Card(
                   child: ListTile(
-                    leading: const Icon(Icons.event_note),
-                    title: const Text('Jadwal Kelas'),
-                    subtitle: const Text('Rencana pembelajaran'),
-                    trailing: const Icon(Icons.arrow_forward_ios),
-                    onTap: () {
-                      Get.snackbar('Coming Soon', 'Form will be implemented soon');
-                    },
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Card(
-                  child: ListTile(
                     leading: const Icon(Icons.rate_review),
                     title: const Text('Review & Revisi Form'),
                     subtitle: const Text('Review form yang dikumpulkan mahasiswa'),
                     trailing: const Icon(Icons.arrow_forward_ios),
                     onTap: () {
                       Get.toNamed('/dosen-review-dashboard');
-                    },
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Card(
-                  child: ListTile(
-                    leading: const Icon(Icons.bar_chart),
-                    title: const Text('Statistik Dashboard'),
-                    subtitle: const Text('Lihat statistik form dan mahasiswa'),
-                    trailing: const Icon(Icons.arrow_forward_ios),
-                    onTap: () {
-                      Get.toNamed('/dosen-dashboard-stats');
                     },
                   ),
                 ),
@@ -186,6 +165,42 @@ class DosenDashboardView extends StatelessWidget {
       floatingActionButton: FloatingActionButton(
         onPressed: () => authController.logout(),
         child: const Icon(Icons.logout),
+      ),
+    );
+  }
+
+  Widget _buildStatCard(String title, String value, Color color, IconData icon) {
+    return SizedBox(
+      width: 150,
+      height: 100,
+      child: Card(
+        elevation: 4,
+        child: Padding(
+          padding: const EdgeInsets.all(12.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: color, size: 28),
+              const SizedBox(height: 8),
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey[600],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

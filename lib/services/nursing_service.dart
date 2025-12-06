@@ -9,6 +9,7 @@ class NursingService {
       Uri.parse('${ApiConfig.currentBaseUrl}${ApiConfig.diagnoses}'),
       headers: {
         'Authorization': 'Bearer $token',
+        'Accept': 'application/json',
         'Content-Type': 'application/json; charset=UTF-8',
       },
     );
@@ -20,6 +21,7 @@ class NursingService {
       Uri.parse('${ApiConfig.currentBaseUrl}${ApiConfig.interventions}'),
       headers: {
         'Authorization': 'Bearer $token',
+        'Accept': 'application/json',
         'Content-Type': 'application/json; charset=UTF-8',
       },
     );
