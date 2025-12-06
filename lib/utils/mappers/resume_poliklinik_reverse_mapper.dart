@@ -42,47 +42,79 @@ class ResumePoliklinikReverseMapper {
       return <int>[];
     }
 
-    final s1 = data['section_1'] ?? data;
-    final s2 = data['section_2'] ?? data;
-    final s3 = data['section_3'] ?? data;
-    final s4 = data['section_4'] ?? data;
-    final s5 = data['section_5'] ?? data;
-    final s6 = data['section_6'] ?? data;
-    final s7 = data['section_7'] ?? data;
-    final s8 = data['section_8'] ?? data;
-    final s9 = data['section_9'] ?? data;
-    final s10 = data['section_10'] ?? data;
+    // Get renpra data if available
+    final renpra = data['renpra'] ?? data['care_plan'] ?? {};
 
     return {
-      'nama_lengkap': s1['nama_lengkap'],
-      'umur': s1['umur']?.toString(),
-      'jenis_kelamin': normalizeGender(s1['jenis_kelamin']),
-      'status_perkawinan': normalizeStatusPerkawinan(s1['status_perkawinan']),
-      'riwayat_pendidikan': s2['riwayat_pendidikan'],
-      'pekerjaan': s2['pekerjaan'],
-      'riwayat_keluarga': s2['riwayat_keluarga'],
-      'hubungan_sosial': s3['hubungan_sosial'],
-      'dukungan_sosial': s3['dukungan_sosial'],
-      'stresor_psikososial': s3['stresor_psikososial'],
-      'riwayat_gangguan_psikiatri': s4['riwayat_gangguan_psikiatri'],
-      'riwayat_pengobatan': s4['riwayat_pengobatan'],
-      'kesadaran': s5['kesadaran'],
-      'orientasi': s5['orientasi'],
-      'penampilan': s5['penampilan'],
-      'mood': s6['mood'],
-      'afect': s6['afect'],
-      'alam_pikiran': s6['alam_pikiran'],
-      'fungsi_sosial': s7['fungsi_sosial'],
-      'interaksi_sosial': s7['interaksi_sosial'],
-      'kepercayaan': s8['kepercayaan'],
-      'praktik_ibadah': s8['praktik_ibadah'],
-      'diagnosis': parseId(s9['diagnosis']),
-      'intervensi': parseIdList(s9['intervensi']),
-      'tujuan': s9['tujuan'],
-      'kriteria': s9['kriteria'],
-      'rasional': s9['rasional'],
-      'catatan_tambahan': s10['catatan_tambahan'],
-      'tanggal_pengisian': parseDate(s10['tanggal_pengisian']),
+      // Section 1: Identitas Klien
+      'nama_lengkap': data['nama_pasien'] ?? data['nama_lengkap'],
+      'umur': data['umur'],
+      'jenis_kelamin': normalizeGender(data['jenis_kelamin']),
+      'status_perkawinan': normalizeStatusPerkawinan(data['status_perkawinan']),
+
+      // Section 2: Riwayat Kehidupan
+      'riwayat_pendidikan': data['riwayat_pendidikan'],
+      'pekerjaan': data['pekerjaan'],
+      'riwayat_keluarga': data['riwayat_keluarga'],
+
+      // Section 3: Riwayat Psikososial
+      'hubungan_sosial': data['hubungan_sosial'],
+      'dukungan_sosial': data['dukungan_sosial'],
+      'stresor_psikososial': data['stresor_psikososial'],
+
+      // Section 4: Riwayat Psikiatri
+      'riwayat_gangguan_psikiatri': data['riwayat_gangguan_psikiatri'],
+      'riwayat_pengobatan': data['riwayat_pengobatan'],
+
+      // Section 5: Pemeriksaan Psikologis
+      'kesadaran': data['kesadaran'],
+      'orientasi': data['orientasi'],
+      'penampilan': data['penampilan'],
+
+      // Section 6: Fungsi Psikologis  
+      'mood': data['mood_afek']?.split(' ')?.first, // Extract mood from combined field
+      'afect': data['mood_afek']?.split(' ')?.last, // Extract afect from combined field
+      'alam_pikiran': data['pikiran'], // Mapping from backend field
+
+      // Section 7: Fungsi Sosial
+      'fungsi_sosial': data['fungsi_sosial'],
+      'interaksi_sosial': data['interaksi_sosial'],
+
+      // Section 8: Fungsi Spiritual
+      'kepercayaan': data['kepercayaan'],
+      'praktik_ibadah': data['praktik_ibadah'],
+
+      // Section 9: Rencana Perawatan (Renpra)
+      'diagnosis': parseId(renpra['diagnosis'] ?? data['renpra_diagnosis'] ?? data['diagnosis']),
+      'intervensi': parseIdList(renpra['intervensi'] ?? data['renpra_intervensi'] ?? data['intervensi']),
+      'tujuan': renpra['tujuan'] ?? data['renpra_tujuan'] ?? data['tujuan'],
+      'kriteria': renpra['kriteria'] ?? data['renpra_kriteria'] ?? data['kriteria'],
+      'rasional': renpra['rasional'] ?? data['renpra_rasional'] ?? data['rasional'],
+
+      // Section 10: Penutup
+      'catatan_tambahan': data['catatan_tambahan'],
+      'tanggal_pengisian': parseDate(data['tanggal_pengisian']),
+
+      // Additional fields from backend
+      'no_rm': data['no_rm'],
+      'tanggal_kunjungan': parseDate(data['tanggal_kunjungan']),
+      'poliklinik': data['poliklinik'],
+      'keluhan_utama': data['keluhan_utama'],
+      'riwayat_penyakit_sekarang': data['riwayat_penyakit_sekarang'],
+      'riwayat_penyakit_dahulu': data['riwayat_penyakit_dahulu'],
+      'riwayat_alergi': data['riwayat_alergi'],
+      'tekanan_darah': data['tekanan_darah'],
+      'nadi': data['nadi'],
+      'suhu': data['suhu'],
+      'pernapasan': data['pernapasan'],
+      'berat_badan': data['berat_badan'],
+      'tinggi_badan': data['tinggi_badan'],
+      'perilaku': data['perilaku'],
+      'terapi_farmakologi': data['terapi_farmakologi'],
+      'terapi_non_farmakologi': data['terapi_non_farmakologi'],
+      'edukasi': data['edukasi'],
+      'tanggal_kontrol_berikutnya': parseDate(data['tanggal_kontrol_berikutnya']),
+      'rencana_tindak_lanjut': data['rencana_tindak_lanjut'],
     };
   }
 }

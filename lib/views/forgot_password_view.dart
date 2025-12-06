@@ -1,20 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../controllers/auth_controller.dart';
-import '../constants/app_routes.dart';
 
-class LoginView extends StatefulWidget {
-  const LoginView({super.key});
+class ForgotPasswordView extends StatefulWidget {
+  const ForgotPasswordView({super.key});
 
   @override
-  State<LoginView> createState() => _LoginViewState();
+  State<ForgotPasswordView> createState() => _ForgotPasswordViewState();
 }
 
-class _LoginViewState extends State<LoginView>
+class _ForgotPasswordViewState extends State<ForgotPasswordView>
     with SingleTickerProviderStateMixin {
   final AuthController authController = Get.find<AuthController>();
   final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
   late AnimationController _animController;
   late Animation<double> _fadeAnimation;
 
@@ -36,7 +34,6 @@ class _LoginViewState extends State<LoginView>
   void dispose() {
     _animController.dispose();
     _emailController.dispose();
-    _passwordController.dispose();
     super.dispose();
   }
 
@@ -49,6 +46,21 @@ class _LoginViewState extends State<LoginView>
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          onPressed: () => Get.back(),
+          icon: Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: colorScheme.onSurface,
+          ),
+          style: IconButton.styleFrom(
+            backgroundColor: colorScheme.surfaceContainerHighest.withOpacity(0.5),
+            padding: const EdgeInsets.all(12),
+          ),
+        ),
+      ),
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -69,70 +81,41 @@ class _LoginViewState extends State<LoginView>
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        // Logo/Brand Section
+                        // Header Section
                         _buildHeader(colorScheme, textTheme),
 
-                        SizedBox(height: isLargeScreen ? 56 : 48),
+                        SizedBox(height: isLargeScreen ? 48 : 40),
+
+                        // Description
+                        Text(
+                          'Enter your email address and we\'ll send you a link to reset your password.',
+                          style: textTheme.bodyMedium?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+
+                        const SizedBox(height: 40),
 
                         // Email Field
                         _buildTextField(
                           controller: _emailController,
                           label: 'Email',
-                          hint: 'Enter your email',
+                          hint: 'Enter your registered email',
                           icon: Icons.email_outlined,
                           keyboardType: TextInputType.emailAddress,
                           colorScheme: colorScheme,
                         ),
 
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 32),
 
-                        // Password Field
-                        _buildTextField(
-                          controller: _passwordController,
-                          label: 'Password',
-                          hint: 'Enter your password',
-                          icon: Icons.lock_outline,
-                          obscureText: true,
-                          colorScheme: colorScheme,
-                        ),
-
-                        const SizedBox(height: 12),
-
-                        // Forgot Password
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: TextButton(
-                            onPressed: () {
-                              Get.toNamed(AppRoutes.forgotPassword);
-                            },
-                            style: TextButton.styleFrom(
-                              foregroundColor: colorScheme.primary,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
-                              ),
-                            ),
-                            child: Text(
-                              'Forgot Password?',
-                              style: textTheme.bodyMedium?.copyWith(
-                                color: colorScheme.primary,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                        ),
+                        // Reset Password Button
+                        _buildResetButton(colorScheme, textTheme),
 
                         const SizedBox(height: 32),
 
-                        // Login Button
-                        _buildLoginButton(colorScheme, textTheme),
-
-                        SizedBox(height: isLargeScreen ? 32 : 24),
-
-                        // Register Link
-                        _buildRegisterSection(colorScheme, textTheme),
-
-                        const SizedBox(height: 16),
+                        // Back to Login
+                        _buildBackToLogin(colorScheme, textTheme),
                       ],
                     ),
                   ),
@@ -148,17 +131,17 @@ class _LoginViewState extends State<LoginView>
   Widget _buildHeader(ColorScheme colorScheme, TextTheme textTheme) {
     return Column(
       children: [
-        // App Icon/Logo
+        // Lock Icon
         Container(
-          width: 80,
-          height: 80,
+          width: 72,
+          height: 72,
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [colorScheme.primary, colorScheme.secondary],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(18),
             boxShadow: [
               BoxShadow(
                 color: colorScheme.primary.withOpacity(0.3),
@@ -168,15 +151,15 @@ class _LoginViewState extends State<LoginView>
             ],
           ),
           child: Icon(
-            Icons.spa_outlined,
-            size: 40,
+            Icons.lock_reset_outlined,
+            size: 36,
             color: colorScheme.onPrimary,
           ),
         ),
         const SizedBox(height: 24),
         Text(
-          'Tamajiwa',
-          style: textTheme.headlineLarge?.copyWith(
+          'Forgot Password?',
+          style: textTheme.headlineMedium?.copyWith(
             fontWeight: FontWeight.bold,
             color: colorScheme.onSurface,
             letterSpacing: -0.5,
@@ -184,7 +167,7 @@ class _LoginViewState extends State<LoginView>
         ),
         const SizedBox(height: 8),
         Text(
-          'Welcome back! Please login to continue',
+          'Reset your account password',
           style: textTheme.bodyMedium?.copyWith(
             color: colorScheme.onSurfaceVariant,
           ),
@@ -201,7 +184,6 @@ class _LoginViewState extends State<LoginView>
     required IconData icon,
     required ColorScheme colorScheme,
     TextInputType? keyboardType,
-    bool obscureText = false,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -229,7 +211,6 @@ class _LoginViewState extends State<LoginView>
           child: TextField(
             controller: controller,
             keyboardType: keyboardType,
-            obscureText: obscureText,
             style: TextStyle(fontSize: 16, color: colorScheme.onSurface),
             decoration: InputDecoration(
               hintText: hint,
@@ -265,7 +246,7 @@ class _LoginViewState extends State<LoginView>
     );
   }
 
-  Widget _buildLoginButton(ColorScheme colorScheme, TextTheme textTheme) {
+  Widget _buildResetButton(ColorScheme colorScheme, TextTheme textTheme) {
     return Obx(() {
       final isLoading = authController.isLoading.value;
 
@@ -294,10 +275,7 @@ class _LoginViewState extends State<LoginView>
         child: ElevatedButton(
           onPressed: isLoading
               ? null
-              : () => authController.login(
-                  _emailController.text.trim(),
-                  _passwordController.text,
-                ),
+              : () => _sendPasswordResetLink(),
           style: ElevatedButton.styleFrom(
             backgroundColor: isLoading
                 ? colorScheme.surfaceContainerHighest
@@ -319,7 +297,7 @@ class _LoginViewState extends State<LoginView>
                   ),
                 )
               : Text(
-                  'Login',
+                  'Send Reset Link',
                   style: textTheme.titleMedium?.copyWith(
                     color: colorScheme.onPrimary,
                     fontWeight: FontWeight.w600,
@@ -331,24 +309,24 @@ class _LoginViewState extends State<LoginView>
     });
   }
 
-  Widget _buildRegisterSection(ColorScheme colorScheme, TextTheme textTheme) {
+  Widget _buildBackToLogin(ColorScheme colorScheme, TextTheme textTheme) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Text(
-          "Don't have an account?",
+          "Remember your password?",
           style: textTheme.bodyMedium?.copyWith(
             color: colorScheme.onSurfaceVariant,
           ),
         ),
         TextButton(
-          onPressed: () => Get.toNamed(AppRoutes.register),
+          onPressed: () => Get.back(),
           style: TextButton.styleFrom(
             foregroundColor: colorScheme.primary,
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           ),
           child: Text(
-            'Register',
+            'Back to Login',
             style: textTheme.bodyMedium?.copyWith(
               color: colorScheme.primary,
               fontWeight: FontWeight.w600,
@@ -357,5 +335,21 @@ class _LoginViewState extends State<LoginView>
         ),
       ],
     );
+  }
+
+  void _sendPasswordResetLink() {
+    final email = _emailController.text.trim();
+
+    if (email.isEmpty) {
+      Get.snackbar('Error', 'Please enter your email address');
+      return;
+    }
+
+    if (!GetUtils.isEmail(email)) {
+      Get.snackbar('Error', 'Please enter a valid email address');
+      return;
+    }
+
+    authController.sendPasswordResetLink(email);
   }
 }

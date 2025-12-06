@@ -29,45 +29,59 @@ class SapReverseMapper {
       return <int>[];
     }
 
-    final identitas = data['identitas'] ?? data;
-    final tujuan = data['tujuan'] ?? data;
-    final materiDanMetode = data['materi_dan_metode'] ?? data;
-    final pengorganisasian = data['pengorganisasian'] ?? data;
-    final evaluasi = data['evaluasi'] ?? data;
-    final feedback = data['feedback'] ?? data;
-    final renpra = data['renpra'] ?? {};
+    // Get renpra data from the response
+    final renpra = data['renpra'] ?? data['care_plan'] ?? {};
 
     return {
-      'topik': identitas['topik'] ?? data['topik'],
-      'sub_topik': identitas['sub_topik'] ?? data['sub_topik'],
-      'sasaran': identitas['sasaran'] ?? data['sasaran'],
-      'tanggal_pelaksanaan': identitas['tanggal_pelaksanaan'] ?? data['tanggal_pelaksanaan'],
-      'waktu_pelaksanaan': identitas['waktu'] ?? identitas['waktu_pelaksanaan'] ?? data['waktu_pelaksanaan'],
-      'tempat': identitas['tempat'] ?? data['tempat'],
-      'durasi': identitas['durasi'] ?? data['durasi'],
-      'tujuan_umum': tujuan['umum'] ?? data['tujuan_umum'],
-      'tujuan_khusus': tujuan['khusus'] ?? data['tujuan_khusus'],
-      'materi': materiDanMetode['materi'] ?? data['materi'] ?? data['materi_penyuluhan'],
-      'metode': joinListToString(materiDanMetode['metode'] ?? data['metode']),
-      'media': joinListToString(materiDanMetode['media'] ?? data['media']),
+      // Identitas SAP
+      'topik': data['topik'] ?? data['identitas']?['topik'],
+      'sub_topik': data['sub_topik'] ?? data['identitas']?['sub_topik'],
+      'sasaran': data['sasaran'] ?? data['identitas']?['sasaran'],
+      'tanggal_pelaksanaan': data['tanggal_pelaksanaan'] ?? data['identitas']?['tanggal_pelaksanaan'],
+      'waktu_pelaksanaan': data['waktu_pelaksanaan'] ?? data['identitas']?['waktu_pelaksanaan'] ?? data['identitas']?['waktu'],
+      'tempat': data['tempat'] ?? data['identitas']?['tempat'],
+      'durasi': data['durasi'] ?? data['identitas']?['durasi'],
+
+      // Tujuan
+      'tujuan_umum': data['tujuan_umum'] ?? data['tujuan']?['umum'],
+      'tujuan_khusus': data['tujuan_khusus'] ?? data['tujuan']?['khusus'],
+
+      // Materi
+      'materi': data['materi_penyuluhan'] ?? data['materi'] ?? data['materi_dan_metode']?['materi'],
+
+      // Metode & Media - convert array to string for frontend
+      'metode': joinListToString(data['metode'] ?? data['materi_dan_metode']?['metode']),
+      'media': joinListToString(data['media'] ?? data['materi_dan_metode']?['media']),
+
+      // Joblist roles
       'joblist_roles': parseStringList(data['joblist']?['roles'] ?? data['joblist_roles']),
-      'penyuluh': pengorganisasian['penyuluh'] ?? data['penyuluh'],
-      'moderator': pengorganisasian['moderator'] ?? data['moderator'],
-      'fasilitator': pengorganisasian['fasilitator'] ?? data['fasilitator'],
-      'time_keeper': pengorganisasian['time_keeper'] ?? data['time_keeper'],
-      'dokumentator': pengorganisasian['dokumentator'] ?? data['dokumentator'],
-      'observer': pengorganisasian['observer'] ?? data['observer'],
-      'tabel_kegiatan': data['tabel_kegiatan'] ?? [],
-      'evaluasi_input': evaluasi['input'] ?? data['evaluasi_struktur'],
-      'evaluasi_proses': evaluasi['proses'] ?? data['evaluasi_proses'],
-      'evaluasi_hasil': evaluasi['hasil'] ?? data['evaluasi_hasil'],
-      'pertanyaan': feedback['pertanyaan'] ?? data['pertanyaan'],
-      'saran': feedback['saran'] ?? data['saran'],
-      'diagnosis': parseId(renpra['diagnosis'] ?? data['renpra_diagnosis']),
-      'intervensi': parseIdList(renpra['intervensi'] ?? data['renpra_intervensi']),
-      'tujuan': renpra['tujuan'] ?? data['renpra_tujuan'],
-      'kriteria': renpra['kriteria'] ?? data['renpra_kriteria'],
-      'rasional': renpra['rasional'] ?? data['renpra_rasional'],
+
+      // Pengorganisasian
+      'penyuluh': data['penyuluh'] ?? data['pengorganisasian']?['penyuluh'],
+      'moderator': data['moderator'] ?? data['pengorganisasian']?['moderator'],
+      'fasilitator': data['fasilitator'] ?? data['pengorganisasian']?['fasilitator'],
+      'time_keeper': data['time_keeper'] ?? data['pengorganisasian']?['time_keeper'],
+      'dokumentator': data['dokumentator'] ?? data['pengorganisasian']?['dokumentator'],
+      'observer': data['observer'] ?? data['pengorganisasian']?['observer'],
+
+      // Kegiatan Penyuluhan
+      'tabel_kegiatan': data['kegiatan'] ?? data['tabel_kegiatan'] ?? [],
+
+      // Evaluasi
+      'evaluasi_input': data['evaluasi_struktur'] ?? data['evaluasi']?['input'],
+      'evaluasi_proses': data['evaluasi_proses'] ?? data['evaluasi']?['proses'],
+      'evaluasi_hasil': data['evaluasi_hasil'] ?? data['evaluasi']?['hasil'],
+
+      // Feedback
+      'pertanyaan': data['pertanyaan'] ?? data['feedback']?['pertanyaan'],
+      'saran': data['saran'] ?? data['feedback']?['saran'],
+
+      // Renpra - nursing care plan
+      'diagnosis': parseId(renpra['diagnosis'] ?? data['renpra_diagnosis'] ?? data['diagnosis']),
+      'intervensi': parseIdList(renpra['intervensi'] ?? data['renpra_intervensi'] ?? data['intervensi']),
+      'tujuan': renpra['tujuan'] ?? data['renpra_tujuan'] ?? data['tujuan_renpra'] ?? data['tujuan'],
+      'kriteria': renpra['kriteria'] ?? data['renpra_kriteria'] ?? data['kriteria'],
+      'rasional': renpra['rasional'] ?? data['renpra_rasional'] ?? data['rasional'],
     };
   }
 }

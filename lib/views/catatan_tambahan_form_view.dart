@@ -23,8 +23,7 @@ class CatatanTambahanFormView extends StatefulWidget {
       _CatatanTambahanFormViewState();
 }
 
-class _CatatanTambahanFormViewState extends State<CatatanTambahanFormView>
-    with FormBuilderMixin {
+class _CatatanTambahanFormViewState extends State<CatatanTambahanFormView> with FormBuilderMixin {
   final LoggerService _logger = LoggerService();
   @override
   final FormController formController = Get.put(FormController());
@@ -140,6 +139,7 @@ class _CatatanTambahanFormViewState extends State<CatatanTambahanFormView>
                               child: _buildTextField(
                                 name: 'kategori',
                                 label: 'Kategori',
+                                tooltip: 'Kategori catatan (misal: Perkembangan, Observasi, Evaluasi)',
                                 colorScheme: colorScheme,
                                 hint: 'Misal: Perkembangan / Observasi / Evaluasi',
                               ),
@@ -154,12 +154,14 @@ class _CatatanTambahanFormViewState extends State<CatatanTambahanFormView>
                                   _buildDateField(
                                     name: 'tanggal_catatan',
                                     label: 'Tanggal Catatan',
+                                    tooltip: 'Tanggal catatan dibuat',
                                     colorScheme: colorScheme,
                                   ),
                                   const SizedBox(height: 16),
                                   _buildTextField(
                                     name: 'waktu_catatan',
                                     label: 'Waktu Catatan',
+                                    tooltip: 'Waktu catatan dibuat (Format: HH:mm)',
                                     colorScheme: colorScheme,
                                     hint: 'HH:mm',
                                   ),
@@ -167,6 +169,7 @@ class _CatatanTambahanFormViewState extends State<CatatanTambahanFormView>
                                   _buildTextField(
                                     name: 'isi_catatan',
                                     label: 'Isi Catatan',
+                                    tooltip: 'Isi dari catatan perkembangan pasien',
                                     colorScheme: colorScheme,
                                     keyboardType: TextInputType.multiline,
                                     maxLines: 5,
@@ -175,6 +178,7 @@ class _CatatanTambahanFormViewState extends State<CatatanTambahanFormView>
                                   _buildTextField(
                                     name: 'tindak_lanjut',
                                     label: 'Tindak Lanjut',
+                                    tooltip: 'Tindakan lanjutan yang direncanakan atau dilakukan',
                                     colorScheme: colorScheme,
                                     keyboardType: TextInputType.multiline,
                                     maxLines: 3,
@@ -219,6 +223,7 @@ class _CatatanTambahanFormViewState extends State<CatatanTambahanFormView>
           return _buildDropdown<int>(
             name: 'diagnosis',
             label: 'Diagnosis',
+            tooltip: 'Pilih diagnosis keperawatan yang sesuai',
             items: diagnoses
                 .map((d) => DropdownMenuItem(value: d.id, child: Text(d.name)))
                 .toList(),
@@ -251,6 +256,7 @@ class _CatatanTambahanFormViewState extends State<CatatanTambahanFormView>
                 _buildTextField(
                   name: 'tujuan',
                   label: 'Tujuan',
+                  tooltip: 'Tujuan perawatan yang ingin dicapai',
                   colorScheme: colorScheme,
                   maxLines: 3,
                 ),
@@ -258,6 +264,7 @@ class _CatatanTambahanFormViewState extends State<CatatanTambahanFormView>
                 _buildTextField(
                   name: 'kriteria',
                   label: 'Kriteria Evaluasi',
+                  tooltip: 'Kriteria untuk mengevaluasi pencapaian tujuan',
                   colorScheme: colorScheme,
                   maxLines: 3,
                 ),
@@ -265,6 +272,7 @@ class _CatatanTambahanFormViewState extends State<CatatanTambahanFormView>
                 _buildTextField(
                   name: 'rasional',
                   label: 'Rasional',
+                  tooltip: 'Alasan atau landasan mengapa intervensi dipilih',
                   colorScheme: colorScheme,
                   maxLines: 3,
                 ),
@@ -311,6 +319,7 @@ class _CatatanTambahanFormViewState extends State<CatatanTambahanFormView>
             return CustomCheckboxGroup<int>(
               name: 'intervensi',
               label: '', // Label is handled outside
+              tooltip: 'Pilih intervensi yang akan dilakukan',
               options: interventions
                   .map(
                     (iv) => FormBuilderFieldOption(
@@ -367,17 +376,27 @@ class _CatatanTambahanFormViewState extends State<CatatanTambahanFormView>
     TextInputType? keyboardType,
     int? maxLines = 1,
     String? hint,
+    String? tooltip,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: colorScheme.onSurface,
-          ),
+        Row(
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: colorScheme.onSurface,
+              ),
+            ),
+            const SizedBox(width: 4),
+            if (tooltip != null) Tooltip(
+              message: tooltip,
+              child: Icon(Icons.info_outline, size: 16, color: colorScheme.onSurfaceVariant),
+            ),
+          ],
         ),
         const SizedBox(height: 8),
         FormBuilderTextField(
@@ -417,17 +436,27 @@ class _CatatanTambahanFormViewState extends State<CatatanTambahanFormView>
     required String name,
     required String label,
     required ColorScheme colorScheme,
+    String? tooltip,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: colorScheme.onSurface,
-          ),
+        Row(
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: colorScheme.onSurface,
+              ),
+            ),
+            const SizedBox(width: 4),
+            if (tooltip != null) Tooltip(
+              message: tooltip,
+              child: Icon(Icons.info_outline, size: 16, color: colorScheme.onSurfaceVariant),
+            ),
+          ],
         ),
         const SizedBox(height: 8),
         FormBuilderDateTimePicker(
@@ -473,17 +502,27 @@ class _CatatanTambahanFormViewState extends State<CatatanTambahanFormView>
     IconData? icon,
     String? hint,
     ValueChanged<T?>? onChanged,
+    String? tooltip,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: colorScheme.onSurface,
-          ),
+        Row(
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: colorScheme.onSurface,
+              ),
+            ),
+            const SizedBox(width: 4),
+            if (tooltip != null) Tooltip(
+              message: tooltip,
+              child: Icon(Icons.info_outline, size: 16, color: colorScheme.onSurfaceVariant),
+            ),
+          ],
         ),
         const SizedBox(height: 8),
         FormBuilderDropdown<T>(

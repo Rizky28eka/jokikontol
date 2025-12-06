@@ -6,6 +6,7 @@ import 'bindings/splash_binding.dart';
 import 'views/splash_view.dart';
 import 'views/login_view.dart';
 import 'views/register_page.dart';
+import 'views/forgot_password_view.dart';
 import 'views/profile_view.dart';
 import 'views/dosen_dashboard_view.dart';
 import 'views/mahasiswa_dashboard_view.dart';
@@ -41,6 +42,11 @@ class AppPages {
     GetPage(
       name: AppRoutes.register,
       page: () => RegisterPage(),
+      binding: AuthBinding(),
+    ),
+    GetPage(
+      name: AppRoutes.forgotPassword,
+      page: () => ForgotPasswordView(),
       binding: AuthBinding(),
     ),
     GetPage(

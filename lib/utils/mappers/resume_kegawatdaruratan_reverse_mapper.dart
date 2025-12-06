@@ -15,18 +15,6 @@ class ResumeKegawatdaruratanReverseMapper {
       return 'O';
     }
 
-    final identitas = data['identitas'] ?? data;
-    final riwayatKeluhan = data['riwayat_keluhan'] ?? data;
-    final pemeriksaanFisik = data['pemeriksaan_fisik'] ?? data;
-    final statusMental = data['status_mental'] ?? data;
-    final diagnosis = data['diagnosis'] ?? data;
-    final tindakan = data['tindakan'] ?? data;
-    final implementasi = data['implementasi'] ?? data;
-    final evaluasi = data['evaluasi'] ?? data;
-    final rencanaLanjut = data['rencana_lanjut'] ?? data;
-    final rencanaKeluarga = data['rencana_keluarga'] ?? data;
-    final renpra = data['renpra'] ?? {};
-
     int? parseId(dynamic value) {
       if (value is int) return value;
       if (value is String) return int.tryParse(value);
@@ -44,66 +32,89 @@ class ResumeKegawatdaruratanReverseMapper {
       return [];
     }
 
-    final renpraDiagnosis = parseId(renpra['diagnosis'] ?? data['renpra_diagnosis']);
-    final renpraIntervensi = renpra['intervensi'] ?? data['renpra_intervensi'];
-    final renpraTujuan = renpra['tujuan'] ?? data['renpra_tujuan'];
-    final renpraKriteria = renpra['kriteria'] ?? data['renpra_kriteria'];
-    final renpraRasional = renpra['rasional'] ?? data['renpra_rasional'];
-    final renpraEvaluasi = renpra['evaluasi'] ?? data['renpra_evaluasi'];
-
     return {
       // Section 1: Identitas
-      'nama_lengkap': identitas['nama_lengkap'],
-      'umur': identitas['umur']?.toString(),
-      'jenis_kelamin': normalizeGender(identitas['jenis_kelamin']),
-      'alamat': identitas['alamat'],
-      'tanggal_masuk': parseDate(identitas['tanggal_masuk']),
+      'nama_lengkap': data['nama_pasien'], // name mapping
+      'umur': data['umur'], // might not be in backend, but kept for compatibility
+      'jenis_kelamin': data['jenis_kelamin'], // might not be in backend, but kept for compatibility
+      'alamat': data['alamat'], // might not be in backend, but kept for compatibility
+      'no_rm': data['no_rm'],
+      'tanggal_masuk': parseDate(data['tanggal_masuk']),
+      'jam_masuk': data['jam_masuk'],
+      'tanggal_keluar': parseDate(data['tanggal_keluar']),
+      'jam_keluar': data['jam_keluar'],
+
       // Section 2: Riwayat Keluhan
-      'keluhan_utama': riwayatKeluhan['keluhan_utama'],
-      'riwayat_penyakit_sekarang': riwayatKeluhan['riwayat_penyakit_sekarang'],
-      'faktor_pencetus': riwayatKeluhan['faktor_pencetus'],
+      'keluhan_utama': data['keluhan_utama'],
+      'riwayat_penyakit_sekarang': data['riwayat_penyakit_sekarang'],
+      'riwayat_penyakit_dahulu': data['riwayat_penyakit_dahulu'],
+      'riwayat_pengobatan': data['riwayat_pengobatan'],
+      'faktor_pencetus': data['faktor_pencetus'],
+
       // Section 3: Pemeriksaan Fisik
-      'keadaan_umum': pemeriksaanFisik['keadaan_umum'],
-      'tanda_vital': pemeriksaanFisik['tanda_vital'],
-      'pemeriksaan_lain': pemeriksaanFisik['pemeriksaan_lain'],
+      'keadaan_umum': data['keadaan_umum'],
+      'tanda_vital': data['tanda_vital'],
+      'pemeriksaan_lain': data['pemeriksaan_lain'],
+      'kesadaran': data['kesadaran'],
+      'gcs': data['gcs'],
+      'tekanan_darah': data['tekanan_darah'],
+      'nadi': data['nadi'],
+      'suhu': data['suhu'],
+      'pernapasan': data['pernapasan'],
+      'spo2': data['spo2'],
+
       // Section 4: Status Mental
-      'kesadaran': statusMental['kesadaran'],
-      'orientasi': statusMental['orientasi'],
-      'bentuk_pemikiran': statusMental['bentuk_pemikiran'],
-      'isi_pemikiran': statusMental['isi_pemikiran'],
-      'persepsi': statusMental['persepsi'],
+      'kesadaran': data['kesadaran'],
+      'orientasi': data['orientasi'],
+      'bentuk_pemikiran': data['bentuk_pemikiran'],
+      'isi_pemikiran': data['isi_pemikiran'],
+      'persepsi': data['persepsi'],
+      'penampilan': data['penampilan'],
+      'perilaku': data['perilaku'],
+      'pembicaraan': data['pembicaraan'],
+      'mood_afek': data['mood_afek'],
+      'pikiran': data['pikiran'],
+      'kognitif': data['kognitif'],
+
       // Section 5: Diagnosis
-      'diagnosis_utama': diagnosis['diagnosis_utama'],
-      'diagnosis_banding': diagnosis['diagnosis_banding'],
-      'diagnosis_tambahan': diagnosis['diagnosis_tambahan'],
+      'diagnosis_utama': data['diagnosis_kerja'], // name mapping
+      'diagnosis_banding': data['diagnosis_banding'],
+      'diagnosis_tambahan': data['diagnosis_tambahan'],
+
       // Section 6: Tindakan
-      'tindakan_medis': tindakan['tindakan_medis'],
-      'tindakan_keperawatan': tindakan['tindakan_keperawatan'],
-      'terapi_psikososial': tindakan['terapi_psikososial'],
+      'tindakan_medis': data['tindakan_yang_dilakukan'], // name mapping
+      'tindakan_keperawatan': data['tindakan_keperawatan'],
+      'terapi_psikososial': data['terapi_psikososial'],
+      'terapi_obat': data['terapi_obat'],
+
       // Section 7: Implementasi
-      'pelaksanaan_intervensi': implementasi['pelaksanaan_intervensi'],
-      'kolaborasi_tim': implementasi['kolaborasi_tim'],
-      'edukasi': implementasi['edukasi'],
+      'pelaksanaan_intervensi': data['pelaksanaan_intervensi'],
+      'kolaborasi_tim': data['kolaborasi_tim'],
+      'edukasi': data['edukasi'],
+
       // Section 8: Evaluasi
-      'respon_intervensi': evaluasi['respon_intervensi'],
-      'perubahan_klinis': evaluasi['perubahan_klinis'],
-      'tujuan_tercapai': evaluasi['tujuan_tercapai'],
-      'hambatan_perawatan': evaluasi['hambatan_perawatan'],
+      'respon_intervensi': data['respon_intervensi'],
+      'perubahan_klinis': data['perubahan_klinis'],
+      'tujuan_tercapai': data['tujuan_tercapai'],
+      'hambatan_perawatan': data['hambatan_perawatan'],
+
       // Section 9: Rencana Lanjut
-      'rencana_medis': rencanaLanjut['rencana_medis'],
-      'rencana_keperawatan': rencanaLanjut['rencana_keperawatan'],
-      'rencana_pemantauan': rencanaLanjut['rencana_pemantauan'],
-      // Section 10: Rencana Keluarga
-      'keterlibatan_keluarga': rencanaKeluarga['keterlibatan_keluarga'],
-      'edukasi_keluarga': rencanaKeluarga['edukasi_keluarga'],
-      'dukungan_keluarga': rencanaKeluarga['dukungan_keluarga'],
+      'rencana_medis': data['anjuran'], // name mapping
+      'rencana_keperawatan': data['rencana_keperawatan'],
+      'rencana_pemantauan': data['rencana_pemantauan'],
+
+      // Section 10: Rencana dengan Keluarga
+      'keterlibatan_keluarga': data['keterlibatan_keluarga'],
+      'edukasi_keluarga': data['edukasi_keluarga'],
+      'dukungan_keluarga': data['dukungan_keluarga'],
+
       // Section 11: Renpra
-      'diagnosis': renpraDiagnosis,
-      'intervensi': parseIntervensi(renpraIntervensi),
-      'tujuan': renpraTujuan,
-      'kriteria': renpraKriteria,
-      'rasional': renpraRasional,
-      'evaluasi_renpra': renpraEvaluasi,
+      'diagnosis': parseId(data['diagnosis']),
+      'intervensi': parseIntervensi(data['intervensi']),
+      'tujuan': data['tujuan'],
+      'kriteria': data['kriteria'],
+      'rasional': data['rasional'],
+      'evaluasi_renpra': data['evaluasi_renpra'],
     };
   }
 }

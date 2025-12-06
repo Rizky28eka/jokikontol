@@ -144,19 +144,19 @@ class _SapFormViewState extends State<SapFormView> with FormBuilderMixin {
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
-        const CustomTextField(name: 'topik', label: 'Topik'),
+        CustomTextField(name: 'topik', label: 'Topik', tooltip: 'Topik utama dari kegiatan penyuluhan'),
         const SizedBox(height: 16),
-        const CustomTextField(name: 'sub_topik', label: 'Sub Topik'),
+        CustomTextField(name: 'sub_topik', label: 'Sub Topik', tooltip: 'Sub topik dari kegiatan penyuluhan'),
         const SizedBox(height: 16),
-        const CustomTextField(name: 'sasaran', label: 'Sasaran'),
+        CustomTextField(name: 'sasaran', label: 'Sasaran', tooltip: 'Sasaran dari kegiatan penyuluhan'),
         const SizedBox(height: 16),
-        const CustomTextField(name: 'tanggal_pelaksanaan', label: 'Tanggal Pelaksanaan'),
+        CustomTextField(name: 'tanggal_pelaksanaan', label: 'Tanggal Pelaksanaan', tooltip: 'Tanggal kegiatan penyuluhan dilaksanakan'),
         const SizedBox(height: 16),
-        const CustomTextField(name: 'waktu_pelaksanaan', label: 'Waktu Pelaksanaan'),
+        CustomTextField(name: 'waktu_pelaksanaan', label: 'Waktu Pelaksanaan', tooltip: 'Waktu kegiatan penyuluhan dilaksanakan'),
         const SizedBox(height: 16),
-        const CustomTextField(name: 'durasi', label: 'Durasi'),
+        CustomTextField(name: 'durasi', label: 'Durasi', tooltip: 'Durasi kegiatan dalam menit'),
         const SizedBox(height: 16),
-        const CustomTextField(name: 'tempat', label: 'Tempat'),
+        CustomTextField(name: 'tempat', label: 'Tempat', tooltip: 'Tempat kegiatan penyuluhan dilaksanakan'),
       ],
     );
   }
@@ -170,15 +170,17 @@ class _SapFormViewState extends State<SapFormView> with FormBuilderMixin {
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
-        const CustomTextField(
+        CustomTextField(
           name: 'tujuan_umum',
           label: 'Tujuan Umum',
+          tooltip: 'Tujuan umum dari kegiatan penyuluhan',
           maxLines: 3,
         ),
         const SizedBox(height: 16),
-        const CustomTextField(
+        CustomTextField(
           name: 'tujuan_khusus',
           label: 'Tujuan Khusus',
+          tooltip: 'Tujuan khusus dari kegiatan penyuluhan',
           maxLines: 5,
         ),
       ],
@@ -194,11 +196,11 @@ class _SapFormViewState extends State<SapFormView> with FormBuilderMixin {
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
-        const CustomTextField(name: 'materi', label: 'Materi', maxLines: 5),
+        CustomTextField(name: 'materi', label: 'Materi', tooltip: 'Materi penyuluhan yang akan disampaikan', maxLines: 5),
         const SizedBox(height: 16),
-        const CustomTextField(name: 'metode', label: 'Metode', maxLines: 3),
+        CustomTextField(name: 'metode', label: 'Metode', tooltip: 'Metode yang digunakan dalam kegiatan penyuluhan', maxLines: 3),
         const SizedBox(height: 16),
-        const CustomTextField(name: 'media', label: 'Media', maxLines: 3),
+        CustomTextField(name: 'media', label: 'Media', tooltip: 'Media yang digunakan dalam kegiatan penyuluhan', maxLines: 3),
       ],
     );
   }
@@ -215,6 +217,7 @@ class _SapFormViewState extends State<SapFormView> with FormBuilderMixin {
         CustomCheckboxGroup<String>(
           name: 'joblist_roles',
           label: 'Pilih Peran',
+          tooltip: 'Pilih peran yang akan dijalankan dalam kegiatan penyuluhan',
           options: const [
             FormBuilderFieldOption(value: 'Penyuluh', child: Text('Penyuluh')),
             FormBuilderFieldOption(
@@ -249,17 +252,17 @@ class _SapFormViewState extends State<SapFormView> with FormBuilderMixin {
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
-        const CustomTextField(name: 'penyuluh', label: 'Nama Penyuluh'),
+        CustomTextField(name: 'penyuluh', label: 'Nama Penyuluh', tooltip: 'Nama petugas yang menjadi penyuluh'),
         const SizedBox(height: 16),
-        const CustomTextField(name: 'moderator', label: 'Nama Moderator'),
+        CustomTextField(name: 'moderator', label: 'Nama Moderator', tooltip: 'Nama petugas yang menjadi moderator'),
         const SizedBox(height: 16),
-        const CustomTextField(name: 'fasilitator', label: 'Nama Fasilitator'),
+        CustomTextField(name: 'fasilitator', label: 'Nama Fasilitator', tooltip: 'Nama petugas yang menjadi fasilitator'),
         const SizedBox(height: 16),
-        const CustomTextField(name: 'time_keeper', label: 'Nama Time Keeper'),
+        CustomTextField(name: 'time_keeper', label: 'Nama Time Keeper', tooltip: 'Nama petugas yang menjadi time keeper'),
         const SizedBox(height: 16),
-        const CustomTextField(name: 'dokumentator', label: 'Nama Dokumentator'),
+        CustomTextField(name: 'dokumentator', label: 'Nama Dokumentator', tooltip: 'Nama petugas yang menjadi dokumentator'),
         const SizedBox(height: 16),
-        const CustomTextField(name: 'observer', label: 'Nama Observer'),
+        CustomTextField(name: 'observer', label: 'Nama Observer', tooltip: 'Nama petugas yang menjadi observer'),
       ],
     );
   }
@@ -412,21 +415,24 @@ class _SapFormViewState extends State<SapFormView> with FormBuilderMixin {
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
-        const CustomTextField(
+        CustomTextField(
           name: 'evaluasi_input',
           label: 'Evaluasi Input',
+          tooltip: 'Evaluasi input dalam kegiatan penyuluhan',
           maxLines: 3,
         ),
         const SizedBox(height: 16),
-        const CustomTextField(
+        CustomTextField(
           name: 'evaluasi_proses',
           label: 'Evaluasi Proses',
+          tooltip: 'Evaluasi proses pelaksanaan kegiatan penyuluhan',
           maxLines: 3,
         ),
         const SizedBox(height: 16),
-        const CustomTextField(
+        CustomTextField(
           name: 'evaluasi_hasil',
           label: 'Evaluasi Hasil',
+          tooltip: 'Evaluasi hasil dari kegiatan penyuluhan',
           maxLines: 3,
         ),
       ],
@@ -442,15 +448,17 @@ class _SapFormViewState extends State<SapFormView> with FormBuilderMixin {
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
-        const CustomTextField(
+        CustomTextField(
           name: 'pertanyaan',
           label: 'Pertanyaan Peserta',
+          tooltip: 'Pertanyaan yang diajukan oleh peserta',
           maxLines: 3,
         ),
         const SizedBox(height: 16),
-        const CustomTextField(
+        CustomTextField(
           name: 'saran',
           label: 'Saran Peserta',
+          tooltip: 'Saran yang diberikan oleh peserta',
           maxLines: 3,
         ),
       ],
@@ -476,6 +484,7 @@ class _SapFormViewState extends State<SapFormView> with FormBuilderMixin {
           return CustomDropdown<int>(
             name: 'diagnosis',
             label: 'Diagnosis',
+            tooltip: 'Pilih diagnosis keperawatan yang sesuai',
             items: diagnoses
                 .map(
                   (diag) =>
@@ -495,6 +504,7 @@ class _SapFormViewState extends State<SapFormView> with FormBuilderMixin {
           return CustomCheckboxGroup<int>(
             name: 'intervensi',
             label: 'Intervensi',
+            tooltip: 'Pilih intervensi yang akan dilakukan',
             options: interventions
                 .map(
                   (iv) => FormBuilderFieldOption(
@@ -506,11 +516,11 @@ class _SapFormViewState extends State<SapFormView> with FormBuilderMixin {
           );
         }),
         const SizedBox(height: 16),
-        const CustomTextField(name: 'tujuan', label: 'Tujuan', maxLines: 3),
+        CustomTextField(name: 'tujuan', label: 'Tujuan', tooltip: 'Tujuan perawatan yang ingin dicapai', maxLines: 3),
         const SizedBox(height: 16),
-        const CustomTextField(name: 'kriteria', label: 'Kriteria', maxLines: 3),
+        CustomTextField(name: 'kriteria', label: 'Kriteria', tooltip: 'Kriteria untuk mengevaluasi pencapaian tujuan', maxLines: 3),
         const SizedBox(height: 16),
-        const CustomTextField(name: 'rasional', label: 'Rasional', maxLines: 3),
+        CustomTextField(name: 'rasional', label: 'Rasional', tooltip: 'Alasan atau landasan mengapa intervensi dipilih', maxLines: 3),
         const SizedBox(height: 16),
         const Text(
           'Upload Dokumentasi',

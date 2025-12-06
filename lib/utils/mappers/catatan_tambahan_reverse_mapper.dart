@@ -1,7 +1,7 @@
 class CatatanTambahanReverseMapper {
   static Map<String, dynamic> reverse(Map<String, dynamic> data) {
     final catatan = data['catatan'] ?? data;
-    final renpra = catatan['renpra'] ?? {};
+    final renpra = catatan['renpra'] ?? data['renpra'] ?? {};
 
     List<int> parseIntervensi(dynamic value) {
       if (value is List) return value.cast<int>();
@@ -26,13 +26,15 @@ class CatatanTambahanReverseMapper {
       'tanggal_catatan': parseDate(catatan['tanggal_catatan']),
       'waktu_catatan': catatan['waktu_catatan'],
       'kategori': catatan['kategori'] ?? 'Perkembangan',
-      'isi_catatan': catatan['isi_catatan'] ?? catatan['catatan'],
+      'isi_catatan': catatan['isi_catatan'] ?? catatan['catatan'], // Support both field names
       'tindak_lanjut': catatan['tindak_lanjut'],
-      'diagnosis': renpra['diagnosis'],
-      'intervensi': parseIntervensi(renpra['intervensi']),
-      'tujuan': renpra['tujuan'],
-      'kriteria': renpra['kriteria'],
-      'rasional': renpra['rasional'],
+      
+      // Renpra section
+      'diagnosis': renpra['diagnosis'] ?? data['diagnosis'],
+      'intervensi': parseIntervensi(renpra['intervensi'] ?? data['intervensi']),
+      'tujuan': renpra['tujuan'] ?? data['tujuan'],
+      'kriteria': renpra['kriteria'] ?? data['kriteria'],
+      'rasional': renpra['rasional'] ?? data['rasional'],
     };
   }
 }

@@ -488,7 +488,7 @@ class AuthController extends GetxController {
         stackTrace: stackTrace,
         context: {'userId': _user.value?.id.toString()},
       );
-      
+
       String errorMessage = 'Connection error occurred.';
       if (e.toString().contains('Failed to fetch') || e.toString().contains('ClientException')) {
         errorMessage = 'Tidak dapat terhubung ke server.\n\nPastikan:\n• Backend server berjalan\n• Antivirus/Firewall tidak memblokir (Kaspersky terdeteksi)\n• Gunakan http://localhost:8000 jika memungkinkan';
@@ -497,7 +497,7 @@ class AuthController extends GetxController {
       } else if (e.toString().contains('TimeoutException')) {
         errorMessage = 'Request timeout. Server terlalu lama merespon.';
       }
-      
+
       Get.snackbar(
         'Gagal Update Profile',
         errorMessage,
@@ -506,6 +506,91 @@ class AuthController extends GetxController {
       );
     } finally {
       isLoading.value = false;
+    }
+  }
+
+  Future<void> sendPasswordResetLink(String email) async {
+    _logger.auth(event: 'Password reset request', userEmail: email);
+
+    if (email.isEmpty) {
+      Get.snackbar('Error', 'Please enter your email address');
+      return;
+    }
+
+    isLoading.value = true;
+
+    try {
+      final response = await http.post(
+        Uri.parse('${ApiConfig.currentBaseUrl}${ApiConfig.passwordResetRequest}'),
+        headers: <String, String>{
+          'Content-Type': 'application/json; charset=UTF-8',
+        },
+        body: jsonEncode({'email': email}),
+      );
+
+      if (response.statusCode == 200) {
+        _logger.info('Password reset link sent to $email');
+        Get.snackbar(
+          'Success',
+          'Password reset link has been sent to your email.\nPlease check your inbox.',
+          snackPosition: SnackPosition.TOP,
+        );
+      } else {
+        final data = json.decode(response.body);
+        final message = data['message'] ?? 'Failed to send reset link';
+        _logger.auth(
+          event: 'Password reset request failed',
+          userEmail: email,
+          success: false,
+          errorMessage: message,
+        );
+        Get.snackbar('Error', message);
+      }
+    } catch (e, stackTrace) {
+      _logger.error(
+        'Password reset request connection error',
+        error: e,
+        stackTrace: stackTrace,
+        context: {'email': email},
+      );
+      Get.snackbar('Error', 'Connection error: $e');
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  Future<bool> validateToken() async {
+    if (!isTokenValid()) {
+      return false;
+    }
+
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiConfig.currentBaseUrl}${ApiConfig.userProfile}'),
+        headers: <String, String>{
+          'Authorization': 'Bearer ${_token.value}',
+          'Content-Type': 'application/json; charset=UTF-8',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        _user.value = UserModel.fromJson(data);
+        return true;
+      } else {
+        _logger.warning(
+          'Token validation failed',
+          context: {'statusCode': response.statusCode},
+        );
+        return false;
+      }
+    } catch (e, stackTrace) {
+      _logger.error(
+        'Token validation connection error',
+        error: e,
+        stackTrace: stackTrace,
+      );
+      return false;
     }
   }
 }

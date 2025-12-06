@@ -31,6 +31,9 @@ class ApiConfig {
   static const String login = '/login';
   static const String logout = '/logout';
   static const String userProfile = '/user/profile';
+  static const String passwordResetRequest = '/forgot-password';
+  static const String passwordReset = '/reset-password';
+  static const String emailVerificationNotice = '/email/verification-notification';
   static const String patients = '/patients';
   static const String forms = '/forms';
   static const String dashboardMahasiswa = '/dashboard/mahasiswa';
